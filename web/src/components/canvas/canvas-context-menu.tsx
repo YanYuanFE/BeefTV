@@ -38,6 +38,7 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { cn } from "@/lib/utils";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type CanvasWorkspaceMode, type ContextMenuState, type Position } from "@/types/canvas";
+import { POPOVER_SELECTOR } from "@/lib/overlay-selectors";
 
 type CanvasAssetCategory = NonNullable<NonNullable<CanvasNodeData["metadata"]>["assetCategory"]>;
 
@@ -129,7 +130,7 @@ export function CanvasNodeContextMenu({
     useEffect(() => {
         const close = (event: PointerEvent) => {
             const target = event.target;
-            if (target instanceof Element && target.closest(".ant-popover")) return;
+            if (target instanceof Element && target.closest(POPOVER_SELECTOR)) return;
             onClose();
         };
         const closeOnEscape = (event: KeyboardEvent) => {

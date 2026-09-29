@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { App, Button, Segmented, Tag } from "antd";
 import { ChevronRight, FlaskConical, Settings2 } from "lucide-react";
 
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ModelEditorModal } from "@/components/model-editor-modal";
 import { ModelProtocolBrowser } from "@/components/model-protocol-browser";
 import { testChannelModelConnection } from "@/lib/model-connection-test";
@@ -11,11 +13,11 @@ import { defaultModelCapabilityConfig } from "@/lib/model-capabilities";
 import { defaultProtocolForCapability, defaultProtocolForModel, inferProtocolCapabilityFromModel, modelProtocolCapability, modelProtocolDefinition, type ModelProtocol, type ModelProtocolDefinition } from "@/lib/model-protocols";
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
 import { modelOptionName, type ModelChannel } from "@/stores/use-config-store";
+import { toast } from "sonner";
 
 type ModelProfile = NonNullable<ModelChannel["modelProfiles"]>[number];
 
 export function ChannelModelSettings({ channel, onChange }: { channel: ModelChannel; onChange: (profiles: ModelProfile[]) => void }) {
-    const { message } = App.useApp();
     const [testingModel, setTestingModel] = useState("");
     const [editorTab, setEditorTab] = useState("protocol");
     const [protocolLoading, setProtocolLoading] = useState(true);
@@ -50,9 +52,9 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
         setTestingModel(model);
         try {
             const detail = await testChannelModelConnection(channel, model, capability, protocol);
-            message.success(`模型测试通过：${detail}`);
+            toast.success(`模型测试通过：${detail}`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "模型测试失败");
+            toast.error(error instanceof Error ? error.message : "模型测试失败");
         } finally {
             setTestingModel("");
         }
@@ -89,16 +91,17 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                                     {displayName}
                                 </div>
                                 <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-                                    <Tag className="mr-0 text-[var(--fs-tiny)]" bordered={false}>
+                                    <Badge variant="secondary" className="rounded-sm text-[var(--fs-tiny)]">
                                         {capabilityLabel(capability)}
-                                    </Tag>
+                                    </Badge>
                                     <span className="truncate font-mono text-[var(--fs-tiny)] text-foreground/40" title={modelProtocolDefinition(protocol, availableProtocols)?.create}>
                                         {modelProtocolDefinition(protocol, availableProtocols)?.create || "待配置请求协议"}
                                     </span>
                                 </div>
                             </div>
-                            <Button type="text" size="small" icon={<ChevronRight className="size-4" />} iconPosition="end" onClick={() => { setEditorTab("protocol"); setActiveModel(model); }}>
+                            <Button variant="ghost" size="sm" onClick={() => { setEditorTab("protocol"); setActiveModel(model); }}>
                                 配置使用
+                                <ChevronRight className="size-4" />
                             </Button>
                         </div>
                     );
@@ -117,14 +120,15 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                         <span className="text-xs text-foreground/50">更改实时保存到本地工作区</span>
                         <div className="model-editor-footer-actions">
                             <Button
-                                icon={<FlaskConical className="size-4" />}
+                                variant="outline"
                                 loading={Boolean(testingModel)}
                                 disabled={!activeProtocol || protocolLoading || Boolean(protocolError)}
                                 onClick={() => { if (activeModel && activeProtocol) void testModel(activeModel, activeCapability, activeProtocol); }}
                             >
+                                {testingModel ? null : <FlaskConical className="size-4" />}
                                 测试模型
                             </Button>
-                            <Button disabled={Boolean(testingModel)} onClick={() => setActiveModel(null)}>完成</Button>
+                            <Button variant="outline" disabled={Boolean(testingModel)} onClick={() => setActiveModel(null)}>完成</Button>
                         </div>
                     </div>
                 }
@@ -135,8 +139,9 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                         children: <div className="space-y-4" inert={Boolean(testingModel)}>
                             <section className="space-y-2">
                                 <div className="text-xs font-medium">模型能力</div>
-                                <Segmented<ModelCapabilityChoice>
+                                <SegmentedControl<ModelCapabilityChoice>
                                     block
+                                    ariaLabel="模型能力"
                                     options={[{ label: "文本", value: "text" }, { label: "图片", value: "image" }, { label: "视频", value: "video" }, { label: "音频", value: "audio" }]}
                                     value={activeCapability}
                                     onChange={(nextCapability) => {

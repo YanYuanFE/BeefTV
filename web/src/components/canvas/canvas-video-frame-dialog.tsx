@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { App, Button, InputNumber, Modal } from "antd";
 import { Check, Image as ImageIcon, SkipBack, SkipForward, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 
+import { Button } from "@/components/ui/button";
+import { NumberInput } from "@/components/ui/number-input";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatVideoFrameTime, normalizeVideoFrameTimes } from "@/lib/canvas/canvas-video-frame";
 import { resourceIdFromStorageKey } from "@/services/api/resources";
@@ -10,6 +12,7 @@ import { resolveMediaUrl } from "@/services/file-storage";
 import { cacheResourceObjectUrl } from "@/services/resource-blob-cache";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { CanvasNodeData } from "@/types/canvas";
+import { toast } from "sonner";
 
 type SelectedVideoFrame = {
     id: string;
@@ -30,7 +33,6 @@ type CanvasVideoFrameDialogProps = {
 const MAX_SELECTED_FRAMES = 30;
 
 export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: CanvasVideoFrameDialogProps) {
-    const { message } = App.useApp();
     const theme = canvasThemes[useActiveTheme()];
     const videoRef = useRef<HTMLVideoElement>(null);
     const [videoUrl, setVideoUrl] = useState("");
@@ -80,15 +82,15 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
     const addFrame = (timeMs: number) => {
         const normalized = normalizeVideoFrameTimes([timeMs], durationMs)[0];
         if (normalized === undefined) {
-            message.warning("视频时长未就绪，请稍候再试");
+            toast.warning("视频时长未就绪，请稍候再试");
             return;
         }
         if (frames.some((frame) => frame.timeMs === normalized)) {
-            message.info("该时间点已经添加");
+            toast.info("该时间点已经添加");
             return;
         }
         if (frames.length >= MAX_SELECTED_FRAMES) {
-            message.warning(`单次最多提取 ${MAX_SELECTED_FRAMES} 帧，请先完成当前批次`);
+            toast.warning(`单次最多提取 ${MAX_SELECTED_FRAMES} 帧，请先完成当前批次`);
             return;
         }
         setFrames((current) => [...current, { id: nanoid(), timeMs: normalized }].sort((left, right) => left.timeMs - right.timeMs));
@@ -110,7 +112,7 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
     );
 
     return (
-        <Modal title={title} open={open} onCancel={onClose} footer={null} width={760} centered destroyOnHidden>
+        <AppModal title={title} open={open} onCancel={onClose} footer={null} width={760}>
             <div className="space-y-4">
                 <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-xl bg-black">
                     {videoUrl ? (
@@ -138,8 +140,8 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
 
                 <div className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: theme.toolbar.itemHover }}>
                     <span className="text-xs font-medium opacity-60">当前时间</span>
-                    <InputNumber
-                        size="small"
+                    <NumberInput
+                        size="sm"
                         min={0}
                         max={Math.max(0, lastFrameMs / 1000)}
                         step={0.001}
@@ -151,28 +153,31 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
                     />
                     <span className="mr-auto text-xs opacity-45">/ {durationMs ? formatVideoFrameTime(durationMs) : "--:--.---"}</span>
                     <Button
-                        size="small"
-                        icon={<SkipBack className="size-3.5" />}
+                        size="sm"
+                        variant="outline"
                         disabled={!durationMs}
                         onClick={() => {
                             seekTo(0);
                             addFrame(0);
                         }}
                     >
+                        <SkipBack className="size-3.5" />
                         首帧
                     </Button>
-                    <Button size="small" type="primary" icon={<ImageIcon className="size-3.5" />} disabled={!durationMs} onClick={() => addFrame(currentTimeMs)}>
+                    <Button size="sm" disabled={!durationMs} onClick={() => addFrame(currentTimeMs)}>
+                            <ImageIcon className="size-3.5" />
                             当前帧
                     </Button>
                     <Button
-                        size="small"
-                        icon={<SkipForward className="size-3.5" />}
+                        size="sm"
+                        variant="outline"
                         disabled={!durationMs}
                         onClick={() => {
                             seekTo(lastFrameMs);
                             addFrame(lastFrameMs);
                         }}
                     >
+                        <SkipForward className="size-3.5" />
                         尾帧
                     </Button>
                 </div>
@@ -194,7 +199,9 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
                                         <span className="block text-[var(--fs-micro)] opacity-45">画面 {index + 1}</span>
                                         <span className="block truncate font-mono text-xs font-medium">{formatVideoFrameTime(frame.timeMs)}</span>
                                     </button>
-                                    <Button type="text" size="small" danger icon={<Trash2 className="size-3.5" />} aria-label={`删除画面 ${index + 1}`} onClick={() => removeFrame(frame.id)} />
+                                    <Button variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive" aria-label={`删除画面 ${index + 1}`} onClick={() => removeFrame(frame.id)}>
+                                        <Trash2 className="size-3.5" />
+                                    </Button>
                                 </div>
                             ))}
                         </div>
@@ -208,13 +215,14 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
                 <div className="flex items-center justify-between gap-3">
                     <div className="text-xs opacity-45">提取后只创建图片节点，不会自动发起生成任务。</div>
                     <div className="flex shrink-0 items-center gap-2">
-                        <Button onClick={onClose}>取消</Button>
-                        <Button type="primary" icon={<Check className="size-4" />} disabled={!frames.length} onClick={() => onConfirm({ timesMs: frames.map((frame) => frame.timeMs) })}>
+                        <Button variant="outline" onClick={onClose}>取消</Button>
+                        <Button disabled={!frames.length} onClick={() => onConfirm({ timesMs: frames.map((frame) => frame.timeMs) })}>
+                            <Check className="size-4" />
                             {frames.length ? `截取 ${frames.length} 个关键帧` : "关键帧截取"}
                         </Button>
                     </div>
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clock3, Copy, Eye, Palette, Pencil, Plus, Search, SlidersHorizontal, Star, Trash2, UserRound } from "lucide-react";
-import { App, Button, Input } from "antd";
+import { Check, Clock3, Copy, Eye, Palette, Pencil, Plus, Search, SlidersHorizontal, Star, Trash2, UserRound, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { nanoid } from "nanoid";
 
@@ -18,6 +19,8 @@ import {
 import { createStyleProfile, deleteStyleProfile, listStyleProfiles, setStyleProfileFavorite, touchStyleProfile, updateStyleProfile, type UserStyleProfile } from "@/services/api/style-profiles";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 export type { CanvasStylePreset } from "@/lib/canvas/canvas-style-system";
 
@@ -437,7 +440,6 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
     onClose: () => void;
     onSelect: (preset: CanvasStylePreset) => void;
 }) {
-    const { message, modal } = App.useApp();
     const queryClient = useQueryClient();
     const theme = canvasThemes[useActiveTheme()];
     const localMode = isLocalWorkspaceMode();
@@ -526,10 +528,10 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
             const preset = userStylePreset(profile);
             setEditor(null);
             setTab("mine");
-            message.success("风格已保存到“我的风格”");
+            toast.success("风格已保存到“我的风格”");
             if (apply && preset) selectItem({ kind: "user", preset, entity: profile });
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "风格保存失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "风格保存失败"),
     });
     const favoriteMutation = useMutation({
         mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => {
@@ -542,7 +544,7 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
             return setStyleProfileFavorite(id, favorite);
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["style-profiles"] }),
-        onError: (error) => message.error(error instanceof Error ? error.message : "收藏状态更新失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "收藏状态更新失败"),
     });
     const deleteMutation = useMutation({
         mutationFn: (id: string) => {
@@ -554,8 +556,8 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
             }
             return deleteStyleProfile(id);
         },
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["style-profiles"] }); message.success("风格已删除"); },
-        onError: (error) => message.error(error instanceof Error ? error.message : "风格删除失败"),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["style-profiles"] }); toast.success("风格已删除"); },
+        onError: (error) => toast.error(error instanceof Error ? error.message : "风格删除失败"),
     });
 
     function selectItem(item: StyleLibraryItem) {
@@ -570,7 +572,7 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
                 setLocalProfiles(nextProfiles);
                 persistLocalStyleProfiles(nextProfiles);
             } else {
-                void touchStyleProfile(item.entity.id).then(() => queryClient.invalidateQueries({ queryKey: ["style-profiles"] })).catch((error) => message.warning(error instanceof Error ? error.message : "最近使用记录更新失败"));
+                void touchStyleProfile(item.entity.id).then(() => queryClient.invalidateQueries({ queryKey: ["style-profiles"] })).catch((error) => toast.warning(error instanceof Error ? error.message : "最近使用记录更新失败"));
             }
         }
         onSelect(preset);
@@ -587,12 +589,12 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
         setEditor({ profile: editableCopy(preset.profile || createStyleProfileSnapshot(preset), undefined, `${preset.title} 副本`, preset.imageUrl) });
     }
     function confirmDelete(entity: UserStyleProfile) {
-        modal.confirm({ title: `删除“${entity.name}”？`, content: "项目中已经保存的快照不会被删除，但该风格将从“我的风格”中移除。", okText: "删除", cancelText: "取消", okButtonProps: { danger: true }, onOk: () => deleteMutation.mutateAsync(entity.id) });
+        confirmDialog({ title: `删除“${entity.name}”？`, content: "项目中已经保存的快照不会被删除，但该风格将从“我的风格”中移除。", okText: "删除", cancelText: "取消", okButtonProps: { danger: true }, onOk: () => deleteMutation.mutateAsync(entity.id) });
     }
 
     return (
         <>
-            <AppModal rootClassName="canvas-style-picker-modal" open={open} title={null} footer={null} centered width="min(1240px, calc(100vw - 24px))" onCancel={onClose} flush>
+            <AppModal rootClassName="canvas-style-picker-modal rounded-[var(--r-2xl)] bg-transparent shadow-[0_30px_80px_-30px_color-mix(in_srgb,var(--foreground)_28%,transparent),var(--elevation-card),var(--elevation-hairline)]" open={open} title={null} footer={null} width="min(1240px, calc(100vw - 24px))" onCancel={onClose} flush>
                 <div className="canvas-style-center-shell flex min-h-0 flex-col overflow-hidden" style={{ color: theme.node.text, background: theme.node.panel }}>
                     <header className="flex min-h-16 flex-col gap-3 border-b px-4 py-3 pr-12 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:pr-14" style={{ borderColor: theme.node.stroke }}>
                         <div className="min-w-0">
@@ -600,8 +602,16 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
                             <p className="mt-0.5 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>系统规范 · 个人风格 · 项目快照</p>
                         </div>
                         <div className="flex min-w-0 gap-2 sm:items-center">
-                            <Input allowClear className="style-center-search min-w-0 flex-1" prefix={<Search className="size-3.5 text-foreground/35" />} value={query} placeholder="搜索风格、题材或媒介" onChange={(event) => setQuery(event.target.value)} />
-                            <Button type="primary" className="shrink-0" icon={<Plus className="size-3.5" />} onClick={createNewStyle}>新建风格</Button>
+                            <div className="style-center-search relative min-w-0 flex-1">
+                                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-foreground/35" />
+                                <Input className="px-8" value={query} placeholder="搜索风格、题材或媒介" onChange={(event) => setQuery(event.target.value)} />
+                                {query ? (
+                                    <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setQuery("")}>
+                                        <X className="size-3.5" />
+                                    </button>
+                                ) : null}
+                            </div>
+                            <Button className="shrink-0" onClick={createNewStyle}><Plus className="size-3.5" />新建风格</Button>
                         </div>
                     </header>
                     <div className="style-center-workspace grid min-h-0 flex-1">
@@ -702,7 +712,7 @@ function StyleCenterCard({ item, active, applying, favorite, theme, onApply, onD
                 <IconAction label="复制并编辑" onClick={onCopy}><Copy className="size-3.5" /></IconAction>
                 {onEdit ? <IconAction label="编辑风格" onClick={onEdit}><Pencil className="size-3.5" /></IconAction> : null}
                 {onDelete ? <IconAction label="删除风格" danger onClick={onDelete}><Trash2 className="size-3.5" /></IconAction> : null}
-                <Button type="default" size="small" className={`style-center-apply-button ml-auto ${active ? "is-current" : ""}`} disabled={active || applying} icon={active ? <Check className="size-3.5" /> : <Palette className="size-3.5" />} onClick={onApply}>{active ? "当前" : "应用"}</Button>
+                <Button variant="outline" size="sm" className={`style-center-apply-button ml-auto border-[color-mix(in_srgb,var(--workspace-accent)_34%,var(--border))] bg-[color-mix(in_srgb,var(--workspace-accent)_8%,transparent)] font-[560] text-[var(--workspace-accent)] hover:border-[var(--workspace-accent)] hover:bg-[color-mix(in_srgb,var(--workspace-accent)_14%,transparent)] hover:text-[var(--workspace-accent)] disabled:border-[color-mix(in_srgb,var(--foreground)_12%,transparent)] disabled:bg-[color-mix(in_srgb,var(--foreground)_5%,transparent)] disabled:text-[color-mix(in_srgb,var(--foreground)_48%,transparent)] disabled:opacity-100 dark:border-[color-mix(in_srgb,var(--workspace-accent)_34%,var(--border))] dark:bg-[color-mix(in_srgb,var(--workspace-accent)_8%,transparent)] ${active ? "is-current" : ""}`} disabled={active || applying} onClick={onApply}>{active ? <Check className="size-3.5" /> : <Palette className="size-3.5" />}{active ? "当前" : "应用"}</Button>
             </footer>
         </article>
     );
@@ -724,7 +734,7 @@ function styleCenterViewTitle(tab: StyleCenterTab, category: string) {
 }
 
 function EmptyStyleCenter({ tab, loading, failed, color, onCreate, onBrowse }: { tab: StyleCenterTab; loading: boolean; failed: boolean; color: string; onCreate: () => void; onBrowse: () => void }) {
-    return <div className="col-span-full grid min-h-64 place-items-center text-center"><div><Search className="mx-auto size-5" style={{ color }} /><p className="mt-2 text-xs font-medium">{loading ? "正在加载风格库" : failed && tab !== "system" ? "我的风格加载失败，请检查登录状态或后端服务" : tab === "mine" ? "还没有自己的风格" : tab === "favorites" ? "还没有收藏风格" : tab === "recent" ? "还没有使用记录" : "没有匹配的系统风格"}</p><div className="mt-3 flex justify-center gap-2">{tab === "mine" && !failed ? <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreate}>新建风格</Button> : null}<Button size="small" onClick={onBrowse}>浏览系统风格</Button></div></div></div>;
+    return <div className="col-span-full grid min-h-64 place-items-center text-center"><div><Search className="mx-auto size-5" style={{ color }} /><p className="mt-2 text-xs font-medium">{loading ? "正在加载风格库" : failed && tab !== "system" ? "我的风格加载失败，请检查登录状态或后端服务" : tab === "mine" ? "还没有自己的风格" : tab === "favorites" ? "还没有收藏风格" : tab === "recent" ? "还没有使用记录" : "没有匹配的系统风格"}</p><div className="mt-3 flex justify-center gap-2">{tab === "mine" && !failed ? <Button variant="outline" size="sm" onClick={onCreate}><Plus className="size-3.5" />新建风格</Button> : null}<Button variant="outline" size="sm" onClick={onBrowse}>浏览系统风格</Button></div></div></div>;
 }
 
 export function userStylePreset(entity: UserStyleProfile): CanvasStylePreset | null {
@@ -745,7 +755,7 @@ export function CanvasStyleDetailModal({ open, preset, selected = false, onClose
     const theme = canvasThemes[useActiveTheme()];
     const sections = preset ? parseStyleSections(preset.prompt) : [];
     return (
-        <AppModal rootClassName="canvas-style-detail-modal" open={open} title={null} footer={null} centered destroyOnHidden width="min(820px, calc(100vw - 24px))" onCancel={onClose} flush>
+        <AppModal rootClassName="canvas-style-detail-modal rounded-[var(--r-2xl)] bg-transparent" open={open} title={null} footer={null} width="min(820px, calc(100vw - 24px))" onCancel={onClose} flush>
             {preset ? <div className="canvas-style-detail-shell flex flex-col overflow-hidden" style={{ color: theme.node.text, background: theme.node.panel }}>
                 <div className="flex h-44 shrink-0 items-center justify-center overflow-hidden border-b sm:h-52" style={{ borderColor: theme.node.stroke, background: theme.canvas.background }}>
                     <img src={preset.imageUrl} width="960" height="540" alt={`${preset.title}画风示意`} className="h-full w-full object-contain" style={preset.id === "black-white-noir" ? { filter: "grayscale(1) contrast(1.08)" } : undefined} />
@@ -765,7 +775,7 @@ export function CanvasStyleDetailModal({ open, preset, selected = false, onClose
                     {sections.map((section) => <section key={section.title} className="border-b py-3 last:border-b-0" style={{ borderColor: theme.node.stroke }}><h3 className="text-xs font-semibold">{section.title}</h3><p className="mt-1.5 text-xs leading-5" style={{ color: theme.node.muted }}>{section.content}</p></section>)}
                     {preset.profile?.negativePrompt ? <section className="border-b py-3 last:border-b-0" style={{ borderColor: theme.node.stroke }}><h3 className="text-xs font-semibold">全局负面 Prompt</h3><p className="mt-1.5 whitespace-pre-wrap text-xs leading-5" style={{ color: theme.node.muted }}>{preset.profile.negativePrompt}</p></section> : null}
                 </div>
-                <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t px-4 py-3 sm:px-5" style={{ borderColor: theme.node.stroke }}><Button onClick={onClose}>关闭</Button>{onSelect ? <Button type="primary" disabled={selected} icon={selected ? <Check className="size-3.5" /> : <Palette className="size-3.5" />} onClick={() => onSelect(preset)}>{selected ? "当前画风" : "选择该画风"}</Button> : null}</footer>
+                <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t px-4 py-3 sm:px-5" style={{ borderColor: theme.node.stroke }}><Button variant="outline" onClick={onClose}>关闭</Button>{onSelect ? <Button disabled={selected} onClick={() => onSelect(preset)}>{selected ? <Check className="size-3.5" /> : <Palette className="size-3.5" />}{selected ? "当前画风" : "选择该画风"}</Button> : null}</footer>
             </div> : null}
         </AppModal>
     );

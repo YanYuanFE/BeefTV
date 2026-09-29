@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { App, Button } from "antd";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import { Link } from "react-router";
 
@@ -9,6 +9,7 @@ import { saveProjectShot, type ProjectDetail } from "@/services/api/projects";
 
 import { AssetsStage, DeliveryStage, StoryStage } from "./workflow-stage-views";
 import { type ShortDramaWorkflowStage, workflowStages } from "./workflow-shared";
+import { toast } from "sonner";
 import "./workflow.css";
 
 const WorkflowProductionWorkbench = lazy(() => import("./workflow-production-workbench"));
@@ -22,7 +23,6 @@ type Props = {
 
 export default function ProjectWorkflowView({ detail, projectId, unitId, stage }: Props) {
     const queryClient = useQueryClient();
-    const { message } = App.useApp();
     const orderedUnits = useMemo(() => detail.units.slice().sort((left, right) => left.position - right.position), [detail.units]);
     const unit = orderedUnits.find((item) => item.id === unitId) || orderedUnits[0];
     const activeStage = workflowStages.some((item) => item.key === stage) ? stage as ShortDramaWorkflowStage : "video";
@@ -62,12 +62,12 @@ export default function ProjectWorkflowView({ detail, projectId, unitId, stage }
             setSelectedShotId(shot.id);
             sessionStorage.setItem(`project-workflow-selected-shot:${projectId}`, shot.id);
             await refresh();
-            message.success("已新增分镜");
+            toast.success("已新增分镜");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "新增分镜失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "新增分镜失败"),
     });
     if (!unit) {
-        return <div className="grid h-full place-items-center"><EmptyState title="先添加一个章节，再进入分镜制作" action={<Link to={`/projects/${projectId}/chapters`}><Button type="primary">添加章节</Button></Link>} /></div>;
+        return <div className="grid h-full place-items-center"><EmptyState title="先添加一个章节，再进入分镜制作" action={<Link to={`/projects/${projectId}/chapters`}><Button>添加章节</Button></Link>} /></div>;
     }
 
     return (

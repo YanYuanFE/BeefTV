@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Modal, Segmented } from "antd";
 import { ImagePlus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 import { readImageMeta } from "@/lib/image-utils";
 import { MAX_UPSCALE_LONG_EDGE, resolveUpscaleSize, type ImageUpscaleAlgorithm, type ImageUpscaleParams } from "@/lib/canvas/canvas-image-data";
@@ -50,7 +53,7 @@ export function CanvasNodeUpscaleDialog({ dataUrl, open, onClose, onConfirm }: {
     }, [image, sourceLongEdge]);
 
     return (
-        <Modal title={null} open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} width={820} centered destroyOnHidden>
+        <AppModal title={null} open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} width={820}>
             <div className="space-y-5">
                 <div>
                     <h2 className="text-xl font-semibold">调整尺寸</h2>
@@ -69,18 +72,21 @@ export function CanvasNodeUpscaleDialog({ dataUrl, open, onClose, onConfirm }: {
                     <div className="space-y-6 py-2">
                         <div className="space-y-2">
                             <div className="font-medium opacity-75">目标像素</div>
-                            <Segmented
+                            <SegmentedControl
                                 block
-                                value={params.targetLongEdge}
-                                options={targetOptions.map((option) => ({ label: `${option.label} · ${option.value}px`, value: option.value, disabled: Boolean(image && sourceLongEdge >= option.value) }))}
+                                ariaLabel="目标像素"
+                                value={String(params.targetLongEdge)}
+                                options={targetOptions.map((option) => ({ label: `${option.label} · ${option.value}px`, value: String(option.value), disabled: Boolean(image && sourceLongEdge >= option.value) }))}
                                 onChange={(value) => setParams((current) => ({ ...current, targetLongEdge: Number(value) }))}
                             />
                             {image && !canUpscale ? <div className="text-xs font-medium text-[#ef4444]">{reachedMax ? "图片已达到 4K，无需放大" : "图片已达到当前目标像素，无需放大"}</div> : null}
                         </div>
                         <div className="space-y-2">
                             <div className="font-medium opacity-75">放大算法</div>
-                            <Segmented
+                            <SegmentedControl
                                 block
+                                ariaLabel="放大算法"
+                                className="h-auto!"
                                 value={params.algorithm}
                                 options={algorithms.map((item) => ({
                                     value: item.value,
@@ -103,11 +109,12 @@ export function CanvasNodeUpscaleDialog({ dataUrl, open, onClose, onConfirm }: {
                     </div>
                 </div>
                 <div className="flex justify-end">
-                    <Button type="primary" size="large" icon={<ImagePlus className="size-4" />} disabled={!canUpscale} onClick={() => onConfirm(params)}>
+                    <Button size="lg" disabled={!canUpscale} onClick={() => onConfirm(params)}>
+                        <ImagePlus className="size-4" />
                         生成放大图
                     </Button>
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }

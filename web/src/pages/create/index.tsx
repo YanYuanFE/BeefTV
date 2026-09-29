@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { App, Spin } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { History, Sparkles, Maximize2 } from "lucide-react";
+import { History, Loader2, Sparkles, Maximize2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -34,6 +33,8 @@ import { defaultCreationMode, modeLabels, type CreationConversation, type Creati
 import { attachCreationTaskContexts, completedCreationGenerationTask, conversationTimestamp, creationShotRail, creationVideoShotOrdinal, isImageAttachment, isVideoAttachment, materializeCreationTaskResults, newConversation, newMessage, reconcileCreationTaskMessages } from "./creation-conversations";
 import { CreationComposer, CreationEmptySuggest, CreationFeaturedWorks, CreationHistoryDrawer, CreationMessageView, CreationModeTabs, CreationWorkspaceToolbar, creationAssetCategoryLabels } from "./creation-workspace";
 import { createDemoConversation } from "./creation-demo-data";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 const AssetLibraryPickerModal = lazy(() => import("@/components/assets/asset-library-picker-modal").then((module) => ({ default: module.AssetLibraryPickerModal })));
 const loadCreationRuntime = () => import("./creation-runtime");
@@ -65,7 +66,6 @@ export default function CreatePage() {
     const requestedMode = requestedCreationMode(searchParams.get("mode"));
     const demoConversation = searchParams.get("demo") === "conversation";
     const marketplaceSkill = (searchParams.get("skill") || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("skill") : ""))?.trim() || "";
-    const { message: toast, modal } = App.useApp();
     const navigate = useNavigate();
     const [openingCanvas, setOpeningCanvas] = useState(false);
     const openingCanvasRef = useRef(false);
@@ -816,7 +816,7 @@ export default function CreatePage() {
     const confirmDeleteConversation = (conversation: CreationConversation) => {
         const title = conversation.title.trim() || "新创作";
         const label = title.length > 32 ? `${title.slice(0, 32)}...` : title;
-        modal.confirm({
+        confirmDialog({
             className: "workspace-modal workspace-modal-compact",
             title: "删除历史对话？",
             content: `确定删除「${label}」吗？这只会删除历史对话记录，不会删除已上传或生成的任何素材。此操作不可撤销。`,
@@ -915,7 +915,7 @@ export default function CreatePage() {
         restoreMessageDraft(previous);
     };
 
-    if (!hydrated || !activeConversation) return <div className="grid h-full place-items-center"><Spin /></div>;
+    if (!hydrated || !activeConversation) return <div className="grid h-full place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>;
 
     const handleThreadScroll = () => {
         const container = threadScrollRef.current;

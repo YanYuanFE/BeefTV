@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { OVERLAY_SELECTOR } from "@/lib/overlay-selectors";
 
 /** 一次点击的触觉式反馈，不表达请求成功，也不接管业务回调或画布事件。 */
 export function useWorkspaceButtonFeedback(enabled: boolean) {
@@ -9,7 +10,7 @@ export function useWorkspaceButtonFeedback(enabled: boolean) {
         const clicked = (event: MouseEvent) => {
             if (reduced.matches || !(event.target instanceof Element)) return;
             const button = event.target.closest<HTMLElement>('button, [role="button"]');
-            if (!button || button.matches(':disabled, [aria-disabled="true"], .ant-btn-loading') || !button.closest(".app-product-workspace, .ant-popover, .ant-dropdown, .ant-modal, .ant-drawer")) return;
+            if (!button || button.matches(':disabled, [aria-disabled="true"], [data-loading]') || !button.closest(`.app-product-workspace, ${OVERLAY_SELECTOR}`)) return;
             if (typeof button.animate === "function") {
                 const press = button.animate([{ scale: ".98" }, { scale: "1" }], { duration: 180, easing: "cubic-bezier(.16,1,.3,1)" });
                 animations.add(press);

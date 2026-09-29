@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
-import { App, Button, Upload, type UploadFile } from "antd";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+import { Button } from "@/components/ui/button";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { FileImage, FileText, Film, Music2, UploadCloud, X } from "lucide-react";
 
 import { isAudioFile } from "@/lib/canvas/canvas-project-generation";
 
 import { CANVAS_UPLOAD_ACCEPT, isTextUploadFile, uploadNodeType } from "@/lib/canvas/canvas-file-upload";
+import { toast } from "sonner";
+
+type UploadFile = { uid: string; name: string; originFileObj: File };
 
 type CanvasUploadModalProps = {
     open: boolean;
@@ -14,9 +17,28 @@ type CanvasUploadModalProps = {
 };
 
 export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModalProps) {
-    const { message } = App.useApp();
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const [uploading, setUploading] = useState(false);
+    const [dragOver, setDragOver] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Keep supported files and warn on each rejected one, mirroring the old beforeUpload filter.
+    const addFiles = (files: File[]) => {
+        const accepted = files.filter((file) => {
+            if (isCanvasUploadFile(file)) return true;
+            toast.warning(`“${file.name}”不是支持的图片、视频、音频或 TXT / Markdown 文件`);
+            return false;
+        });
+        if (!accepted.length) return;
+        setFileList((current) => [...current, ...accepted.map((file) => ({ uid: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, originFileObj: file }))]);
+    };
+
+    const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setDragOver(false);
+        if (uploading) return;
+        addFiles(Array.from(event.dataTransfer.files));
+    };
 
     useEffect(() => {
         if (!open) {
@@ -26,7 +48,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
     }, [open]);
 
     const submit = async () => {
-        const files = fileList.flatMap((item) => item.originFileObj ? [item.originFileObj] : []);
+        const files = fileList.map((item) => item.originFileObj);
         if (!files.length) return;
         setUploading(true);
         try {
@@ -34,7 +56,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
             onClose();
             await pendingUpload;
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "文件上传失败，请稍后重试");
+            toast.error(error instanceof Error ? error.message : "文件上传失败，请稍后重试");
         } finally {
             setUploading(false);
         }
@@ -46,10 +68,9 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
             title={null}
             footer={null}
             width="min(720px, calc(100vw - 24px))"
-            destroyOnHidden
             closable={!uploading}
             keyboard={!uploading}
-            mask={{ closable: !uploading }}
+            maskClosable={!uploading}
             onCancel={onClose}
             flush
         >
@@ -63,22 +84,37 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
                 </header>
 
                 <section className="min-h-0 flex-1 overflow-y-auto p-4">
-                    <Upload.Dragger
+                    <input
+                        ref={inputRef}
+                        type="file"
                         accept={CANVAS_UPLOAD_ACCEPT}
                         multiple
+                        hidden
                         disabled={uploading}
-                        fileList={fileList}
-                        beforeUpload={(file) => {
-                            if (isCanvasUploadFile(file)) return false;
-                            message.warning(`“${file.name}”不是支持的图片、视频、音频或 TXT / Markdown 文件`);
-                            return Upload.LIST_IGNORE;
+                        onChange={(event) => {
+                            addFiles(Array.from(event.target.files ?? []));
+                            event.target.value = "";
                         }}
-                        onChange={({ fileList: nextFileList }) => setFileList(nextFileList)}
-                        showUploadList={false}
-                        styles={{
-                            root: { display: "block", width: "100%" },
-                            trigger: { borderColor: "var(--border)", borderRadius: "var(--r-lg)", background: "var(--workspace-surface)" },
+                    />
+                    <div
+                        role="button"
+                        tabIndex={uploading ? -1 : 0}
+                        aria-disabled={uploading || undefined}
+                        className={`block w-full cursor-pointer rounded-[var(--r-lg)] border border-dashed border-border bg-[var(--workspace-surface)] outline-none transition-colors hover:border-foreground/30 focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 ${dragOver ? "border-foreground/40" : ""}`}
+                        onClick={() => {
+                            if (!uploading) inputRef.current?.click();
                         }}
+                        onKeyDown={(event) => {
+                            if (uploading || (event.key !== "Enter" && event.key !== " ")) return;
+                            event.preventDefault();
+                            inputRef.current?.click();
+                        }}
+                        onDragOver={(event) => {
+                            event.preventDefault();
+                            if (!uploading) setDragOver(true);
+                        }}
+                        onDragLeave={() => setDragOver(false)}
+                        onDrop={handleDrop}
                     >
                         <div className="flex min-h-48 flex-col items-center justify-center px-6 py-8 text-center">
                             <span className="grid size-12 place-items-center rounded-lg bg-foreground/[.06] text-foreground/70">
@@ -93,7 +129,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
                                 <span className="inline-flex items-center gap-1"><FileText className="size-3.5" aria-hidden="true" />TXT / Markdown</span>
                             </div>
                         </div>
-                    </Upload.Dragger>
+                    </div>
 
                     {fileList.length ? (
                         <div className="thin-scrollbar mt-3 flex max-h-52 flex-wrap gap-3 overflow-y-auto" aria-label="已选文件">
@@ -122,8 +158,9 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
                 <footer className="flex h-14 shrink-0 items-center justify-between border-t border-border px-4">
                     <span className="hidden text-[var(--fs-label)] text-foreground/45 sm:inline">文件将在确认后按顺序添加到画布</span>
                     <div className="ml-auto flex gap-2">
-                        <Button disabled={uploading} onClick={onClose}>取消</Button>
-                        <Button type="primary" icon={<UploadCloud className="size-4" />} disabled={!fileList.length} loading={uploading} onClick={() => void submit()}>
+                        <Button variant="outline" disabled={uploading} onClick={onClose}>取消</Button>
+                        <Button disabled={!fileList.length} loading={uploading} onClick={() => void submit()}>
+                            <UploadCloud className="size-4" />
                             添加到画布{fileList.length ? `（${fileList.length}）` : ""}
                         </Button>
                     </div>

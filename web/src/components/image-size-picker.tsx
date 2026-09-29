@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./image-size-picker.css";
-import { Input, Button } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { ImageCapabilityConfig } from "@/lib/model-capabilities";
 import { IMAGE_RESOLUTIONS, imagePresetForRatio, imagePresetValue, imageQualityForSelection, imageQualityForTier, imageResolutionUsesQuality, imageSizePresets, imageTierAvailable } from "@/lib/image-size-presets";
 import { buildImageResolutionOptions, type ImageResolutionOption, type ImageResolutionTier } from "@/lib/image-resolution-tiers";
@@ -167,8 +168,8 @@ export function ImageSizePicker({ profile, size, quality, onChange }: { profile:
                 <details className="image-size-custom">
                     <summary>自定义比例或尺寸</summary>
                     <div className="image-size-custom-input">
-                        <Input aria-label="自定义比例或尺寸" placeholder="16:9 或 1824x1024" value={custom} onChange={(event) => setCustom(event.target.value)} onPressEnter={applyCustom} />
-                        <Button onClick={applyCustom}>应用</Button>
+                        <Input aria-label="自定义比例或尺寸" placeholder="16:9 或 1824x1024" value={custom} onChange={(event) => setCustom(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) applyCustom(); }} />
+                        <Button variant="outline" onClick={applyCustom}>应用</Button>
                     </div>
                 </details>
             ) : null}

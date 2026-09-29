@@ -1,4 +1,4 @@
-import { Button } from "antd";
+import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -13,7 +13,7 @@ export function CollectionToolbar({ children, trailing, active, onReset, label =
     return <section className="collection-toolbar" aria-label={label}>
         <div className="collection-toolbar-controls">{children}</div>
         <div className="collection-toolbar-actions">
-            {active && onReset ? <Button type="text" icon={<RotateCcw />} onClick={onReset}>重置</Button> : null}
+            {active && onReset ? <Button variant="ghost" onClick={onReset}><RotateCcw />重置</Button> : null}
             {trailing}
         </div>
     </section>;

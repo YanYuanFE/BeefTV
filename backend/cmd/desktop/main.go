@@ -26,6 +26,7 @@ func main() {
 	}
 	dataDir, err := defaultDataDir()
 	if err != nil {
+		showStartupAlert(err)
 		log.Fatal(err)
 	}
 	app := newDesktopApp(dataDir)
@@ -38,7 +39,7 @@ func main() {
 	_ = os.Remove(startupErrorPath)
 
 	err = wails.Run(&options.App{
-		Title:  "BeefTV",
+		Title:  "Framely",
 		Width:  1440,
 		Height: 960,
 		AssetServer: &assetserver.Options{
@@ -66,5 +67,9 @@ func defaultDataDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("定位用户应用数据目录: %w", err)
 	}
-	return filepath.Join(root, "BeefTV"), nil
+	current := filepath.Join(root, "Framely")
+	if err := migrateLegacyDataDir(filepath.Join(root, legacyAppName), current, legacyAppProcessRunning); err != nil {
+		return "", err
+	}
+	return current, nil
 }

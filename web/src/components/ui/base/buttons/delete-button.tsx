@@ -1,4 +1,5 @@
-import { Button, Popover } from "antd";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, Trash2, X } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -20,18 +21,21 @@ export function DeleteButton({ label, description, onConfirm }: { label: string;
         finally { busy.current = false; setPending(false); }
     };
     return <span className="product-delete" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); close(); } }}>
-        <Popover trigger="click" placement="bottomRight" open={open} onOpenChange={(next) => { if (!busy.current) { setOpen(next); setError(""); } }} content={
-            <div className="product-delete-confirm" role="dialog" aria-label={label} aria-busy={pending}>
-                <strong>{label}？</strong>
-                <p>{description}</p>
-                {error ? <p role="alert" className="product-delete-error">{error}</p> : null}
-                <div className="product-delete-confirm-actions">
-                    <Button autoFocus icon={<X />} disabled={pending} onClick={close}>取消</Button>
-                    <Button danger type="primary" icon={<Check />} loading={pending} onClick={() => void confirm()}>确认删除</Button>
+        <Popover open={open} onOpenChange={(next) => { if (!busy.current) { setOpen(next); setError(""); } }}>
+            <PopoverTrigger asChild>
+                <button ref={trigger} type="button" className="product-icon-button product-delete-trigger" aria-label={label} aria-expanded={open} aria-haspopup="dialog"><Trash2 /></button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="w-auto" onEscapeKeyDown={(event) => { event.preventDefault(); close(); }}>
+                <div className="product-delete-confirm" role="dialog" aria-label={label} aria-busy={pending}>
+                    <strong>{label}？</strong>
+                    <p>{description}</p>
+                    {error ? <p role="alert" className="product-delete-error">{error}</p> : null}
+                    <div className="product-delete-confirm-actions">
+                        <Button variant="outline" autoFocus disabled={pending} onClick={close}><X />取消</Button>
+                        <Button variant="destructive" loading={pending} onClick={() => void confirm()}>{pending ? null : <Check />}确认删除</Button>
+                    </div>
                 </div>
-            </div>
-        }>
-            <button ref={trigger} type="button" className="product-icon-button product-delete-trigger" aria-label={label} aria-expanded={open} aria-haspopup="dialog"><Trash2 /></button>
+            </PopoverContent>
         </Popover>
     </span>;
 }

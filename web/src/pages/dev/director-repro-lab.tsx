@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
-import { Button, Table } from "antd";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/base/switch";
 
 import { CanvasDirectorWorkbench } from "@/components/canvas/director/canvas-director-workbench";
@@ -72,21 +73,21 @@ export default function DirectorReproLab() {
                     对象数 {scene.objects.length}
                 </span>
                 <span className="ml-auto flex flex-wrap items-center gap-2">
-                    <Button size="small" data-testid="inject-local-model" onClick={() => injectModel("local")}>
+                    <Button variant="outline" size="sm" data-testid="inject-local-model" onClick={() => injectModel("local")}>
                         注入本地模型
                     </Button>
-                    <Button size="small" data-testid="inject-missing-model" onClick={() => injectModel("missing")}>
+                    <Button variant="outline" size="sm" data-testid="inject-missing-model" onClick={() => injectModel("missing")}>
                         注入缺失模型
                     </Button>
                     <span className="text-[var(--fs-tiny)] opacity-70">强制保存失败</span>
                     <Switch checked={forceSaveFailure} onChange={setForceSaveFailure} data-testid="force-save-failure" />
-                    <Button size="small" data-testid="toggle-workbench" onClick={() => setWorkbenchOpen((open) => !open)}>
+                    <Button variant="outline" size="sm" data-testid="toggle-workbench" onClick={() => setWorkbenchOpen((open) => !open)}>
                         {workbenchOpen ? "关闭导演台" : "打开导演台"}
                     </Button>
-                    <Button size="small" data-testid="refresh-events" onClick={refreshEvents}>
+                    <Button variant="outline" size="sm" data-testid="refresh-events" onClick={refreshEvents}>
                         刷新事件
                     </Button>
-                    <Button size="small" data-testid="reset-lab" onClick={reset}>
+                    <Button variant="outline" size="sm" data-testid="reset-lab" onClick={reset}>
                         重置
                     </Button>
                 </span>
@@ -164,19 +165,34 @@ function DiagnosticEventList({ events }: { events: DirectorEventRow[] }) {
             <h2 className="mb-2 text-[var(--fs-label)] font-semibold opacity-75">结构化事件（{events.length}）</h2>
             <p className="mb-2 text-[var(--fs-tiny)] opacity-60">来自统一 client-diagnostics 缓冲区，只筛选 DIRECTOR_ 稳定码；不含 stack、URL 与业务正文。</p>
             {events.length ? (
-                <Table
-                    size="small"
-                    rowKey="id"
-                    dataSource={events}
-                    pagination={false}
-                    scroll={{ y: 220 }}
-                    columns={[
-                        { title: "时间", dataIndex: "timestamp", width: 200, render: (value: string) => <span className="font-mono text-[var(--fs-tiny)]">{value}</span> },
-                        { title: "级别", dataIndex: "level", width: 96, render: (value: string) => <StatusBadge size="sm" tone={value === "error" ? "error" : value === "warning" ? "warning" : "neutral"} label={value} /> },
-                        { title: "稳定码", dataIndex: "code", render: (value: string) => <span className="font-mono text-[var(--fs-tiny)]">{value}</span> },
-                        { title: "消息", dataIndex: "message" },
-                    ]}
-                />
+                <div className="max-h-[260px] overflow-y-auto rounded-md border border-border">
+                    <Table className="table-fixed">
+                        <TableHeader className="bg-muted">
+                            <TableRow>
+                                <TableHead className="w-[200px]">时间</TableHead>
+                                <TableHead className="w-[96px]">级别</TableHead>
+                                <TableHead>稳定码</TableHead>
+                                <TableHead>消息</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {events.map((event) => (
+                                <TableRow key={event.id}>
+                                    <TableCell className="whitespace-normal break-words">
+                                        <span className="font-mono text-[var(--fs-tiny)]">{event.timestamp}</span>
+                                    </TableCell>
+                                    <TableCell className="whitespace-normal">
+                                        <StatusBadge size="sm" tone={event.level === "error" ? "error" : event.level === "warning" ? "warning" : "neutral"} label={event.level} />
+                                    </TableCell>
+                                    <TableCell className="whitespace-normal break-words">
+                                        <span className="font-mono text-[var(--fs-tiny)]">{event.code}</span>
+                                    </TableCell>
+                                    <TableCell className="whitespace-normal break-words">{event.message}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             ) : (
                 <p className="text-[var(--fs-tiny)] opacity-55">暂无导演台事件。触发下方矩阵中的失败场景后点击「刷新事件」。</p>
             )}
@@ -188,18 +204,28 @@ function ReproMatrix() {
     return (
         <section className="mb-4">
             <h2 className="mb-2 text-[var(--fs-label)] font-semibold opacity-75">P0 手工复现矩阵（{DIRECTOR_REPRO_MATRIX.length}）</h2>
-            <Table
-                size="small"
-                rowKey="id"
-                dataSource={[...DIRECTOR_REPRO_MATRIX]}
-                pagination={false}
-                columns={[
-                    { title: "分组", dataIndex: "group", width: 108 },
-                    { title: "场景", dataIndex: "title", width: 190 },
-                    { title: "操作", dataIndex: "steps" },
-                    { title: "预期", dataIndex: "expected" },
-                ]}
-            />
+            <div className="rounded-md border border-border">
+                <Table className="table-fixed">
+                    <TableHeader className="bg-muted">
+                        <TableRow>
+                            <TableHead className="w-[108px]">分组</TableHead>
+                            <TableHead className="w-[190px]">场景</TableHead>
+                            <TableHead>操作</TableHead>
+                            <TableHead>预期</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {DIRECTOR_REPRO_MATRIX.map((row) => (
+                            <TableRow key={row.id}>
+                                <TableCell className="whitespace-normal break-words">{row.group}</TableCell>
+                                <TableCell className="whitespace-normal break-words">{row.title}</TableCell>
+                                <TableCell className="whitespace-normal break-words">{row.steps}</TableCell>
+                                <TableCell className="whitespace-normal break-words">{row.expected}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </section>
     );
 }

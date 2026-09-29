@@ -1116,7 +1116,7 @@ function manifestFor(spec) {
     id: spec.id,
     name: spec.name,
     version: "2.0.0",
-    author: "BeefTV Contributors",
+    author: "Framely Contributors",
     description: `${spec.name} 独立请求协议插件。`,
     documentation: `# ${spec.name}\n\n完整字段、映射、响应、鉴权和兼容边界见包内 README.md 与 docs/interface.md。\n\n## BeefTV运行时合同\n\n用户只操作统一的文本、图片或视频能力；插件负责把统一请求转换为 ${spec.name} 上游协议。`,
     permissions: ["generation.run", "media.read"],
@@ -1210,7 +1210,7 @@ for (const spec of selectedSpecs) {
   const dir = join(root, spec.id);
   await mkdir(join(dir, "docs"), { recursive: true });
   await writeFile(join(dir, "manifest.json"), JSON.stringify(manifestFor(spec), null, 2) + "\n");
-  await writeFile(join(dir, "README.md"), `# ${spec.name}\n\n该目录是 BeefTV 声明式协议插件源码。后端从生成的 \`${spec.id}.beeftv-plugin\` 包加载，不依赖系统内置 \`host:\` 适配器。\n\n本插件由 BeefTV Contributors 维护，用于适配 ${spec.vendor} 相关服务接口；不表示 BeefTV 与该服务商存在隶属、授权或合作关系。\n\n完整接口见 [docs/interface.md](docs/interface.md)。\n`);
+  await writeFile(join(dir, "README.md"), `# ${spec.name}\n\n该目录是 Framely 声明式协议插件源码。后端从生成的 \`${spec.id}.beeftv-plugin\` 包加载，不依赖系统内置 \`host:\` 适配器。\n\n本插件由 Framely Contributors 维护，用于适配 ${spec.vendor} 相关服务接口；不表示 Framely 与该服务商存在隶属、授权或合作关系。\n\n完整接口见 [docs/interface.md](docs/interface.md)。\n`);
   await writeFile(join(dir, "docs", "interface.md"), docsFor(spec));
 }
 

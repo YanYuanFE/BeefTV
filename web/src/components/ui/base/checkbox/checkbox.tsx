@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
  * Checkbox — 复选框（自研，原生 input + 自绘 glyph，无依赖）。
  *
  * 设计约束（对齐 ui/README 与 ADR-0008）：
- * - 原生 <input type="checkbox"> 承载语义与键盘（简单件不走 react-aria-components）；
+ * - 原生 <input type="checkbox"> 承载语义与键盘（简单件不引入额外原语库）；
  *   hidden input + peer 视觉盒：:focus-visible ring 落在盒上，aria 状态由原生保证。
  * - 只消费三层 token：box border-border / 选中 bg-foreground + text-background（中性反色），
  *   hover 加深 border、焦点 ring-ring、禁用 opacity；无裸色。

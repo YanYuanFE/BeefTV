@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
 
 import { applyRecoveredGenerationTaskResultToNodes, generationTaskCanReloadResource, generationTaskNodeId } from "@/lib/canvas/canvas-generation-task-sync";
 import { applyCanvasGenerationTaskNodeEffect, isCanvasGenerationDurableAckError, persistCanvasGenerationEffect } from "@/services/canvas-generation-consumer";
@@ -16,6 +15,7 @@ import { generationFailureMetadata } from "@/lib/generation-error";
 import { canvasTaskFailureMetadata } from "./canvas-generation-failure";
 import { runGenerationConsumer } from "@/services/generation-consumer-lifecycle";
 import { consumeCanvasGenerationContinuation } from "./use-canvas-operation-history";
+import { toast } from "sonner";
 
 type CanvasGenerationRequest = {
     targetNodeId: string;
@@ -197,7 +197,6 @@ export async function recoverCanvasGenerationTaskNode(input: {
 }
 
 export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded, nodes, nodesRef, setNodes }: UseCanvasGenerationOptions) {
-    const { message } = App.useApp();
     const queryClient = useQueryClient();
     const generationRequestsRef = useRef(new Map<string, CanvasGenerationRequest>());
     const recoveringTaskIdsRef = useRef(new Set<string>());
@@ -249,12 +248,12 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
                 setTaskDetail(task);
                 setTaskDetailLogs(logs);
             } catch (error) {
-                message.error(error instanceof Error ? error.message : "任务详情加载失败");
+                toast.error(error instanceof Error ? error.message : "任务详情加载失败");
             } finally {
                 setTaskDetailLoading(false);
             }
         },
-        [localMode, message],
+        [localMode],
     );
 
     const bindGenerationTask = useCallback(
@@ -570,14 +569,13 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
             }).catch((error) => {
                 autoSavedTaskIdsRef.current.delete(saveKey);
                 if (error instanceof Error && error.name === "AbortError") return;
-                message.warning({
-                    key: `canvas-asset-sync:${projectId}`,
-                    content: error instanceof Error ? `生成结果已保留，但项目资产同步失败：${error.message}` : "生成结果已保留，但项目资产同步失败",
-                    duration: 4,
+                toast.warning(error instanceof Error ? `生成结果已保留，但项目资产同步失败：${error.message}` : "生成结果已保留，但项目资产同步失败", {
+                    id: `canvas-asset-sync:${projectId}`,
+                    duration: 4000,
                 });
             });
         });
-    }, [domainProjectId, localMode, message, nodes, projectId, projectLoaded, saveGeneratedAsset]);
+    }, [domainProjectId, localMode, nodes, projectId, projectLoaded, saveGeneratedAsset]);
 
     return {
         applyGenerationTaskResult,

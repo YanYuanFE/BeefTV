@@ -1,7 +1,11 @@
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
-import { App, Button, Input, Modal, Select, Typography } from "antd";
+import { Select } from "@/components/ui/base/select";
 import { Switch } from "@/components/ui/base/switch";
-import { AudioLines, CalendarDays, CheckCircle2, Clock3, ExternalLink, Film, FolderOpen, Image as ImageIcon, MessageSquareText, PlugZap, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { AudioLines, CalendarDays, Check, CheckCircle2, ChevronDown, Clock3, ExternalLink, Film, FolderOpen, Image as ImageIcon, MessageSquareText, PlugZap, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -23,6 +27,7 @@ import { isLocalRuntimeMode } from "@/lib/runtime-mode";
 import { workspaceCapabilities } from "@/services/workspace-mode";
 
 import { PluginDetailsModal } from "./plugin-documentation-modals";
+import { toast } from "sonner";
 import "./plugins.css";
 
 const categoryLabels: Record<string, string> = {
@@ -67,7 +72,6 @@ const protocolSectionMeta = [
 ] as const;
 
 export default function PluginsPage() {
-    const { message } = App.useApp();
     const navigate = useNavigate();
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     const user = useUserStore((state) => state.user);
@@ -114,7 +118,7 @@ export default function PluginsPage() {
             setBackendPlugins(result.plugins);
             setPluginStates(result.states);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取插件中心失败");
+            toast.error(error instanceof Error ? error.message : "读取插件中心失败");
             setBackendPlugins([]);
         } finally {
             setBackendPluginsLoading(false);
@@ -212,7 +216,7 @@ export default function PluginsPage() {
         try {
             if (localRuntime) {
                 setEnabled(plugin.manifest.id, enabled);
-                message.success(`${plugin.manifest.name}${enabled ? "已启用" : "已停用"}`);
+                toast.success(`${plugin.manifest.name}${enabled ? "已启用" : "已停用"}`);
                 return;
             }
             const next = await setUserPluginEnabled(plugin.manifest.id, enabled);
@@ -221,9 +225,9 @@ export default function PluginsPage() {
             if (next.pluginId === RUNNINGHUB_PLUGIN_ID) {
                 setRuntimeStatuses({ ...usePluginStore.getState().runtimeStatuses, [next.pluginId]: next.effectiveEnabled ? "enabled" : "disabled" });
             }
-            message.success(`${plugin.manifest.name}${enabled ? "已启用" : "已停用"}`);
+            toast.success(`${plugin.manifest.name}${enabled ? "已启用" : "已停用"}`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "更新插件状态失败");
+            toast.error(error instanceof Error ? error.message : "更新插件状态失败");
         }
     };
 
@@ -244,11 +248,11 @@ export default function PluginsPage() {
     const saveEagleConfig = () => {
         const baseUrl = eagleBaseUrl.trim().replace(/\/$/, "");
         if (!/^https?:\/\//i.test(baseUrl)) {
-            message.error("Eagle 地址必须以 http:// 或 https:// 开头");
+            toast.error("Eagle 地址必须以 http:// 或 https:// 开头");
             return;
         }
         updateConfig(EAGLE_PLUGIN_ID, { baseUrl, autoUploadGenerated: eagleAutoUploadGenerated, generatedFolderId: eagleGeneratedFolderId });
-        message.success("Eagle 插件配置已保存");
+        toast.success("Eagle 插件配置已保存");
     };
 
     return (
@@ -296,20 +300,28 @@ export default function PluginsPage() {
                     </aside>
                     <div className="plugins-page-content">
                         <CollectionToolbar label="插件筛选" trailing={<div className="plugins-toolbar-actions">
-                                <Button icon={<RefreshCw className="size-4" />} loading={backendPluginsLoading} onClick={() => void reloadBackendPlugins()}>
+                                <Button variant="outline" loading={backendPluginsLoading} onClick={() => void reloadBackendPlugins()}>
+                                    {backendPluginsLoading ? null : <RefreshCw className="size-4" />}
                                     刷新插件
                                 </Button>
                             </div>}>
-                            <Input
-                                className="plugins-search"
-                                prefix={<Search className="size-4 text-foreground/38" aria-hidden="true" />}
-                                value={search}
-                                allowClear
-                                placeholder="搜索插件名称、描述或作者"
-                                onChange={(event) => setSearch(event.target.value)}
-                            />
+                            <div className="plugins-search relative w-[280px] max-w-full max-[720px]:w-full">
+                                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground/38" aria-hidden="true" />
+                                <Input
+                                    className="pr-8 pl-9"
+                                    aria-label="搜索插件"
+                                    value={search}
+                                    placeholder="搜索插件名称、描述或作者"
+                                    onChange={(event) => setSearch(event.target.value)}
+                                />
+                                {search ? (
+                                    <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setSearch("")}>
+                                        <X className="size-3.5" />
+                                    </button>
+                                ) : null}
+                            </div>
                             <Select
-                                className="plugins-filter"
+                                className="plugins-filter w-auto"
                                 value={statusFilter}
                                 options={[
                                     { value: "all", label: "全部状态" },
@@ -317,17 +329,17 @@ export default function PluginsPage() {
                                     { value: "disabled", label: "已停用" },
                                 ]}
                                 onChange={(value) => setStatusFilter(value as "all" | "enabled" | "disabled")}
-                                aria-label="按状态筛选"
+                                ariaLabel="按状态筛选"
                             />
                             <Select
-                                className="plugins-filter"
+                                className="plugins-filter w-auto"
                                 value={trustFilter}
                                 options={[
                                     { value: "all", label: "全部来源" },
                                     { value: "trusted", label: "可信插件" },
                                 ]}
                                 onChange={(value) => setTrustFilter(value as "all" | "trusted")}
-                                aria-label="按来源筛选"
+                                ariaLabel="按来源筛选"
                             />
                         </CollectionToolbar>
 
@@ -442,21 +454,22 @@ export default function PluginsPage() {
                                                                     />
                                                                     {canConfigure ? (
                                                                         <Button
+                                                                            variant="outline"
                                                                             className="plugin-settings-button"
-                                                                            icon={<Settings2 className="size-4" />}
                                                                             aria-expanded={settingsPluginId === plugin.manifest.id}
                                                                             aria-haspopup="dialog"
                                                                             onClick={() => setSettingsPluginId(plugin.manifest.id)}
                                                                         >
+                                                                            <Settings2 className="size-4" />
                                                                             设置
                                                                         </Button>
                                                                     ) : null}
                                                                 </div>
 
                                                                 {installation?.lastError || remote?.error ? (
-                                                                    <Typography.Text type="danger" className="plugin-error" role="alert">
+                                                                    <span className="plugin-error text-destructive" role="alert">
                                                                         {installation?.lastError || remote?.error}
-                                                                    </Typography.Text>
+                                                                    </span>
                                                                 ) : null}
                                                             </section>
                                                         );
@@ -479,6 +492,7 @@ export default function PluginsPage() {
                                 description="试试清空搜索词，或放宽筛选条件。"
                                 action={
                                     <Button
+                                        variant="outline"
                                         onClick={() => {
                                             setSearch("");
                                             setCategoryFilter("all");
@@ -492,13 +506,11 @@ export default function PluginsPage() {
                             />
                         )}
 
-                        <Modal
-                            className="workspace-modal workspace-modal-wide plugin-settings-modal"
+                        <AppModal
+                            className="workspace-modal workspace-modal-wide plugin-settings-modal overflow-hidden rounded-[var(--modal-radius)] border-0 bg-popover shadow-[var(--elevation-overlay)]"
                             title={settingsPlugin ? `${settingsPlugin.manifest.name} 设置` : null}
                             open={Boolean(settingsPlugin)}
-                            centered
                             footer={null}
-                            destroyOnHidden
                             onCancel={() => setSettingsPluginId(null)}
                             styles={{ body: { maxHeight: "min(72vh, 760px)", overflowY: "auto", overscrollBehavior: "contain" } }}
                         >
@@ -536,18 +548,15 @@ export default function PluginsPage() {
                                                 <div className="min-w-0">
                                                     <div className="plugin-setting-label-row">
                                                         <label htmlFor="eagle-generated-folder">生成结果写入文件夹</label>
-                                                        <Button type="link" size="small" loading={eagleFoldersLoading} onClick={() => void loadEagleFolders()}>
+                                                        <Button variant="link" size="sm" loading={eagleFoldersLoading} onClick={() => void loadEagleFolders()}>
                                                             读取文件夹
                                                         </Button>
                                                     </div>
-                                                    <Select
+                                                    <EagleFolderSelect
                                                         id="eagle-generated-folder"
-                                                        aria-label="生成结果写入文件夹"
-                                                        showSearch
-                                                        allowClear
+                                                        ariaLabel="生成结果写入文件夹"
                                                         value={eagleGeneratedFolderId || undefined}
                                                         placeholder="Eagle 根目录"
-                                                        optionFilterProp="label"
                                                         options={[{ value: "__root__", label: "Eagle 根目录" }, ...eagleFolderOptions(eagleFolders)]}
                                                         onChange={(value) => setEagleGeneratedFolderId(value === "__root__" || !value ? "" : value)}
                                                     />
@@ -555,14 +564,19 @@ export default function PluginsPage() {
                                                 </div>
                                             </div>
                                             <div className="plugin-settings-actions">
-                                                <Button type="primary" icon={<CheckCircle2 className="size-4" />} onClick={saveEagleConfig}>
+                                                <Button onClick={saveEagleConfig}>
+                                                    <CheckCircle2 className="size-4" />
                                                     保存配置
                                                 </Button>
-                                                <Button icon={<FolderOpen className="size-4" />} disabled={!settingsEnabled} onClick={() => navigate("/plugins/eagle")}>
+                                                <Button variant="outline" disabled={!settingsEnabled} onClick={() => navigate("/plugins/eagle")}>
+                                                    <FolderOpen className="size-4" />
                                                     打开 Eagle 素材库
                                                 </Button>
-                                                <Button icon={<ExternalLink className="size-4" />} href="https://api.eagle.cool/" target="_blank">
-                                                    查看 API
+                                                <Button variant="outline" asChild>
+                                                    <a href="https://api.eagle.cool/" target="_blank">
+                                                        <ExternalLink className="size-4" />
+                                                        查看 API
+                                                    </a>
                                                 </Button>
                                             </div>
                                         </>
@@ -575,13 +589,12 @@ export default function PluginsPage() {
                                         <div className="plugin-settings-empty">
                                             <p>RunningHub 的 API Key、Workflow / App 和字段映射在宿主设置页维护。</p>
                                             <Button
-                                                type="primary"
-                                                icon={<ExternalLink className="size-4" />}
                                                 onClick={() => {
                                                     setSettingsPluginId(null);
                                                     navigate("/settings?section=runninghub");
                                                 }}
                                             >
+                                                <ExternalLink className="size-4" />
                                                 打开工作流设置
                                             </Button>
                                         </div>
@@ -607,7 +620,7 @@ export default function PluginsPage() {
                                     </div>
                                 </div>
                             ) : null}
-                        </Modal>
+                        </AppModal>
                         <PluginDetailsModal plugin={detailsPlugin} restoreFocus={detailsRestoreFocus} onClose={() => setDetailsPluginId(null)} />
                     </div>
                 </div>
@@ -676,4 +689,62 @@ function eagleFolderOptions(folders: EagleFolder[]) {
         return path.join(" / ");
     };
     return folders.map((folder) => ({ value: folder.id, label: pathFor(folder) })).sort((left, right) => left.label.localeCompare(right.label, "zh-CN"));
+}
+
+type EagleFolderOption = { value: string; label: string };
+
+/** Searchable single-folder picker; the list can be long, so it filters by label. */
+function EagleFolderSelect({ id, ariaLabel, value, placeholder, options, onChange }: { id: string; ariaLabel: string; value?: string; placeholder: string; options: EagleFolderOption[]; onChange: (value: string | undefined) => void }) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const selected = options.find((option) => option.value === value);
+    const needle = query.trim().toLowerCase();
+    const visible = needle ? options.filter((option) => option.label.toLowerCase().includes(needle)) : options;
+    const choose = (next: string | undefined) => {
+        onChange(next);
+        setOpen(false);
+        setQuery("");
+    };
+    return (
+        <div className="plugin-settings-select relative">
+            <Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setQuery(""); }}>
+                <PopoverTrigger asChild>
+                    <button
+                        type="button"
+                        id={id}
+                        role="combobox"
+                        aria-label={ariaLabel}
+                        aria-expanded={open}
+                        className="flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 text-left text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                    >
+                        <span className={`min-w-0 flex-1 truncate ${selected ? "" : "text-muted-foreground"} ${selected ? "pr-5" : ""}`}>{selected ? selected.label : placeholder}</span>
+                        <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-1">
+                    <Input autoFocus className="mb-1 h-7" aria-label="搜索文件夹" value={query} placeholder="搜索文件夹" onChange={(event) => setQuery(event.target.value)} />
+                    <div role="listbox" aria-label={ariaLabel} className="thin-scrollbar max-h-64 overflow-y-auto">
+                        {visible.length ? visible.map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                role="option"
+                                aria-selected={option.value === value}
+                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none"
+                                onClick={() => choose(option.value)}
+                            >
+                                <span className="min-w-0 flex-1 truncate" title={option.label}>{option.label}</span>
+                                {option.value === value ? <Check className="size-3.5 shrink-0" aria-hidden="true" /> : null}
+                            </button>
+                        )) : <div className="px-2 py-3 text-center text-xs text-muted-foreground">没有匹配的文件夹</div>}
+                    </div>
+                </PopoverContent>
+            </Popover>
+            {selected ? (
+                <button type="button" aria-label="清空选择" className="absolute top-1/2 right-7 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => choose(undefined)}>
+                    <X className="size-3.5" />
+                </button>
+            ) : null}
+        </div>
+    );
 }

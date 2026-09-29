@@ -33,7 +33,7 @@ func TestSwapInstallRollbackWhenStagedMissing(t *testing.T) {
 	if err := SwapInstall(req); err == nil {
 		t.Fatal("expected swap failure")
 	}
-	got, err := os.ReadFile(filepath.Join(target, "Contents", "MacOS", "BeefTV"))
+	got, err := os.ReadFile(filepath.Join(target, "Contents", "MacOS", "Framely"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestLaunchFailureRestoresPreviousInstall(t *testing.T) {
 	if err := RunHelperRequest(req); err == nil {
 		t.Fatal("expected launch failure")
 	}
-	got, err := os.ReadFile(filepath.Join(req.TargetPath, "Contents", "MacOS", "BeefTV"))
+	got, err := os.ReadFile(filepath.Join(req.TargetPath, "Contents", "MacOS", "Framely"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestWindowsSwapPreservesNeighborFilesAndUserPlugins(t *testing.T) {
 	if err := os.WriteFile(neighbor, []byte("keep-me"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	userData := filepath.Join(root, "AppData", "BeefTV", "plugin-packages")
+	userData := filepath.Join(root, "AppData", "Framely", "plugin-packages")
 	if err := os.MkdirAll(userData, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestWindowsRestoreRetriesPluginsAfterExecutableWasRestored(t *testing.T) {
 }
 
 func TestUnicodeAndSpacesPathsRoundTrip(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "BeefTV 更新 测试")
+	root := filepath.Join(t.TempDir(), "Framely 更新 测试")
 	oldDir := filepath.Join(root, "current")
 	staged := filepath.Join(root, "staged")
 	if err := WriteDarwinLayout(oldDir, "OLD"); err != nil {
@@ -180,7 +180,7 @@ func TestUnicodeAndSpacesPathsRoundTrip(t *testing.T) {
 	if err := SwapInstall(req); err != nil {
 		t.Fatal(err)
 	}
-	got, err := os.ReadFile(filepath.Join(req.TargetPath, "Contents", "MacOS", "BeefTV"))
+	got, err := os.ReadFile(filepath.Join(req.TargetPath, "Contents", "MacOS", "Framely"))
 	if err != nil {
 		t.Fatal(err)
 	}

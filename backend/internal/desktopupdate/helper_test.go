@@ -28,14 +28,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestHandleHelperCommandIgnoresNormalArgs(t *testing.T) {
-	done, err := HandleHelperCommand([]string{"BeefTV"})
+	done, err := HandleHelperCommand([]string{"Framely"})
 	if done || err != nil {
 		t.Fatalf("done=%v err=%v", done, err)
 	}
 }
 
 func TestHandleHelperCommandRequiresRequestPath(t *testing.T) {
-	done, err := HandleHelperCommand([]string{"BeefTV", helperFlag})
+	done, err := HandleHelperCommand([]string{"Framely", helperFlag})
 	if !done || err == nil {
 		t.Fatalf("done=%v err=%v", done, err)
 	}
@@ -104,7 +104,7 @@ func TestSpawnedHelperReplacesInstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	helperPath := filepath.Join(work, "BeefTV-update-helper")
+	helperPath := filepath.Join(work, "Framely-update-helper")
 	if runtime.GOOS == "windows" {
 		helperPath += ".exe"
 	}
@@ -120,7 +120,7 @@ func TestSpawnedHelperReplacesInstall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("helper: %v\n%s", err, out)
 	}
-	installed := filepath.Join(req.TargetPath, "Contents", "MacOS", "BeefTV")
+	installed := filepath.Join(req.TargetPath, "Contents", "MacOS", "Framely")
 	if runtime.GOOS == "windows" {
 		installed = filepath.Join(oldDir, pluginDirName, "official.beeftv-plugin")
 	}

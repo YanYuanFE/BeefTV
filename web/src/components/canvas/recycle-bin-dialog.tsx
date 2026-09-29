@@ -1,8 +1,8 @@
-import { Button } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RotateCcw, Trash2, X } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { ProjectPreview } from "@/components/canvas/canvas-project-card";
 import { cn } from "@/lib/utils";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
@@ -114,10 +114,12 @@ export function RecycleBinDialog({ open, onClose }: { open: boolean; onClose: ()
                         {selectedDeleted.length ? <span className="recycle-bin-selected-count">已选择 {selectedDeleted.length} 项</span> : null}
                     </label>
                     <div className="recycle-bin-actions">
-                        <Button danger disabled={!selectedDeleted.length} icon={<Trash2 className="size-4" />} onClick={() => setDeleteConfirmationOpen(true)}>
+                        <Button variant="destructive" disabled={!selectedDeleted.length} onClick={() => setDeleteConfirmationOpen(true)}>
+                            <Trash2 className="size-4" />
                             彻底删除
                         </Button>
-                        <Button disabled={!selectedDeleted.length} icon={<RotateCcw className="size-4" />} onClick={() => void restoreSelectedProjects()} aria-label="恢复到项目列表">
+                        <Button variant="outline" disabled={!selectedDeleted.length} onClick={() => void restoreSelectedProjects()} aria-label="恢复到项目列表">
+                            <RotateCcw className="size-4" />
                             恢复
                         </Button>
                     </div>
@@ -134,10 +136,10 @@ export function RecycleBinDialog({ open, onClose }: { open: boolean; onClose: ()
                             <h3 id="recycle-delete-title">确认彻底删除？</h3>
                             <p id="recycle-delete-description">将永久删除已选择的 {selectedDeleted.length} 个项目，删除后无法恢复。</p>
                             <div className="recycle-delete-confirm-actions">
-                                <Button onClick={() => setDeleteConfirmationOpen(false)}>取消</Button>
+                                <Button variant="outline" className="min-w-[82px] rounded-[9px]" onClick={() => setDeleteConfirmationOpen(false)}>取消</Button>
                                 <Button
-                                    danger
-                                    type="primary"
+                                    variant="destructive"
+                                    className="min-w-[82px] rounded-[9px]"
                                     onClick={() => {
                                         permanentlyDeleteProjects(selectedDeleted);
                                         setDeleteConfirmationOpen(false);

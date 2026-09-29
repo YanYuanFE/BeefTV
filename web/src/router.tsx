@@ -5,10 +5,13 @@ import { FullScreenLoader, WorkspaceRouteLoader } from "@/components/ui/aceterni
 import { loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadCreatePage, loadHomePage, loadProjectDetailPage } from "@/lib/workspace-route-modules";
 import { CanvasRefreshShell } from "@/pages/canvas/canvas-refresh-shell";
 import RouteErrorPage from "@/pages/route-error";
+import { isSignedIn } from "@/services/account-session";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
+import { useConfigStore } from "@/stores/use-config-store";
 
 const AssetsPage = lazy(loadAssetsPage);
 const HomePage = lazy(loadHomePage);
+const LoginPage = lazy(() => import("@/pages/login"));
 const CanvasPage = lazy(loadCanvasPage);
 const CanvasProjectPage = lazy(loadCanvasProjectPage);
 const CreatePage = lazy(loadCreatePage);
@@ -30,7 +33,9 @@ function fullScreenDeferred(element: ReactNode) {
 }
 
 function WorkspaceLayout() {
-    const { pathname } = useLocation();
+    const { pathname, search } = useLocation();
+    const signedIn = useConfigStore((state) => isSignedIn(state.config));
+    if (!signedIn) return <Navigate to={`/login?redirect=${encodeURIComponent(pathname + search)}`} replace />;
     const isCanvasProjectRoute = pathname.startsWith("/canvas/");
     const fallback = isCanvasProjectRoute ? <CanvasRefreshShell /> : <FullScreenLoader label="正在打开创作空间" detail="准备当前页面" />;
     return <Suspense fallback={fallback}><UserLayout><Outlet /></UserLayout></Suspense>;
@@ -67,6 +72,7 @@ function devRoutes() {
 
 export const router = createBrowserRouter([
     ...(import.meta.env.DEV ? devRoutes() : []),
+    { path: "/login", element: fullScreenDeferred(<LoginPage />), errorElement: <RouteErrorPage /> },
     {
         element: <WorkspaceLayout />,
         errorElement: <RouteErrorPage />,

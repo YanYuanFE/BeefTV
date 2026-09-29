@@ -20,7 +20,8 @@ test("镜头画面使用已绑定资产的 @ 引用编辑器", async () => {
     expect(source).toContain('name="plotDescription"');
     expect(source).toContain('<ShotAssetMentionTextarea variant="scene"');
     expect(source).toContain("resolveShotAssetMentionPrompt(basePrompt, shotAssetReferenceContext");
-    expect(source).toContain("<Image.PreviewGroup>");
+    expect(source).toContain("onClick={() => setPreview({ src: previewUrl, title })}");
+    expect(source).toContain("<AppModal flush open={Boolean(preview)}");
 });
 
 test("技能选择器占满表单宽度", async () => {

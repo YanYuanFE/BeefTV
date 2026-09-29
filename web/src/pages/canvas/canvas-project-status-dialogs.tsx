@@ -1,4 +1,3 @@
-import { Button, Modal } from "antd";
 import { ImagePlus, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -9,6 +8,7 @@ import { formatTaskLog, type GenerationTask, type TaskLog } from "@/services/api
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { VideoPlayer } from "@/components/video-player";
 import { AppModal } from "@/components/ui/product/app-modal";
+import { Button } from "@/components/ui/button";
 import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store";
 import { resolveImageUrl } from "@/services/image-storage";
 import { resolveMediaUrl } from "@/services/file-storage";
@@ -36,7 +36,7 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
     const previewSource = useResolvedPreviewSource(previewNode);
     return (
         <>
-            <Modal title="任务详情" open={Boolean(task)} footer={null} width="min(920px, calc(100vw - 32px))" onCancel={onCloseTask}>
+            <AppModal title="任务详情" open={Boolean(task)} footer={null} width="min(920px, calc(100vw - 32px))" onCancel={onCloseTask}>
                 {task ? (
                     <div className="space-y-4 text-sm">
                         <div className="grid grid-cols-2 gap-3 rounded-lg border p-3" style={{ borderColor: theme.node.stroke, background: theme.node.panel }}>
@@ -60,7 +60,8 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                         <TaskGenerationParameters inputJson={task.inputJson} theme={theme} />
                         {onCancelTask && (task.status === "queued" || task.status === "running") ? (
                             <div className="flex justify-end">
-                                <Button danger icon={<XCircle className="size-4" />} onClick={() => onCancelTask(task)}>
+                                <Button variant="destructive" onClick={() => onCancelTask(task)}>
+                                    <XCircle className="size-4" />
                                     取消任务
                                 </Button>
                             </div>
@@ -75,24 +76,23 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                         </div>
                     </div>
                 ) : null}
-            </Modal>
+            </AppModal>
 
-            <Modal title="AI 超分" open={Boolean(superResolveNode?.metadata?.content)} centered footer={null} onCancel={onCloseSuperResolve}>
+            <AppModal title="AI 超分" open={Boolean(superResolveNode?.metadata?.content)} footer={null} onCancel={onCloseSuperResolve}>
                 <div className="space-y-4 py-3">
                     <div className="rounded-lg border p-3 text-sm leading-6" style={{ borderColor: theme.node.stroke, background: theme.node.panel, color: theme.node.muted }}>
                         当前部署未配置独立的 AI 超分模型。你仍可以使用本地高质量插值放大，原图会保留，结果将作为新的图片节点放回画布。
                     </div>
                     <div className="flex justify-end gap-2">
-                        <Button onClick={onCloseSuperResolve}>取消</Button>
-                        <Button type="primary" icon={<ImagePlus className="size-4" />} onClick={onUseLocalUpscale}>使用本地高质量放大</Button>
+                        <Button variant="outline" onClick={onCloseSuperResolve}>取消</Button>
+                        <Button onClick={onUseLocalUpscale}><ImagePlus className="size-4" />使用本地高质量放大</Button>
                     </div>
                 </div>
-            </Modal>
+            </AppModal>
 
             <AppModal
                 title="视频预览"
                 open={Boolean(previewNode?.metadata?.content && previewNode.type === CanvasNodeType.Video)}
-                centered
                 onCancel={onClosePreview}
                 footer={null}
                 width="min(1200px, calc(100vw - 32px))"
@@ -112,22 +112,21 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                 />
             ) : null}
 
-            <Modal
+            <AppModal
                 title="清空画布？"
                 open={clearConfirmOpen}
-                centered
                 onCancel={onCancelClear}
                 footer={
                     <>
-                        <Button onClick={onCancelClear}>取消</Button>
-                        <Button danger type="primary" onClick={onConfirmClear}>
+                        <Button variant="outline" onClick={onCancelClear}>取消</Button>
+                        <Button variant="destructive" onClick={onConfirmClear}>
                             清空
                         </Button>
                     </>
                 }
             >
                 <p className="text-sm opacity-60">这会删除当前画布上的所有节点和连线。</p>
-            </Modal>
+            </AppModal>
         </>
     );
 }

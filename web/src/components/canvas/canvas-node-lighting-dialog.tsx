@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Slider } from "antd";
-
 import { motion, useReducedMotion } from "motion/react";
 import { RotateCcw, Send, Sun, X } from "lucide-react";
 
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { Tooltip } from "@/components/ui/base/tooltip";
+import { Slider } from "@/components/ui/slider";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useCopyText } from "@/hooks/use-copy-text";
@@ -255,7 +254,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
 
                     <div className="flex items-center gap-2">
                         <span className="w-8 shrink-0 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>亮度</span>
-                        <div className="min-w-0 flex-1"><Slider min={0} max={100} value={options.brightness} onChange={(value) => updateOption("brightness", value)} tooltip={{ formatter: (value) => `${value}%` }} /></div>
+                        <div className="min-w-0 flex-1"><Slider min={0} max={100} value={[options.brightness]} onValueChange={([value]) => updateOption("brightness", value)} aria-label="亮度" /></div>
                         <div className="flex h-6 items-center gap-1 rounded-[var(--r-md)] border px-1.5 text-[11px]" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.muted }}>
                             <Sun className="size-3" />
                             <span className="w-7 text-right tabular-nums">{options.brightness}%</span>

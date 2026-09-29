@@ -1,8 +1,9 @@
-import { Button, Select } from "antd";
 import { ChevronLeft, ChevronRight, ListFilter, RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/base/select";
 import { cn } from "@/lib/utils";
 
 export function WorkspacePage({ children, className, grid = false, fluid = false, scroll = true }: { children: ReactNode; className?: string; grid?: boolean; fluid?: boolean; scroll?: boolean }) {
@@ -62,7 +63,8 @@ export function ListToolbar({
                 {filters ? (
                     <>
                         {!filtersAlwaysVisible ? (
-                            <Button type="default" className="admin-filter-toggle" aria-expanded={filtersOpen} icon={<ListFilter className="size-3.5" />} onClick={() => setFiltersOpen((open) => !open)}>
+                            <Button variant="outline" className="admin-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>
+                                <ListFilter className="size-3.5" />
                                 筛选{active ? <span className="admin-filter-active-dot" aria-label="有已应用筛选" /> : null}
                             </Button>
                         ) : null}
@@ -73,7 +75,8 @@ export function ListToolbar({
             </div>
             <div className="admin-list-toolbar-actions flex shrink-0 flex-wrap items-center gap-2">
                 {active && onReset ? (
-                    <Button type="text" icon={<RotateCcw className="size-3.5" />} onClick={onReset}>
+                    <Button variant="ghost" onClick={onReset}>
+                        <RotateCcw className="size-3.5" />
                         重置
                     </Button>
                 ) : null}
@@ -124,7 +127,7 @@ export function PaginationBar({
     return (
         <div className="app-pagination-bar admin-pagination-bar mt-4 flex min-h-10 min-w-0 items-center justify-end gap-2 px-2 py-1.5">
             <span className="admin-pagination-total">{total === 0 ? `共 0 ${itemLabel}` : `${start}-${end} / 共 ${total} ${itemLabel}`}</span>
-            <Select size="small" value={pageSize} className="app-pagination-size" options={pageSizeOptions.map((size) => ({ value: size, label: `${size} ${itemLabel}/页` }))} onChange={(value) => onChange(1, Number(value))} />
+            <Select size="sm" value={String(pageSize)} className="app-pagination-size w-auto" ariaLabel="每页条数" options={pageSizeOptions.map((size) => ({ value: String(size), label: `${size} ${itemLabel}/页` }))} onChange={(value) => onChange(1, Number(value))} />
             <div className="app-pagination-pages" role="navigation" aria-label="分页">
                 <button type="button" className="app-pagination-btn app-pagination-prev" disabled={current <= 1} aria-label="上一页" onClick={() => onChange(current - 1, pageSize)}>
                     <ChevronLeft className="size-4" />

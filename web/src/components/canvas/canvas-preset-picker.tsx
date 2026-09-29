@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Input, Popover } from "antd";
-import { LayoutTemplate, Search, WandSparkles } from "lucide-react";
+import { LayoutTemplate, Search, WandSparkles, X } from "lucide-react";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { CANVAS_BUILTIN_PRESETS, type CanvasPromptPreset } from "@/lib/prompts";
@@ -58,17 +59,21 @@ export function CanvasPresetPicker({
 
     const content = (
         <div data-canvas-no-zoom className="canvas-preset-picker-menu w-[var(--panel-width-compact)] max-w-[calc(100vw-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-            <Input
-                className="canvas-preset-picker-search"
-                variant="borderless"
-                autoFocus
-                allowClear
-                size="small"
-                prefix={<Search className="size-3.5" />}
-                placeholder="搜索预设或已加入技能"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-            />
+            <div className="canvas-preset-picker-search flex h-8 items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--workspace-accent)_7%,transparent)] px-[9px] text-[color-mix(in_srgb,var(--foreground)_66%,transparent)] focus-within:bg-[color-mix(in_srgb,var(--workspace-accent)_11%,transparent)]">
+                <Search className="size-3.5 shrink-0" />
+                <input
+                    className="h-full min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+                    autoFocus
+                    placeholder="搜索预设或已加入技能"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                />
+                {query ? (
+                    <button type="button" aria-label="清空搜索" className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setQuery("")}>
+                        <X className="size-3" />
+                    </button>
+                ) : null}
+            </div>
             <div className="thin-scrollbar mt-1 max-h-72 space-y-0.5 overflow-y-auto">
                 {presets.length ? (
                     presets.map((preset) => (
@@ -107,26 +112,23 @@ export function CanvasPresetPicker({
     );
 
     return (
-        <Popover
-            open={actualOpen}
-            onOpenChange={setOpen}
-            trigger="click"
-            placement="topLeft"
-            arrow={false}
-            content={content}
-            classNames={{ root: "canvas-preset-picker-popover", container: "canvas-composer-popover-surface", content: "canvas-composer-popover-content" }}
-        >
-            <button
-                type="button"
-                className={`canvas-preset-picker-trigger ${appearance === "quiet" ? "canvas-node-composer-header-action" : ""} inline-flex shrink-0 items-center justify-center gap-1 rounded-lg transition focus-visible:outline-none ${compact ? "size-6" : dense ? "h-6 px-1.5" : "h-7 px-2"}`}
-                style={appearance === "quiet" ? undefined : { background: theme.accent.primarySoft, color: theme.accent.primary }}
-                title={appearance === "quiet" ? "预设" : "打开提示词预设"}
-                aria-label={appearance === "quiet" ? "预设" : "打开提示词预设"}
-                aria-expanded={actualOpen}
-            >
-                {appearance === "quiet" ? <LayoutTemplate className="size-3" /> : <WandSparkles className={dense ? "size-3" : "size-3.5"} />}
-                {compact ? null : <span className="text-[var(--fs-tiny)] font-medium">预设</span>}
-            </button>
+        <Popover open={actualOpen} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    className={`canvas-preset-picker-trigger ${appearance === "quiet" ? "canvas-node-composer-header-action" : ""} inline-flex shrink-0 items-center justify-center gap-1 rounded-lg transition focus-visible:outline-none ${compact ? "size-6" : dense ? "h-6 px-1.5" : "h-7 px-2"}`}
+                    style={appearance === "quiet" ? undefined : { background: theme.accent.primarySoft, color: theme.accent.primary }}
+                    title={appearance === "quiet" ? "预设" : "打开提示词预设"}
+                    aria-label={appearance === "quiet" ? "预设" : "打开提示词预设"}
+                    aria-expanded={actualOpen}
+                >
+                    {appearance === "quiet" ? <LayoutTemplate className="size-3" /> : <WandSparkles className={dense ? "size-3" : "size-3.5"} />}
+                    {compact ? null : <span className="text-[var(--fs-tiny)] font-medium">预设</span>}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="canvas-preset-picker-popover canvas-composer-popover-surface canvas-composer-popover-content w-auto gap-0 p-0">
+                {content}
+            </PopoverContent>
         </Popover>
     );
 }

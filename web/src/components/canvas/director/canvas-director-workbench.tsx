@@ -1,6 +1,11 @@
-import { App, Button, ColorPicker, Dropdown, Input, InputNumber, Select, Slider } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MenuDropdown, type MenuItem } from "@/components/ui/menu-dropdown";
+import { NumberInput } from "@/components/ui/number-input";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/base/select";
 import { Switch } from "@/components/ui/base/switch";
-import type { MenuProps } from "antd";
 import { Box, BoxSelect, Camera, Circle, Cuboid, FileUp, Focus, Image as ImageIcon, LampDesk, Lightbulb, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, UserRound, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { nanoid } from "nanoid";
@@ -30,9 +35,10 @@ import { useDirectorWorkbenchStore } from "@/stores/canvas/use-director-workbenc
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { CanvasNodeData } from "@/types/canvas";
 import type { DirectorCamera, DirectorCameraMove, DirectorHumanoidBone, DirectorKeyframeDeleteTarget, DirectorKeyframeEasing, DirectorLight, DirectorObject, DirectorPose, DirectorQuat, DirectorRenderMode, DirectorRig, DirectorScene, DirectorSceneOutput, DirectorShot, DirectorShotSize, DirectorTransform, DirectorVec3 } from "@/types/director";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingScope, onClose, onChange, onApply, onDeleteImageNode, onFlush }: { open: boolean; scene: DirectorScene | null; imageNodes: CanvasNodeData[]; onboardingScope: string; onClose: () => void; onChange: (scene: DirectorScene) => void; onApply: (output: DirectorSceneOutput) => Promise<void>; onDeleteImageNode: (nodeId: string) => void; onFlush?: () => void | Promise<void> }) {
-    const { message, modal } = App.useApp();
     const theme = canvasThemes[useActiveTheme()];
     const viewportRef = useRef<DirectorViewportHandle>(null);
     const modelInputRef = useRef<HTMLInputElement>(null);
@@ -102,15 +108,15 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         try {
             if (await saveController.retry()) {
                 recordDirectorDiagnostic("DIRECTOR_SAVE_RETRY_RECOVERED", { sceneId: draftRef.current?.id, revision: saveController.progress.revision, userInitiated: true });
-                message.success("已保存到项目");
+                toast.success("已保存到项目");
                 return;
             }
             // 只有真的存在合法本地候选才敢说草稿已保留。
             const draftStored = Boolean(saveController.restoreCandidate());
             recordDirectorDiagnostic("DIRECTOR_SAVE_RETRY_FAILED", { sceneId: draftRef.current?.id, revision: saveController.progress.revision, draftStored, userInitiated: true });
             if (!draftStored) recordDirectorDiagnostic("DIRECTOR_SAVE_DRAFT_UNAVAILABLE", { sceneId: draftRef.current?.id, revision: saveController.progress.revision });
-            if (draftStored) message.error("远端保存失败，本地草稿已保留，可稍后重试");
-            else message.error("远端和本地都未保存，请不要关闭导演台并继续重试");
+            if (draftStored) toast.error("远端保存失败，本地草稿已保留，可稍后重试");
+            else toast.error("远端和本地都未保存，请不要关闭导演台并继续重试");
         } finally {
             setRetrying(false);
         }
@@ -170,28 +176,26 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         if (!controller || !candidate) return;
         if (!shouldOfferDirectorDraftRecovery({ candidate, authoritativeScene: scene })) return;
 
-        modal.confirm({
+        confirmDialog({
             title: "发现未保存的本地草稿",
             content: `这个镜头存在一份比项目更新的本地草稿（修订 ${candidate.revision}）。恢复后会立即写回项目并保存。`,
             okText: "恢复草稿",
             cancelText: "放弃草稿",
-            closable: false,
-            mask: { closable: false },
             keyboard: false,
             onOk: () => {
                 if (!controller.restoreDraft(candidate)) {
-                    message.error("草稿恢复失败，已保留当前场景");
+                    toast.error("草稿恢复失败，已保留当前场景");
                     return;
                 }
                 writeDraft(candidate.scene);
-                message.success("已恢复本地草稿并写回项目");
+                toast.success("已恢复本地草稿并写回项目");
             },
             onCancel: () => {
-                if (controller.discardDraft()) message.success("已放弃本地草稿");
-                else message.error("草稿删除失败，下次打开可能仍会提示");
+                if (controller.discardDraft()) toast.success("已放弃本地草稿");
+                else toast.error("草稿删除失败，下次打开可能仍会提示");
             },
         });
-    }, [message, modal, open, scene, writeDraft]);
+    }, [open, scene, writeDraft]);
 
     const activeShot = draft?.shots?.find((item) => item.id === draft.activeShotId) || draft?.shots?.[0] || null;
     const activeCamera = draft?.cameras?.find((item) => item.id === activeShot?.cameraId) || draft?.cameras?.[0] || null;
@@ -328,7 +332,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
             try {
                 decision = resolveDirectorCloseOutcome(await saveController.prepareClose());
             } catch {
-                message.error("关闭前的保存检查失败，已留在导演台");
+                toast.error("关闭前的保存检查失败，已留在导演台");
                 closingRef.current = false;
                 return;
             }
@@ -339,19 +343,17 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
             }
             if (decision.kind === "blocked") {
                 recordDirectorDiagnostic("DIRECTOR_CLOSE_BLOCKED", { sceneId: draftRef.current?.id, saveOutcome: "stay", revision: saveController.progress.revision, draftStored: saveController.progress.draftStored });
-                message.error(decision.message);
+                toast.error(decision.message);
                 closingRef.current = false;
                 return;
             }
 
             // 确认框存续期间保持上锁，否则重复点击会叠出多个弹窗。
-            modal.confirm({
+            confirmDialog({
                 title: "远端保存失败",
                 content: decision.message,
                 okText: "仍然离开",
                 cancelText: "留在导演台",
-                closable: false,
-                mask: { closable: false },
                 keyboard: false,
                 onOk: () => onClose(),
                 onCancel: () => {
@@ -377,7 +379,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
     };
     const removeCamera = (id: string) => {
         if (!draft || draft.cameras.length <= 1) {
-            message.warning("至少保留一台摄影机");
+            toast.warning("至少保留一台摄影机");
             return;
         }
         const fallback = draft.cameras.find((item) => item.id !== id);
@@ -424,9 +426,9 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         if (asset) addModelAsset(asset);
         try {
             if (hasRemoteUserDataSyncSession()) await saveRemoteUserDataNow();
-            message.success(hasRemoteUserDataSyncSession() ? "3D 模型已加入场景和素材库" : "3D 模型已加入场景和本地素材库");
+            toast.success(hasRemoteUserDataSyncSession() ? "3D 模型已加入场景和素材库" : "3D 模型已加入场景和本地素材库");
         } catch (error) {
-            message.warning(localSavedRemotePendingMessage("3D 模型已加入场景和本机素材库", error));
+            toast.warning(localSavedRemotePendingMessage("3D 模型已加入场景和本机素材库", error));
         }
     };
 
@@ -447,16 +449,16 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         setSelectedLightId(light.id);
     };
 
-    const addCameraMenuItems: MenuProps["items"] = [
+    const addCameraMenuItems: MenuItem[] = [
         { key: "camera", icon: <Camera className="size-3.5" />, label: "添加摄影机", onClick: addCamera },
     ];
-    const addLightMenuItems: MenuProps["items"] = [
+    const addLightMenuItems: MenuItem[] = [
         { key: "directional", icon: <Lightbulb className="size-3.5" />, label: "方向光", onClick: () => addLight("directional", "方向光", [4, 6, 4], 2.4) },
         { key: "point", icon: <Lightbulb className="size-3.5" />, label: "点光源", onClick: () => addLight("point", "点光源") },
         { key: "spot", icon: <Lightbulb className="size-3.5" />, label: "聚光灯", onClick: () => addLight("spot", "聚光灯", [2, 4, 2], 2) },
         { key: "ambient", icon: <LampDesk className="size-3.5" />, label: "环境光", onClick: () => addLight("ambient", "环境光", [0, 0, 0], 0.65) },
     ];
-    const addObjectMenuItems: MenuProps["items"] = [
+    const addObjectMenuItems: MenuItem[] = [
         { key: "actor", icon: <UserRound className="size-3.5" />, label: "演员", onClick: addActor },
         { key: "box", icon: <Box className="size-3.5" />, label: "立方体", onClick: () => addPrimitive("box", "立方体") },
         { key: "sphere", icon: <Circle className="size-3.5" />, label: "球体", onClick: () => addPrimitive("sphere", "球体") },
@@ -629,7 +631,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         const move = activeShot.cameraMove;
         const duration = activeShot.duration;
         commit((current) => ({ ...current, cameras: current.cameras.map((item) => item.id === cameraId ? { ...item, keyframes: resolveDirectorCameraMoveKeyframes(item.keyframes, item.transform, cameraMoveTransform(item.transform, move), duration) } : item) }));
-        message.success("已更新运镜首尾关键帧，可在动画模式继续编辑");
+        toast.success("已更新运镜首尾关键帧，可在动画模式继续编辑");
     };
 
     const alignCameraToView = () => {
@@ -637,7 +639,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         const transform = viewportRef.current?.readCameraTransform();
         if (!transform) return;
         commit((current) => ({ ...current, cameras: current.cameras.map((item) => item.id === activeCamera.id ? resolveDirectorCameraAlignment(item, transform, snappedPlayhead) : item) }));
-        message.success("摄影机已对齐当前视图");
+        toast.success("摄影机已对齐当前视图");
     };
 
     const applyToCanvas = async () => {
@@ -654,9 +656,9 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
             const next = touchDirectorScene(current);
             writeAndPublish(next);
             await onApply({ scene: next, shot: activeShot, prompt, beauty });
-            message.success("导演台构图已回写画布");
+            toast.success("导演台构图已回写画布");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "导演台输出失败");
+            toast.error(error instanceof Error ? error.message : "导演台输出失败");
         } finally {
             setSaving(false);
         }
@@ -681,9 +683,9 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
             const beauty = await viewportRef.current.capture("beauty");
             if (!isDirectorOutputSnapshotCurrent(draftRef.current, { scene: next, shotId: expected.shotId })) throw new Error("输出期间场景或镜头已变化，请重试");
             await onApply({ scene: next, shot: activeShot, prompt: compileDirectorPrompt(next, activeShot), beauty, clayVideo, clayVideoMimeType: clayVideo.type });
-            message.success("白膜视频已回写画布");
+            toast.success("白膜视频已回写画布");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "白膜视频导出失败");
+            toast.error(error instanceof Error ? error.message : "白膜视频导出失败");
         } finally {
             setPlaying(wasPlaying);
             setPlayhead(previousPlayhead);
@@ -697,7 +699,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         <div data-canvas-no-zoom data-director-workbench="true" className="fixed inset-0 z-[var(--z-toast)] flex min-h-0 flex-col overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
             <header className="thin-scrollbar flex h-12 shrink-0 items-center gap-2 overflow-x-auto overflow-y-hidden border-b px-2" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
                 <IconButton label="关闭导演台" onClick={closeWorkbench}><X className="size-4" /></IconButton>
-                <Input variant="borderless" value={draft.title} className="max-w-56 font-medium" onChange={(event) => replaceWithoutHistory((current) => ({ ...current, title: event.target.value }))} />
+                <Input value={draft.title} className="max-w-56 border-0 bg-transparent font-medium shadow-none focus-visible:ring-0 dark:bg-transparent" onChange={(event) => replaceWithoutHistory((current) => ({ ...current, title: event.target.value }))} />
                 <span className="h-5 w-px" style={{ background: theme.toolbar.border }} />
                 <IconButton label="撤销" disabled={!history.length} onClick={undo}><Undo2 className="size-4" /></IconButton>
                 <IconButton label="重做" disabled={!future.length} onClick={redo}><Redo2 className="size-4" /></IconButton>
@@ -730,13 +732,13 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
                     >
                         {saveIndicator.label}
                     </span>
-                    {saveIndicator.retryable ? <Button size="small" icon={<RotateCcw className="size-3.5" />} loading={retrying || saveIndicator.busy} onClick={() => void retrySave()}>重试保存</Button> : null}
+                    {saveIndicator.retryable ? <Button size="sm" variant="outline" loading={retrying || saveIndicator.busy} onClick={() => void retrySave()}><RotateCcw className="size-3.5" />重试保存</Button> : null}
                 </div>
                 <div className="flex items-center gap-1">
                     {onboardingScope ? <IconButton label="重新开始引导" onClick={() => setOnboardingRestartSignal((value) => value + 1)}><Lightbulb className="size-4" /></IconButton> : null}
-                    <Select size="small" value={renderMode} className="w-24" options={renderModeOptions} onChange={setRenderMode} />
-                    <Button size="small" icon={<Video className="size-3.5" />} loading={recording} onClick={() => void exportClayVideo()}>导出白膜</Button>
-                    <Button size="small" type="primary" icon={<Save className="size-3.5" />} loading={saving} onClick={() => void applyToCanvas()}>应用到镜头</Button>
+                    <Select size="sm" ariaLabel="渲染模式" value={renderMode} className="w-24" options={renderModeOptions} onChange={setRenderMode} />
+                    <Button size="sm" variant="outline" loading={recording} onClick={() => void exportClayVideo()}><Video className="size-3.5" />导出白膜</Button>
+                    <Button size="sm" loading={saving} onClick={() => void applyToCanvas()}><Save className="size-3.5" />应用到镜头</Button>
                 </div>
             </header>
 
@@ -800,8 +802,8 @@ function ObjectInspector({ object, rendered, playhead, selectedBone, capabilitie
     return <Inspector title={object.name} onTitleChange={(name) => onUpdate({ name })} onDelete={onDelete}>
         <TransformFields transform={rendered} onChange={onTransformEdit} />
         {object.kind === "actor" || object.primitive === "character"
-            ? <Field label="角色颜色"><div className="director-actor-colors">{DIRECTOR_ACTOR_COLORS.map((color) => <button key={color} type="button" className={`director-actor-color ${object.color.toLowerCase() === color ? "is-active" : ""}`} style={{ background: color }} aria-label={`设置颜色 ${color}`} onClick={() => onUpdate({ color })} />)}<ColorPicker value={object.color} size="small" onChange={(_, color) => onUpdate({ color })} /></div></Field>
-            : <Field label="颜色"><ColorPicker value={object.color} onChange={(_, color) => onUpdate({ color })} /></Field>}
+            ? <Field label="角色颜色"><div className="director-actor-colors">{DIRECTOR_ACTOR_COLORS.map((color) => <button key={color} type="button" className={`director-actor-color ${object.color.toLowerCase() === color ? "is-active" : ""}`} style={{ background: color }} aria-label={`设置颜色 ${color}`} onClick={() => onUpdate({ color })} />)}<input type="color" aria-label="自定义角色颜色" className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5" value={object.color} onChange={(event) => onUpdate({ color: event.target.value })} /></div></Field>
+            : <Field label="颜色"><input type="color" className="h-8 w-12 cursor-pointer rounded-md border border-border bg-transparent p-0.5" value={object.color} onChange={(event) => onUpdate({ color: event.target.value })} /></Field>}
         {/*
           骨骼与姿势入口：只在姿态/动画模式出现，且只对演员出现。
           规格要求「仅在演员选择时展示现有骨骼/姿势入口」——
@@ -811,43 +813,43 @@ function ObjectInspector({ object, rendered, playhead, selectedBone, capabilitie
             <section className="director-pose-section">
                 <div className="director-inspector-section-title"><span>姿势预设</span><span>{directorPoseLabel(object.pose || "stand")}</span></div>
                 <div className="director-pose-grid">{poseOptions.map((option) => <button key={option.value} type="button" className={`director-pose-button ${object.pose === option.value && !object.activeMotionClipId ? "is-active" : ""}`} title={option.label} onClick={() => applyPose(option.value)}>{option.label}</button>)}</div>
-                <Button size="small" block onClick={() => applyPose("stand")}>重置姿态</Button>
+                <Button size="sm" variant="outline" onClick={() => applyPose("stand")} className="w-full">重置姿态</Button>
             </section>
             <div className="flex items-center justify-between border-y py-2 text-[var(--fs-label)]"><span>角色绑定</span><span className="opacity-55">{object.rig?.status === "ready" ? `${mappedBones.length} 根骨骼` : "等待模型"}</span></div>
-            {mappedBones.length ? <Field label="骨骼控制"><Select className="w-full" allowClear value={selectedBone || undefined} options={mappedBones.map((bone) => ({ label: directorBoneLabel(bone), value: bone }))} onChange={(bone) => onSelectBone(bone || null)} /></Field> : null}
-            {selectedBoneId && selectedBoneRotation ? <><BoneRotationFields rotation={selectedBoneRotation} onChange={onBoneRotationStage} onChangeComplete={onBoneRotationCommit} /><Button size="small" block onClick={resetSelectedBone}>重置当前骨骼</Button></> : null}
+            {mappedBones.length ? <Field label="骨骼控制"><Select className="w-full" allowClear ariaLabel="骨骼控制" value={selectedBone || undefined} options={mappedBones.map((bone) => ({ label: directorBoneLabel(bone), value: bone }))} onChange={(bone) => onSelectBone(bone || null)} /></Field> : null}
+            {selectedBoneId && selectedBoneRotation ? <><BoneRotationFields rotation={selectedBoneRotation} onChange={onBoneRotationStage} onChangeComplete={onBoneRotationCommit} /><Button size="sm" variant="outline" onClick={resetSelectedBone} className="w-full">重置当前骨骼</Button></> : null}
             {/* 演员还没加载出模型时给一句解释，避免「动作片段」区域凭空消失。 */}
             {motionClips.length ? null : <div className="text-[var(--fs-tiny)] opacity-50">模型加载后会显示可用动作 Clip</div>}
         </> : null}
         {/* 动作片段是动画内容而非骨骼入口：任何带 Clip 的对象都能调，不限演员。 */}
-        {motionClips.length ? <><Field label="动作片段"><Select className="w-full" value={object.activeMotionClipId || ""} options={[{ label: "静态姿势", value: "" }, ...motionClips.map((clip) => ({ label: clip.name, value: clip.id }))]} onChange={(activeMotionClipId) => onUpdate({ activeMotionClipId: activeMotionClipId || undefined })} /></Field>{activeMotionClip ? <div className="grid grid-cols-2 gap-2"><Field label="播放速度"><InputNumber className="w-full" min={0.1} max={4} step={0.1} value={activeMotionClip.playbackRate} onChange={(playbackRate) => updateActiveMotion({ playbackRate: playbackRate || 1 })} /></Field><Field label="循环"><Switch checked={activeMotionClip.loop} onChange={(loop) => updateActiveMotion({ loop })} /></Field></div> : null}</> : null}
+        {motionClips.length ? <><Field label="动作片段"><Select className="w-full" ariaLabel="动作片段" value={object.activeMotionClipId || STATIC_MOTION_CLIP_VALUE} options={[{ label: "静态姿势", value: STATIC_MOTION_CLIP_VALUE }, ...motionClips.map((clip) => ({ label: clip.name, value: clip.id }))]} onChange={(activeMotionClipId) => onUpdate({ activeMotionClipId: activeMotionClipId === STATIC_MOTION_CLIP_VALUE ? undefined : activeMotionClipId })} /></Field>{activeMotionClip ? <div className="grid grid-cols-2 gap-2"><Field label="播放速度"><NumberInput className="w-full" min={0.1} max={4} step={0.1} value={activeMotionClip.playbackRate} onChange={(playbackRate) => updateActiveMotion({ playbackRate: playbackRate || 1 })} /></Field><Field label="循环"><Switch checked={activeMotionClip.loop} onChange={(loop) => updateActiveMotion({ loop })} /></Field></div> : null}</> : null}
         <Field label="可见"><Switch checked={object.visible} onChange={(visible) => onUpdate({ visible })} /></Field>
         <Field label="投射阴影"><Switch checked={object.castShadow} onChange={(castShadow) => onUpdate({ castShadow })} /></Field>
         {/* 记录关键帧属于动画模式；摆场与姿态模式不默认制造关键帧。 */}
         {capabilities.keyframes ? <>
-            <Button block icon={<Focus className="size-3.5" />} onClick={onAddKeyframe}>{selectedBone ? `在 ${playhead.toFixed(1)}s 记录骨骼` : `在 ${playhead.toFixed(1)}s 记录关键帧`}</Button>
+            <Button variant="outline" onClick={onAddKeyframe} className="w-full"><Focus className="size-3.5" />{selectedBone ? `在 ${playhead.toFixed(1)}s 记录骨骼` : `在 ${playhead.toFixed(1)}s 记录关键帧`}</Button>
             <div className="text-[var(--fs-tiny)] opacity-50">Transform {object.keyframes.length} 个 · 骨骼 {object.boneTracks?.reduce((sum, track) => sum + track.keyframes.length, 0) || 0} 个</div>
         </> : null}
     </Inspector>;
 }
 
 function LightInspector({ light, onUpdate, onDelete }: { light: DirectorLight; onUpdate: (patch: Partial<DirectorLight>) => void; onDelete: () => void }) {
-    return <Inspector title={light.name} onTitleChange={(name) => onUpdate({ name })} onDelete={onDelete}><Field label="类型"><Select className="w-full" value={light.type} options={[{ label: "方向光", value: "directional" }, { label: "点光源", value: "point" }, { label: "聚光灯", value: "spot" }, { label: "环境光", value: "ambient" }]} onChange={(type) => onUpdate({ type })} /></Field><Vec3Field label="位置" value={light.transform.position} onChange={(position) => onUpdate({ transform: { ...light.transform, position } })} /><Field label="颜色"><ColorPicker value={light.color} onChange={(_, color) => onUpdate({ color })} /></Field><Field label="强度"><InputNumber className="w-full" min={0} max={20} step={0.1} value={light.intensity} onChange={(value) => onUpdate({ intensity: value || 0 })} /></Field><Field label="投射阴影"><Switch checked={light.castShadow} onChange={(castShadow) => onUpdate({ castShadow })} /></Field></Inspector>;
+    return <Inspector title={light.name} onTitleChange={(name) => onUpdate({ name })} onDelete={onDelete}><Field label="类型"><Select className="w-full" ariaLabel="光源类型" value={light.type} options={[{ label: "方向光", value: "directional" }, { label: "点光源", value: "point" }, { label: "聚光灯", value: "spot" }, { label: "环境光", value: "ambient" }]} onChange={(type) => onUpdate({ type })} /></Field><Vec3Field label="位置" value={light.transform.position} onChange={(position) => onUpdate({ transform: { ...light.transform, position } })} /><Field label="颜色"><input type="color" className="h-8 w-12 cursor-pointer rounded-md border border-border bg-transparent p-0.5" value={light.color} onChange={(event) => onUpdate({ color: event.target.value })} /></Field><Field label="强度"><NumberInput className="w-full" min={0} max={20} step={0.1} value={light.intensity} onChange={(value) => onUpdate({ intensity: value || 0 })} /></Field><Field label="投射阴影"><Switch checked={light.castShadow} onChange={(castShadow) => onUpdate({ castShadow })} /></Field></Inspector>;
 }
 
 function ShotInspector({ shot, camera, cameras, capabilities, onUpdateShot, onUpdateCamera, onAddCameraKeyframe, onApplyCameraMove, onAlignCameraToView, onExportClay, recording }: { shot: DirectorShot; camera: DirectorCamera | null; cameras: DirectorScene["cameras"]; capabilities: DirectorModeCapabilities; onUpdateShot: (patch: Partial<DirectorShot>) => void; onUpdateCamera: (patch: Partial<DirectorCamera>) => void; onAddCameraKeyframe: () => void; onApplyCameraMove: () => void; onAlignCameraToView: () => void; onExportClay: () => void; recording: boolean }) {
     return <Inspector title={shot.name} onTitleChange={(name) => onUpdateShot({ name })}>
-        <Field label="摄影机"><Select className="w-full" value={shot.cameraId} options={cameras.map((item) => ({ label: item.name, value: item.id }))} onChange={(cameraId) => onUpdateShot({ cameraId })} /></Field>
-        <div className="grid grid-cols-2 gap-2"><Field label="景别"><Select className="w-full" value={shot.shotSize} options={shotSizeOptions} onChange={(shotSize: DirectorShotSize) => onUpdateShot({ shotSize })} /></Field><Field label="帧率"><Select className="w-full" value={shot.fps} options={[24, 25, 30].map((fps) => ({ label: `${fps} fps`, value: fps }))} onChange={(fps: 24 | 25 | 30) => onUpdateShot({ fps })} /></Field></div>
-        <Field label="运镜"><Select className="w-full" value={shot.cameraMove} options={cameraMoveOptions} onChange={(cameraMove: DirectorCameraMove) => onUpdateShot({ cameraMove })} /></Field>
-        <Field label="时长"><InputNumber className="w-full" min={0.5} max={60} step={0.5} value={shot.duration} addonAfter="秒" onChange={(value) => onUpdateShot({ duration: value || 5 })} /></Field>
-        <Field label="镜头意图"><Input.TextArea autoSize={{ minRows: 3, maxRows: 7 }} value={shot.prompt} placeholder="人物表演、动作、叙事目标…" onChange={(event) => onUpdateShot({ prompt: event.target.value })} /></Field>
-        {camera ? <><Vec3Field label="摄影机位置" value={camera.transform.position} onChange={(position) => onUpdateCamera({ transform: { ...camera.transform, position } })} /><Vec3Field label="焦点" value={camera.target} onChange={(target) => onUpdateCamera({ target })} /><Field label="焦距"><InputNumber className="w-full" min={12} max={200} value={camera.focalLength} addonAfter="mm" onChange={(focalLength) => onUpdateCamera({ focalLength: focalLength || 35, fov: directorFocalLengthToFov(focalLength || 35) })} /></Field><div className="grid grid-cols-2 gap-2"><Field label="光圈"><InputNumber className="w-full" min={0.7} max={32} step={0.1} value={camera.aperture} addonBefore="f/" onChange={(aperture) => onUpdateCamera({ aperture: aperture || 2.8 })} /></Field><Field label="焦点距离"><InputNumber className="w-full" min={0.1} max={200} step={0.1} value={camera.focusDistance} addonAfter="m" onChange={(focusDistance) => onUpdateCamera({ focusDistance: focusDistance || 5 })} /></Field></div><Button block icon={<Camera className="size-3.5" />} onClick={onAlignCameraToView}>摄影机对齐当前视图</Button><Button block icon={<Video className="size-3.5" />} onClick={onApplyCameraMove}>按运镜生成轨迹</Button>{capabilities.keyframes ? <Button block icon={<Focus className="size-3.5" />} onClick={onAddCameraKeyframe}>记录摄影机关键帧</Button> : null}<Button block type="primary" ghost icon={<Video className="size-3.5" />} loading={recording} onClick={onExportClay}>导出白膜视频</Button></> : null}
+        <Field label="摄影机"><Select className="w-full" ariaLabel="摄影机" value={shot.cameraId} options={cameras.map((item) => ({ label: item.name, value: item.id }))} onChange={(cameraId) => onUpdateShot({ cameraId })} /></Field>
+        <div className="grid grid-cols-2 gap-2"><Field label="景别"><Select<DirectorShotSize> className="w-full" ariaLabel="景别" value={shot.shotSize} options={shotSizeOptions} onChange={(shotSize) => onUpdateShot({ shotSize })} /></Field><Field label="帧率"><Select className="w-full" ariaLabel="帧率" value={String(shot.fps)} options={[24, 25, 30].map((fps) => ({ label: `${fps} fps`, value: String(fps) }))} onChange={(fps) => onUpdateShot({ fps: Number(fps) as 24 | 25 | 30 })} /></Field></div>
+        <Field label="运镜"><Select<DirectorCameraMove> className="w-full" ariaLabel="运镜" value={shot.cameraMove} options={cameraMoveOptions} onChange={(cameraMove) => onUpdateShot({ cameraMove })} /></Field>
+        <Field label="时长"><NumberInput className="w-full" min={0.5} max={60} step={0.5} value={shot.duration} addonAfter="秒" onChange={(value) => onUpdateShot({ duration: value || 5 })} /></Field>
+        <Field label="镜头意图"><Textarea rows={3} className="max-h-40 min-h-[4.5rem]" value={shot.prompt} placeholder="人物表演、动作、叙事目标…" onChange={(event) => onUpdateShot({ prompt: event.target.value })} /></Field>
+        {camera ? <><Vec3Field label="摄影机位置" value={camera.transform.position} onChange={(position) => onUpdateCamera({ transform: { ...camera.transform, position } })} /><Vec3Field label="焦点" value={camera.target} onChange={(target) => onUpdateCamera({ target })} /><Field label="焦距"><NumberInput className="w-full" min={12} max={200} value={camera.focalLength} addonAfter="mm" onChange={(focalLength) => onUpdateCamera({ focalLength: focalLength || 35, fov: directorFocalLengthToFov(focalLength || 35) })} /></Field><div className="grid grid-cols-2 gap-2"><Field label="光圈"><NumberInput className="w-full" min={0.7} max={32} step={0.1} value={camera.aperture} addonBefore="f/" onChange={(aperture) => onUpdateCamera({ aperture: aperture || 2.8 })} /></Field><Field label="焦点距离"><NumberInput className="w-full" min={0.1} max={200} step={0.1} value={camera.focusDistance} addonAfter="m" onChange={(focusDistance) => onUpdateCamera({ focusDistance: focusDistance || 5 })} /></Field></div><Button variant="outline" onClick={onAlignCameraToView} className="w-full"><Camera className="size-3.5" />摄影机对齐当前视图</Button><Button variant="outline" onClick={onApplyCameraMove} className="w-full"><Video className="size-3.5" />按运镜生成轨迹</Button>{capabilities.keyframes ? <Button variant="outline" onClick={onAddCameraKeyframe} className="w-full"><Focus className="size-3.5" />记录摄影机关键帧</Button> : null}<Button variant="outline" className="w-full border-primary text-primary hover:text-primary dark:border-primary" loading={recording} onClick={onExportClay}><Video className="size-3.5" />导出白膜视频</Button></> : null}
     </Inspector>;
 }
 
 function Inspector({ title, children, onTitleChange, onDelete }: { title: string; children: ReactNode; onTitleChange: (value: string) => void; onDelete?: () => void }) {
-    return <div className="space-y-3 p-3"><div className="flex items-center gap-2"><Input variant="borderless" value={title} className="min-w-0 flex-1 px-0 font-medium" onChange={(event) => onTitleChange(event.target.value)} />{onDelete ? <IconButton label="删除" onClick={onDelete}><Trash2 className="size-4" /></IconButton> : null}</div>{children}</div>;
+    return <div className="space-y-3 p-3"><div className="flex items-center gap-2"><Input value={title} className="min-w-0 flex-1 border-0 bg-transparent px-0 font-medium shadow-none focus-visible:ring-0 dark:bg-transparent" onChange={(event) => onTitleChange(event.target.value)} />{onDelete ? <IconButton label="删除" onClick={onDelete}><Trash2 className="size-4" /></IconButton> : null}</div>{children}</div>;
 }
 
 function TransformFields({ transform, onChange }: { transform: DirectorTransform; onChange: (transform: DirectorTransform) => void }) {
@@ -879,7 +881,7 @@ function BoneRotationFields({ rotation, onChange, onChangeComplete }: { rotation
     return <Field label="骨骼旋转（局部角度 °）"><div className="space-y-1.5">
         {degrees.map((value, index) => <div key={index} className="grid grid-cols-[18px_minmax(0,1fr)_48px] items-center gap-2">
             <span className="text-[var(--fs-tiny)] font-medium opacity-65">{["X", "Y", "Z"][index]}</span>
-            <Slider className="m-0" min={-180} max={180} step={1} value={value} onChange={(next) => updateAxis(index, Array.isArray(next) ? next[0] ?? 0 : next)} onChangeComplete={onChangeComplete} />
+            <Slider className="m-0" min={-180} max={180} step={1} value={[value]} onValueChange={([next]) => updateAxis(index, next)} onValueCommit={onChangeComplete} aria-label={`${["X", "Y", "Z"][index]} 轴旋转`} />
             <span className="text-right text-[var(--fs-tiny)] tabular-nums opacity-65">{value.toFixed(1)}°</span>
         </div>)}
     </div></Field>;
@@ -892,7 +894,7 @@ function sameDirectorQuaternion(left: DirectorQuat, right: DirectorQuat) {
 }
 
 function Vec3Field({ label, value, step = 0.1, onChange }: { label: string; value: DirectorVec3; step?: number; onChange: (value: DirectorVec3) => void }) {
-    return <Field label={label}><div className="grid grid-cols-3 gap-1">{value.map((item, index) => <InputNumber key={index} className="w-full" size="small" step={step} value={Number(item.toFixed(2))} onChange={(next) => onChange(value.map((entry, itemIndex) => itemIndex === index ? next || 0 : entry) as DirectorVec3)} />)}</div></Field>;
+    return <Field label={label}><div className="grid grid-cols-3 gap-1">{value.map((item, index) => <NumberInput key={index} className="w-full" size="sm" step={step} value={Number(item.toFixed(2))} onChange={(next) => onChange(value.map((entry, itemIndex) => itemIndex === index ? next || 0 : entry) as DirectorVec3)} />)}</div></Field>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block"><span className="mb-1 block text-[var(--fs-label)] opacity-55">{label}</span>{children}</label>; }
@@ -911,8 +913,8 @@ function SceneRow({ active, icon, label, onClick, onDelete }: { active?: boolean
         {onDelete ? <button type="button" aria-label={`删除${label}`} title={`删除${label}`} className="grid size-6 shrink-0 place-items-center rounded opacity-60 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10" onClick={(event) => { event.stopPropagation(); onDelete(); releaseDirectorFocusAfterPointer(event); }}><Trash2 className="size-3.5" /></button> : null}
     </div>;
 }
-function AddMenuButton({ label, items }: { label: string; items: MenuProps["items"] }) {
-    return <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items }}><button type="button" aria-label={label} title={label} className="grid size-8 shrink-0 place-items-center rounded-md transition hover:bg-black/5 dark:hover:bg-white/10"><Plus className="size-3.5" /></button></Dropdown>;
+function AddMenuButton({ label, items }: { label: string; items: MenuItem[] }) {
+    return <MenuDropdown placement="bottomRight" items={items}><button type="button" aria-label={label} title={label} className="grid size-8 shrink-0 place-items-center rounded-md transition hover:bg-black/5 dark:hover:bg-white/10"><Plus className="size-3.5" /></button></MenuDropdown>;
 }
 function QuickAdd({ label, icon, onClick }: { label: string; icon: ReactElement; onClick: () => void }) { return <button type="button" className="flex h-8 items-center gap-1.5 border px-2 text-[var(--fs-tiny)] transition hover:bg-black/5 dark:hover:bg-white/5" onClick={(event) => { onClick(); releaseDirectorFocusAfterPointer(event); }}><span className="[&>svg]:size-3.5">{icon}</span><span className="truncate">{label}</span></button>; }
 function IconButton({ label, disabled, children, onClick }: { label: string; disabled?: boolean; children: ReactNode; onClick: () => void }) { return <button type="button" aria-label={label} title={label} disabled={disabled} className="grid size-8 shrink-0 place-items-center rounded-md transition hover:bg-black/5 disabled:opacity-30 dark:hover:bg-white/10" onClick={(event) => { onClick(); releaseDirectorFocusAfterPointer(event); }}>{children}</button>; }
@@ -923,8 +925,11 @@ const poseOptions: Array<{ label: string; value: DirectorPose }> = [
     { label: "格斗", value: "fight" }, { label: "踢球", value: "kick" }, { label: "投掷", value: "throw" }, { label: "推进", value: "push" },
     { label: "招手", value: "wave" }, { label: "伸手", value: "reach" }, { label: "抱臂", value: "arms_crossed" }, { label: "看手机", value: "phone" },
 ];
-const shotSizeOptions = [{ label: "大远景", value: "extreme_wide" }, { label: "远景", value: "wide" }, { label: "全身景", value: "full" }, { label: "中景", value: "medium" }, { label: "近景", value: "close_up" }, { label: "大特写", value: "extreme_close_up" }];
-const cameraMoveOptions = [{ label: "固定", value: "static" }, { label: "推进", value: "push_in" }, { label: "拉远", value: "pull_out" }, { label: "左摇", value: "pan_left" }, { label: "右摇", value: "pan_right" }, { label: "上摇", value: "tilt_up" }, { label: "下摇", value: "tilt_down" }, { label: "左环绕", value: "orbit_left" }, { label: "右环绕", value: "orbit_right" }, { label: "手持", value: "handheld" }];
+// Radix Select forbids an empty option value, so the static pose uses a sentinel.
+const STATIC_MOTION_CLIP_VALUE = "__static__";
+
+const shotSizeOptions: Array<{ label: string; value: DirectorShotSize }> = [{ label: "大远景", value: "extreme_wide" }, { label: "远景", value: "wide" }, { label: "全身景", value: "full" }, { label: "中景", value: "medium" }, { label: "近景", value: "close_up" }, { label: "大特写", value: "extreme_close_up" }];
+const cameraMoveOptions: Array<{ label: string; value: DirectorCameraMove }> = [{ label: "固定", value: "static" }, { label: "推进", value: "push_in" }, { label: "拉远", value: "pull_out" }, { label: "左摇", value: "pan_left" }, { label: "右摇", value: "pan_right" }, { label: "上摇", value: "tilt_up" }, { label: "下摇", value: "tilt_down" }, { label: "左环绕", value: "orbit_left" }, { label: "右环绕", value: "orbit_right" }, { label: "手持", value: "handheld" }];
 /** 渲染视图全集。实际可选项由当前模式的 capabilities.renderModes 过滤。 */
 const DIRECTOR_RENDER_MODE_LABELS: Array<{ label: string; value: DirectorRenderMode }> = [
     { label: "预览", value: "beauty" },

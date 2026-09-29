@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 import { nanoid } from "nanoid";
 
 import { generationBatchStatus, isGenerationSubmissionUncertainError } from "@/lib/canvas/canvas-generation-batch";
@@ -13,6 +12,8 @@ import type { CanvasGenerationBatch, CanvasGenerationBatchItem, CanvasGeneration
 
 import type { CanvasNodeGenerationOptions } from "./use-canvas-generation-executor";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 const SCHEDULER_INTERVAL_MS = 2_000;
 const MAX_BATCH_HISTORY = 20;
@@ -29,7 +30,6 @@ type UseCanvasGenerationBatchesOptions = {
 };
 
 export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, nodesRef, setNodes, handleGenerateNode }: UseCanvasGenerationBatchesOptions) {
-    const { message, modal } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const activeTaskLimit = useUserStore((state) => state.runtimeLimits.activeTaskLimit);
@@ -64,7 +64,7 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
             const activeNodeIds = new Set((sourceNode.metadata?.generationBatches || []).flatMap((batch) => batch.items.filter((item) => ["waiting", "submitting", "queued", "running"].includes(item.status)).map((item) => item.nodeId)));
             const availableTargets = targets.filter((target) => !activeNodeIds.has(target.nodeId));
             if (!availableTargets.length) {
-                message.info("所选镜头已在生成批次中");
+                toast.info("所选镜头已在生成批次中");
                 return;
             }
             const now = new Date().toISOString();
@@ -94,7 +94,7 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
             );
             return batch.id;
         },
-        [message, nodesRef, projectId, setNodes],
+        [nodesRef, projectId, setNodes],
     );
 
     const reconcileBatches = useCallback(() => {
@@ -240,14 +240,14 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
             const batch = findBatch(nodesRef.current, sourceNodeId, batchId);
             if (!batch) return;
             const failedItems = batch.items.filter((item) => item.status === "failed" && (!itemId || item.id === itemId));
-            if (!failedItems.length) return message.info("没有需要重试的失败项");
+            if (!failedItems.length) return toast.info("没有需要重试的失败项");
             const nodeById = new Map(nodesRef.current.map((node) => [node.id, node]));
             const blockedItems = failedItems.filter((item) => {
                 const node = nodeById.get(item.nodeId);
                 return item.submissionUncertain || shouldBlockAutomaticRetry({ code: node?.metadata?.generationErrorCode || node?.metadata?.taskErrorCode, message: item.errorDetails || node?.metadata?.errorDetails }, node?.metadata?.taskStage);
             });
             const retryableItems = failedItems.filter((item) => !blockedItems.includes(item));
-            if (blockedItems.length) message.warning(`${blockedItems.length} 个镜头需要先处理失败原因，请打开对应节点查看`);
+            if (blockedItems.length) toast.warning(`${blockedItems.length} 个镜头需要先处理失败原因，请打开对应节点查看`);
             if (!retryableItems.length) return;
             const retry = async () => {
                 const retryContexts = new Map<string, Awaited<ReturnType<typeof createGenerationRetryContext>>>();
@@ -290,11 +290,11 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
                         };
                     }),
                 );
-                message.success(`已将 ${retryableItems.length} 个失败项重新加入等待队列`);
+                toast.success(`已将 ${retryableItems.length} 个失败项重新加入等待队列`);
             };
             retry();
         },
-        [message, nodesRef, setNodes],
+        [nodesRef, setNodes],
     );
 
     const stopRemainingBatchItems = useCallback(
@@ -305,8 +305,8 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
             // 只允许停止还在本地等待队列中的项目。进入 submitting 后请求可能已经被服务端接收，
             // 即使前端尚未拿到 taskId 也不能再把它标成取消，避免隐藏已提交任务。
             const stoppableItems = batch.items.filter((item) => item.status === "waiting" && !nodeById.get(item.nodeId)?.metadata?.taskId);
-            if (!stoppableItems.length) return message.info("没有尚未提交的任务");
-            modal.confirm({
+            if (!stoppableItems.length) return toast.info("没有尚未提交的任务");
+            confirmDialog({
                 title: "停止剩余任务？",
                 content: `将停止 ${stoppableItems.length} 个尚未提交的任务；已经排队或运行的任务会继续。`,
                 okText: "停止剩余任务",
@@ -327,7 +327,7 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
                 },
             });
         },
-        [message, modal, nodesRef, updateBatch],
+        [nodesRef, updateBatch],
     );
 
     useEffect(() => {

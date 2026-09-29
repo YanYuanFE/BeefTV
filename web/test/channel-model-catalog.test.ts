@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { App } from "antd";
 import axios from "axios";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -10,7 +9,7 @@ import { canvasThemes } from "../src/lib/canvas-theme";
 import { mergeFetchedChannelModelProfiles, type ChannelModelCatalogItem } from "../src/lib/channel-model-catalog";
 import { defaultModelCapabilityConfig, pluginWorkflowCapabilityConfig } from "../src/lib/model-capabilities";
 import { ChannelModelSettings } from "../src/pages/settings/channel-model-settings";
-import { applyFetchedChannelModelCatalog } from "../src/pages/settings/channel-settings-pane";
+import { applyFetchedChannelModelCatalog } from "../src/lib/channel-model-catalog";
 import { fetchChannelModels } from "../src/services/api/image";
 import { apiClient } from "../src/services/api/request";
 import { createVideoGenerationTask } from "../src/services/api/video";
@@ -435,7 +434,7 @@ describe("public channel model catalog", () => {
     test("shows the public display name in channel model settings instead of only the internal ID", () => {
         const config = configForCatalog([omniCatalog]);
 
-        const html = renderToStaticMarkup(React.createElement(App, null, React.createElement(ChannelModelSettings, { channel: config.channels[0]!, onChange: () => undefined })));
+        const html = renderToStaticMarkup(React.createElement(ChannelModelSettings, { channel: config.channels[0]!, onChange: () => undefined }));
 
         expect(html).toContain("Omni Flash");
     });

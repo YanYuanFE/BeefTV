@@ -1,7 +1,12 @@
-import { App, Button, Input, InputNumber, Progress, Select } from "antd";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/base/select";
+import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/base/switch";
 import { EmptyState } from "@/components/ui/product/empty-state";
-import { FileAudio, FileImage, Film, Grip, Play, RotateCcw, Square, Upload, WandSparkles } from "lucide-react";
+import { CheckCircle2, FileAudio, FileImage, Film, Grip, Play, RotateCcw, Square, Upload, WandSparkles, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { generationErrorMessage } from "@/lib/generation-error";
@@ -10,6 +15,7 @@ import { runBackendGenerationTask, type BackendGenerationResult } from "@/servic
 import { useConfigStore, type AiConfig, type RunningHubCapability, type WorkflowFieldMapping } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
+import { toast } from "sonner";
 
 type WorkflowProvider = "runninghub";
 type MediaKind = "image" | "video" | "audio";
@@ -38,7 +44,6 @@ const initialPositions: NodePositionMap = {
 };
 
 export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "workflow", title, capability, fields, disabled = false, disabledReason }: WorkflowTestWorkbenchProps) {
-    const { message } = App.useApp();
     const config = useConfigStore((state) => state.config);
     const [prompt, setPrompt] = useState("");
     const [files, setFiles] = useState<Record<MediaKind, TestFile[]>>({ image: [], video: [], audio: [] });
@@ -135,9 +140,9 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
     };
 
     const runTest = async () => {
-        if (disabled) return message.warning(disabledReason || "请先完成工作流配置");
+        if (disabled) return toast.warning(disabledReason || "请先完成工作流配置");
         const missing = missingRequiredInput(activeFields, prompt, files, fieldValues);
-        if (missing) return message.warning(missing);
+        if (missing) return toast.warning(missing);
         const controller = new AbortController();
         abortRef.current = controller;
         setRunning(true);
@@ -165,7 +170,7 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
             setResult(response);
             setProgress(100);
             setStage("测试完成");
-            message.success("工作流测试完成");
+            toast.success("工作流测试完成");
         } catch (reason) {
             if (controller.signal.aborted) {
                 setStage("已停止等待");
@@ -174,7 +179,7 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
             const detail = generationErrorMessage(reason);
             setError(detail);
             setStage("测试失败");
-            message.error(detail);
+            toast.error(detail);
         } finally {
             if (abortRef.current === controller) abortRef.current = null;
             setRunning(false);
@@ -196,15 +201,18 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
                     </span>
                 </div>
                 <div className="workflow-test-toolbar-actions">
-                    <Button icon={<RotateCcw className="size-4" />} disabled={running} onClick={resetTest}>
+                    <Button variant="outline" className="min-w-24" disabled={running} onClick={resetTest}>
+                        <RotateCcw className="size-4" />
                         重置测试
                     </Button>
                     {running ? (
-                        <Button danger icon={<Square className="size-4" />} onClick={stopTest}>
+                        <Button variant="destructive" className="min-w-24" onClick={stopTest}>
+                            <Square className="size-4" />
                             停止等待
                         </Button>
                     ) : (
-                        <Button type="primary" icon={<Play className="size-4" />} disabled={disabled} onClick={() => void runTest()}>
+                        <Button variant="outline" className="min-w-24 font-[560]" disabled={disabled} onClick={() => void runTest()}>
+                            <Play className="size-4" />
                             运行测试
                         </Button>
                     )}
@@ -222,7 +230,7 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
                     </svg>
 
                     <WorkflowNode id="prompt" title="提示词" icon={<WandSparkles />} position={positions.prompt} onMove={(point) => setPositions((current) => ({ ...current, prompt: point }))}>
-                        <Input.TextArea value={prompt} autoSize={{ minRows: 4, maxRows: 7 }} placeholder="输入本次测试提示词" onChange={(event) => setPrompt(event.target.value)} />
+                        <Textarea value={prompt} rows={4} className="field-sizing-content min-h-24 max-h-44" placeholder="输入本次测试提示词" onChange={(event) => setPrompt(event.target.value)} />
                     </WorkflowNode>
 
                     {visibleMediaKinds.map((kind) => (
@@ -259,7 +267,14 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
                         onMove={(point) => setPositions((current) => ({ ...current, output: point }))}
                     >
                         <div className="workflow-test-output">{resultUrls.length ? <ResultPreview capability={capability} urls={resultUrls} /> : <EmptyState size="compact" title={error || stage} />}</div>
-                        <Progress percent={progress} size="small" status={error ? "exception" : running ? "active" : undefined} showInfo={running || progress > 0} />
+                        <div className="mt-2 flex items-center gap-2">
+                            <Progress value={progress} className={error ? "[&>[data-slot=progress-indicator]]:bg-destructive" : undefined} />
+                            {running || progress > 0 ? (
+                                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                                    {error ? <XCircle className="size-3.5 text-destructive" aria-label="失败" /> : progress >= 100 ? <CheckCircle2 className="size-3.5 text-status-success" aria-label="完成" /> : `${progress}%`}
+                                </span>
+                            ) : null}
+                        </div>
                     </WorkflowNode>
                 </div>
             </div>
@@ -371,11 +386,15 @@ function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMap
                 </small>
             </span>
             {Array.isArray(field.options) && field.options.length ? (
-                <Select showSearch value={value} options={field.options.map((option) => ({ label: String(option), value: option }))} onChange={onChange} />
+                <Select
+                    value={value === undefined || value === null ? undefined : String(value)}
+                    options={field.options.filter((option) => String(option) !== "").map((option) => ({ label: String(option), value: String(option) }))}
+                    onChange={(next) => onChange(field.options?.find((option) => String(option) === next) ?? next)}
+                />
             ) : type === "BOOLEAN" || typeof value === "boolean" ? (
                 <Switch checked={value === true || value === "true"} onChange={onChange} />
             ) : type === "NUMBER" || typeof value === "number" ? (
-                <InputNumber className="w-full" value={numberValue(value)} min={numberValue(field.min)} max={numberValue(field.max)} step={numberValue(field.step)} onChange={onChange} />
+                <NumberInput className="w-full" value={numberValue(value)} min={numberValue(field.min)} max={numberValue(field.max)} step={numberValue(field.step)} onChange={onChange} />
             ) : (
                 <Input value={displayValue(value)} onChange={(event) => onChange(event.target.value)} />
             )}

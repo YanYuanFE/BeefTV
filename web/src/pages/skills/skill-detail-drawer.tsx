@@ -1,10 +1,11 @@
-import { Button, Input, Skeleton, Tree } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Tooltip } from "@/components/ui/base/tooltip";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
-import type { DataNode } from "antd/es/tree";
-import { Check, ChevronRight, Code2, ExternalLink, File, FileArchive, FileCode2, FileImage, FileText, Folder, FolderOpen, Heart, Pencil, Plus, RefreshCw, Users } from "lucide-react";
+import { Check, ChevronRight, Code2, ExternalLink, File, FileArchive, FileCode2, FileImage, FileText, Folder, FolderOpen, Heart, Pencil, Plus, RefreshCw, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -89,11 +90,10 @@ export function SkillDetailModal({ skill, loading, mutating, categories, onClose
 
     return (
         <AppModal
-            className="skill-package-modal"
+            className="skill-package-modal rounded-[var(--r-xl)] border-foreground/[.11] bg-popover shadow-[var(--elevation-panel)] max-[860px]:!h-[90vh]"
             open={Boolean(skill)}
             width="82vw"
             footer={null}
-            destroyOnHidden
             onCancel={onClose}
             flush styles={{ container: { height: "82vh" }, body: { height: "100%" } }}
         >
@@ -108,10 +108,10 @@ export function SkillDetailModal({ skill, loading, mutating, categories, onClose
                             <p className="mt-1 line-clamp-2 max-w-4xl text-sm leading-5 text-foreground/58">{skill.description}</p>
                         </div>
                         <div className="skill-package-actions">
-                            {!localRuntime && skill.sourceType === "github" && skill.isOwner ? <Tooltip title={skill.syncError || "从 GitHub 检查并同步最新提交"}><Button loading={mutating} icon={<RefreshCw className="size-4" />} onClick={() => onSync(skill)}>同步</Button></Tooltip> : null}
-                            {skill.isOwner ? <Button icon={<Pencil className="size-4" />} onClick={() => onEdit(skill)}>编辑</Button> : null}
-                            <Button loading={mutating} icon={<Heart className={`size-4 ${skill.isLike ? "fill-current text-rose-500" : ""}`} />} onClick={() => onLike(skill)}>{skill.isLike ? "已收藏" : "收藏"}</Button>
-                            <Button type={skill.isAdded ? "default" : "primary"} loading={mutating} disabled={skill.isOwner} icon={skill.isAdded ? <Check className="size-4" /> : <Plus className="size-4" />} onClick={() => onAdd(skill)}>{skill.isOwner ? "我的技能" : skill.isAdded ? "已加入" : "加入技能"}</Button>
+                            {!localRuntime && skill.sourceType === "github" && skill.isOwner ? <Tooltip title={skill.syncError || "从 GitHub 检查并同步最新提交"}><Button variant="outline" loading={mutating} onClick={() => onSync(skill)}>{mutating ? null : <RefreshCw className="size-4" />}<ActionLabel>同步</ActionLabel></Button></Tooltip> : null}
+                            {skill.isOwner ? <Button variant="outline" onClick={() => onEdit(skill)}><Pencil className="size-4" /><ActionLabel>编辑</ActionLabel></Button> : null}
+                            <Button variant="outline" loading={mutating} onClick={() => onLike(skill)}>{mutating ? null : <Heart className={`size-4 ${skill.isLike ? "fill-current text-rose-500" : ""}`} />}<ActionLabel>{skill.isLike ? "已收藏" : "收藏"}</ActionLabel></Button>
+                            <Button variant={skill.isAdded ? "outline" : "default"} loading={mutating} disabled={skill.isOwner} onClick={() => onAdd(skill)}>{mutating ? null : skill.isAdded ? <Check className="size-4" /> : <Plus className="size-4" />}<ActionLabel>{skill.isOwner ? "我的技能" : skill.isAdded ? "已加入" : "加入技能"}</ActionLabel></Button>
                         </div>
                     </header>
 
@@ -121,20 +121,18 @@ export function SkillDetailModal({ skill, loading, mutating, categories, onClose
                                 <span><FileArchive className="size-3.5" />{skill.fileCount || files.length} 个文件</span>
                                 <span>{formatBytes(skill.totalBytes)}</span>
                             </div>
-                            <Input allowClear size="small" value={pathFilter} onChange={(event) => setPathFilter(event.target.value)} placeholder="筛选文件…" prefix={<File className="size-3.5 text-foreground/30" />} />
+                            <div className="relative">
+                                <File aria-hidden="true" className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-foreground/30" />
+                                <Input className="h-7 pr-7 pl-7 text-sm" aria-label="筛选文件" value={pathFilter} onChange={(event) => setPathFilter(event.target.value)} placeholder="筛选文件…" />
+                                {pathFilter ? (
+                                    <button type="button" aria-label="清空筛选" className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setPathFilter("")}>
+                                        <X className="size-3" />
+                                    </button>
+                                ) : null}
+                            </div>
                             <div className="skill-package-tree thin-scrollbar">
-                                {filesLoading || loading ? <Skeleton active title={false} paragraph={{ rows: 10 }} /> : filesError ? <div className="skill-package-empty">{filesError}</div> : treeData.length ? (
-                                    <Tree
-                                        blockNode
-                                        showIcon
-                                        showLine={false}
-                                        defaultExpandAll
-                                        expandAction="click"
-                                        selectedKeys={activePath ? [activePath] : []}
-                                        treeData={treeData}
-                                        switcherIcon={({ expanded, isLeaf }) => isLeaf ? null : <ChevronRight aria-hidden="true" className={`skill-package-tree-chevron size-3.5 ${expanded ? "is-expanded" : ""}`} />}
-                                        onSelect={(keys, info) => { if (!info.node.children?.length && keys[0]) setActivePath(String(keys[0])); }}
-                                    />
+                                {filesLoading || loading ? <SkeletonLines rows={10} /> : filesError ? <div className="skill-package-empty">{filesError}</div> : treeData.length ? (
+                                    <SkillFileTree nodes={treeData} activePath={activePath} onSelect={setActivePath} />
                                 ) : <div className="skill-package-empty">没有匹配文件</div>}
                             </div>
                             <div className="skill-package-sidebar-footer">
@@ -150,7 +148,7 @@ export function SkillDetailModal({ skill, loading, mutating, categories, onClose
                                 {activePath ? <Tooltip title="打开原始文件"><a className="skill-package-raw-link" href={skillFileRawURL(skill.skillId, activePath)} target="_blank" rel="noreferrer" aria-label="打开原始文件"><ExternalLink className="size-4" /></a></Tooltip> : null}
                             </div>
                             <div className="skill-package-preview-body thin-scrollbar">
-                                {contentLoading ? <Skeleton active paragraph={{ rows: 18 }} /> : contentError ? <div className="skill-package-empty">{contentError}</div> : content && selectedFile ? (
+                                {contentLoading ? <SkeletonLines rows={18} title /> : contentError ? <div className="skill-package-empty">{contentError}</div> : content && selectedFile ? (
                                     <SkillFilePreview skill={skill} file={selectedFile} content={content} mode={previewMode} filePaths={filePaths} onNavigate={setActivePath} />
                                 ) : <div className="skill-package-empty">从左侧选择一个文件</div>}
                             </div>
@@ -202,10 +200,11 @@ function SkillMarkdown({ source, currentPath, filePaths, onNavigate }: { source:
     );
 }
 
-function buildSkillTree(files: SkillPackageFile[]): DataNode[] {
-    type MutableNode = DataNode & { children?: MutableNode[]; file?: SkillPackageFile };
-    const roots: MutableNode[] = [];
-    const folders = new Map<string, MutableNode>();
+type SkillTreeNode = { key: string; name: string; file?: SkillPackageFile; children?: SkillTreeNode[] };
+
+function buildSkillTree(files: SkillPackageFile[]): SkillTreeNode[] {
+    const roots: SkillTreeNode[] = [];
+    const folders = new Map<string, SkillTreeNode>();
     for (const file of files) {
         const parts = file.path.split("/");
         let children = roots;
@@ -214,17 +213,12 @@ function buildSkillTree(files: SkillPackageFile[]): DataNode[] {
             const isLeaf = index === parts.length - 1;
             prefix = prefix ? `${prefix}/${part}` : part;
             if (isLeaf) {
-                children.push({ key: file.path, title: treeTitle(part, file), icon: fileIcon(file), isLeaf: true, file });
+                children.push({ key: file.path, name: part, file });
                 return;
             }
             let folder = folders.get(prefix);
             if (!folder) {
-                folder = {
-                    key: `folder:${prefix}`,
-                    title: <span className="skill-package-folder-title">{part}</span>,
-                    icon: ({ expanded }) => expanded ? <FolderOpen aria-hidden="true" className="size-4" /> : <Folder aria-hidden="true" className="size-4" />,
-                    children: [],
-                };
+                folder = { key: `folder:${prefix}`, name: part, children: [] };
                 folders.set(prefix, folder);
                 children.push(folder);
             }
@@ -232,6 +226,58 @@ function buildSkillTree(files: SkillPackageFile[]): DataNode[] {
         });
     }
     return roots;
+}
+
+/** File tree: folders start expanded and toggle on click; leaves select the previewed file. */
+function SkillFileTree({ nodes, activePath, onSelect }: { nodes: SkillTreeNode[]; activePath: string; onSelect: (path: string) => void }) {
+    const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+    const toggle = (key: string) => setCollapsed((current) => {
+        const next = new Set(current);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+    });
+    const renderNodes = (items: SkillTreeNode[], depth: number): ReactNode => items.map((node) => {
+        const isFolder = Boolean(node.children);
+        const expanded = isFolder && !collapsed.has(node.key);
+        const selected = !isFolder && node.key === activePath;
+        return (
+            <li key={node.key} role="treeitem" aria-expanded={isFolder ? expanded : undefined} aria-selected={isFolder ? undefined : selected}>
+                <button
+                    type="button"
+                    className={`flex min-h-[30px] w-full min-w-0 items-center rounded-[var(--r-sm)] pr-[7px] text-left hover:bg-foreground/[.06] focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-[var(--ring)] ${selected ? "!bg-foreground/[.09] text-foreground" : ""}`}
+                    style={{ paddingLeft: depth * 14 }}
+                    onClick={() => (isFolder ? toggle(node.key) : onSelect(node.key))}
+                >
+                    <span className="grid h-[30px] w-5 shrink-0 place-items-center text-foreground/38 hover:text-foreground/72" aria-hidden="true">
+                        {isFolder ? <ChevronRight className={`skill-package-tree-chevron size-3.5 ${expanded ? "is-expanded" : ""}`} /> : null}
+                    </span>
+                    <span className="grid h-[30px] w-5 shrink-0 place-items-center text-foreground/55">
+                        {isFolder ? (expanded ? <FolderOpen aria-hidden="true" className="size-4" /> : <Folder aria-hidden="true" className="size-4" />) : node.file ? fileIcon(node.file) : null}
+                    </span>
+                    <span className="block min-w-0 flex-1 pl-0.5">
+                        {isFolder ? <span className="skill-package-folder-title">{node.name}</span> : node.file ? treeTitle(node.name, node.file) : node.name}
+                    </span>
+                </button>
+                {isFolder && expanded && node.children?.length ? <ul role="group">{renderNodes(node.children, depth + 1)}</ul> : null}
+            </li>
+        );
+    });
+    return <ul role="tree" aria-label="技能文件" className="text-[length:var(--fs-label)] text-foreground/70">{renderNodes(nodes, 0)}</ul>;
+}
+
+/** Button label that collapses to icon-only on narrow screens. */
+function ActionLabel({ children }: { children: ReactNode }) {
+    return <span className="max-[640px]:sr-only">{children}</span>;
+}
+
+function SkeletonLines({ rows, title = false }: { rows: number; title?: boolean }) {
+    return (
+        <div className="space-y-3" aria-busy="true">
+            {title ? <Skeleton className="h-5 w-2/5" /> : null}
+            {Array.from({ length: rows }, (_, index) => <Skeleton key={index} className={index === rows - 1 ? "h-4 w-3/5" : "h-4 w-full"} />)}
+        </div>
+    );
 }
 
 function treeTitle(name: string, file: SkillPackageFile): ReactNode {

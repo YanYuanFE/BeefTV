@@ -1,6 +1,6 @@
 import { AudioLines, Check, Film, Image, MessageSquareText } from "lucide-react";
-import { Button } from "antd";
 
+import { Button } from "@/components/ui/button";
 import { ModelIcon } from "@/components/model-picker";
 import { cn } from "@/lib/utils";
 import {
@@ -78,7 +78,7 @@ export function ModelDefaultGrid({ config, onChange, onOpenChannels }: { config:
                         ) : (
                             <div className="px-1 py-3 text-xs text-foreground/45">
                                 <p>{localMode ? `尚未配置${capabilityLabel(group.capability)}模型` : `暂无${capabilityLabel(group.capability)}模型`}</p>
-                                {localMode && onOpenChannels ? <Button type="link" size="small" className="mt-1 h-auto p-0 text-xs" onClick={onOpenChannels}>前往添加本地模型渠道</Button> : null}
+                                {localMode && onOpenChannels ? <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-xs" onClick={onOpenChannels}>前往添加本地模型渠道</Button> : null}
                             </div>
                         )}
                     </section>

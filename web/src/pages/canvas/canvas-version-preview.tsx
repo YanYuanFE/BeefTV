@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/ui/product/empty-state";
-import { Button, Spin } from "antd";
-import { ArrowLeft, Eye, History, Maximize, Minus, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Eye, History, Loader2, Maximize, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { CanvasNode } from "@/components/canvas/canvas-node";
@@ -101,23 +101,26 @@ export function CanvasVersionPreview({ preview, onReturn, onShowVersions }: { pr
                     <strong className="text-sm">{preview.label} · 只读预览</strong>
                     <p className="mt-1 text-xs text-muted-foreground">{new Date(preview.date).toLocaleString("zh-CN")}</p>
                 </div>
-                <Button type="text" className="lg:!hidden" icon={<History size={15} />} onClick={onShowVersions}>
+                <Button variant="ghost" className="lg:!hidden" onClick={onShowVersions}>
+                    <History size={15} />
                     版本
                 </Button>
-                <Button className="col-span-3" icon={<ArrowLeft size={15} />} onClick={onReturn}>
+                <Button variant="outline" className="col-span-3" onClick={onReturn}>
+                    <ArrowLeft size={15} />
                     返回当前画布
                 </Button>
             </header>
             {preview.error ? (
                 <div role="alert" className="grid flex-1 place-content-center gap-4 p-6 text-center text-sm text-destructive">
                     <p>{preview.error}</p>
-                    <Button onClick={onShowVersions}>重新选择版本</Button>
+                    <Button variant="outline" onClick={onShowVersions}>重新选择版本</Button>
                 </div>
             ) : !project ? (
                 <div className="grid flex-1 place-items-center">
-                    <Spin tip="正在读取版本内容">
-                        <div className="p-10" />
-                    </Spin>
+                    <div className="flex flex-col items-center gap-2 p-10 text-sm text-muted-foreground" role="status">
+                        <Loader2 className="size-5 animate-spin" />
+                        <span>正在读取版本内容</span>
+                    </div>
                 </div>
             ) : (
                 <div className="relative min-h-0 flex-1">
@@ -194,12 +197,12 @@ export function CanvasVersionPreview({ preview, onReturn, onShowVersions }: { pr
                         </p>
                     ) : null}
                     <div data-canvas-no-zoom className="absolute bottom-5 left-5 flex items-center gap-1 rounded-lg border border-border bg-sidebar p-1 text-foreground shadow-sm">
-                        <Button type="text" aria-label="缩小预览" icon={<Minus size={15} />} onClick={() => zoom(viewport.k / 1.2)} />
+                        <Button variant="ghost" size="icon" aria-label="缩小预览" onClick={() => zoom(viewport.k / 1.2)}><Minus size={15} /></Button>
                         <span className="w-12 text-center text-xs tabular-nums" aria-label="预览缩放比例">
                             {Math.round(viewport.k * 100)}%
                         </span>
-                        <Button type="text" aria-label="放大预览" icon={<Plus size={15} />} onClick={() => zoom(viewport.k * 1.2)} />
-                        <Button type="text" aria-label="适应预览内容" icon={<Maximize size={15} />} onClick={fit} />
+                        <Button variant="ghost" size="icon" aria-label="放大预览" onClick={() => zoom(viewport.k * 1.2)}><Plus size={15} /></Button>
+                        <Button variant="ghost" size="icon" aria-label="适应预览内容" onClick={fit}><Maximize size={15} /></Button>
                     </div>
                 </div>
             )}

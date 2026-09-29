@@ -48,7 +48,7 @@ describe("LibTV generation history picker", () => {
         expect(insert).toContain("await persistCanvasDocument(projectId, { nodes: nextNodes })");
         expect(insert.indexOf("await persistCanvasDocument")).toBeGreaterThan(-1);
         expect(insert.indexOf("await persistCanvasDocument")).toBeLessThan(insert.indexOf("setGenerationHistoryOpen(false)"));
-        expect(insert.indexOf("await persistCanvasDocument")).toBeLessThan(insert.indexOf('message.success("已从生成历史插入到画布")'));
+        expect(insert.indexOf("await persistCanvasDocument")).toBeLessThan(insert.indexOf('toast.success("已从生成历史插入到画布")'));
         expect(insert.indexOf("flushCanvasStorePersistence")).toBe(-1);
         expect(insert.indexOf("saveCanvasProject")).toBe(-1);
     });

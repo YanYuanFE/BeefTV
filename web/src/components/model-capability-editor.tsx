@@ -1,6 +1,12 @@
 import { ImageSizePresetsEditor } from "./image-size-presets-editor";
 import { imageSizeConfigWithPresets, imageSizePresets } from "@/lib/image-size-presets";
-import { Input, InputNumber, Select } from "antd";
+import { ChevronDown } from "lucide-react";
+import { Checkbox } from "@/components/ui/base/checkbox";
+import { Select } from "@/components/ui/base/select";
+import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TagsInput } from "@/components/ui/tags-input";
 import { Switch } from "@/components/ui/base/switch";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import type { ReactNode } from "react";
@@ -94,10 +100,8 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                 <div className="admin-capability-protocol-grid">
                     <ProtocolParameterCard step="01" title="生成方式" description="允许的任务类型与默认任务">
                         <Field label="支持模式">
-                            <Select
-                                mode="multiple"
-                                className="w-full"
-                                disabled={disabled}
+                            <MultiSelect
+                                                                disabled={disabled}
                                 value={profile.operations}
                                 options={operationOptions}
                                 onChange={(operations) => update({ operations, defaultOperation: operations.includes(profile.defaultOperation) ? profile.defaultOperation : operations[0] || "text_to_video" })}
@@ -151,10 +155,8 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                     <ProtocolParameterCard step="03" title="画面规格" description="控制比例、分辨率及默认输出">
                         <div className="admin-capability-spec-grid">
                             <Field label="支持比例">
-                                <Select
-                                    mode="multiple"
-                                    className="w-full"
-                                    disabled={disabled}
+                                <MultiSelect
+                                                                        disabled={disabled}
                                     value={profile.ratios}
                                     options={ratioOptions.map((item) => ({ label: item, value: item }))}
                                     onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios[0] || "16:9" })}
@@ -164,14 +166,13 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                 <Select className="w-full" disabled={disabled} value={profile.defaultRatio} options={profile.ratios.map((item) => ({ label: item, value: item }))} onChange={(defaultRatio) => update({ defaultRatio })} />
                             </Field>
                             <Field label="输出分辨率">
-                                <Select
-                                    mode="tags"
+                                <TagsInput
                                     className="admin-capability-tags w-full"
                                     disabled={disabled}
                                     value={profile.resolutions}
                                     tokenSeparators={[","]}
                                     placeholder="选择或输入模型档位"
-                                    options={resolutionOptions.map((item) => ({ label: item.toUpperCase(), value: item }))}
+                                    suggestions={resolutionOptions}
                                     onChange={(resolutions) => update({ resolutions, defaultResolution: resolutions.includes(profile.defaultResolution) ? profile.defaultResolution : resolutions[0] || "" })}
                                 />
                             </Field>
@@ -205,10 +206,8 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                 <CapabilityBlock title="生成方式">
                     <div className="grid gap-3 sm:grid-cols-2">
                         <Field label="支持模式">
-                            <Select
-                                mode="multiple"
-                                className="w-full"
-                                disabled={disabled}
+                            <MultiSelect
+                                                                disabled={disabled}
                                 value={profile.operations}
                                 options={operationOptions}
                                 onChange={(operations) => update({ operations, defaultOperation: operations.includes(profile.defaultOperation) ? profile.defaultOperation : operations[0] || "text_to_video" })}
@@ -263,10 +262,8 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                 <CapabilityBlock title="画面规格">
                     <div className="grid gap-3 sm:grid-cols-2">
                         <Field label="画面比例">
-                            <Select
-                                mode="multiple"
-                                className="w-full"
-                                disabled={disabled}
+                            <MultiSelect
+                                                                disabled={disabled}
                                 value={profile.ratios}
                                 options={ratioOptions.map((item) => ({ label: item, value: item }))}
                                 onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios[0] || "16:9" })}
@@ -276,14 +273,13 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                             <Select className="w-full" disabled={disabled} value={profile.defaultRatio} options={profile.ratios.map((item) => ({ label: item, value: item }))} onChange={(defaultRatio) => update({ defaultRatio })} />
                         </Field>
                         <Field label="输出分辨率">
-                            <Select
-                                mode="tags"
+                            <TagsInput
                                 className="admin-capability-tags w-full"
                                 disabled={disabled}
                                 value={profile.resolutions}
                                 tokenSeparators={[","]}
                                 placeholder="选择标准档位或输入 768p 等模型专属值"
-                                options={resolutionOptions.map((item) => ({ label: item.toUpperCase(), value: item }))}
+                                suggestions={resolutionOptions}
                                 onChange={(resolutions) => update({ resolutions, defaultResolution: resolutions.includes(profile.defaultResolution) ? profile.defaultResolution : resolutions[0] || "" })}
                             />
                         </Field>
@@ -478,8 +474,7 @@ function ImageCapabilityEditor({ value, onChange, protocol, model, disabled, sec
                         {profile.quality.supported ? (
                             <div className="admin-capability-spec-grid">
                                 <Field label="质量支持值">
-                                    <Select
-                                        mode="tags"
+                                    <TagsInput
                                         className="admin-capability-tags w-full"
                                         disabled={disabled}
                                         value={profile.quality.values}
@@ -562,8 +557,7 @@ function ImageCapabilityEditor({ value, onChange, protocol, model, disabled, sec
                 {profile.quality.supported ? (
                     <div className="grid gap-3 sm:grid-cols-2">
                         <Field label="质量支持值">
-                            <Select
-                                mode="tags"
+                            <TagsInput
                                 className="admin-capability-tags w-full"
                                 disabled={disabled}
                                 value={profile.quality.values}
@@ -647,10 +641,43 @@ function ProtocolParameterCard({ step, title, description, children, className =
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <label className="block min-w-0">
+        <div role="group" aria-label={label} className="block min-w-0">
             <span className="mb-1 block text-[var(--fs-tiny)] text-foreground/48">{label}</span>
             {children}
-        </label>
+        </div>
+    );
+}
+
+/** Multi-choice picker over a fixed option list (replaces AntD Select mode="multiple"). */
+function MultiSelect<V extends string>({ value, options, disabled, onChange }: { value: V[]; options: Array<{ label: string; value: V }>; disabled?: boolean; onChange: (value: V[]) => void }) {
+    const labelOf = (item: V) => options.find((option) => option.value === item)?.label ?? item;
+    return (
+        <Popover>
+            <PopoverTrigger asChild disabled={disabled}>
+                <button
+                    type="button"
+                    aria-haspopup="listbox"
+                    className="relative flex min-h-8 w-full flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent py-1 pr-7 pl-1.5 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                >
+                    {value.map((item) => (
+                        <span key={item} className="inline-flex max-w-full items-center rounded-md bg-muted px-1.5 py-0.5 text-xs text-foreground">
+                            <span className="truncate">{labelOf(item)}</span>
+                        </span>
+                    ))}
+                    <ChevronDown className="absolute top-1/2 right-2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-44 gap-0 p-1">
+                {options.map((option) => {
+                    const checked = value.includes(option.value);
+                    return (
+                        <Checkbox key={option.value} className="w-full rounded-md px-2 py-1.5 hover:bg-surface-hover" checked={checked} onChange={(event) => onChange(event.target.checked ? [...value, option.value] : value.filter((item) => item !== option.value))}>
+                            {option.label}
+                        </Checkbox>
+                    );
+                })}
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -658,7 +685,7 @@ function NumberField({ label, value, min, max, disabled, onChange }: { label: st
     return (
         <label className="admin-capability-number-field block min-w-0">
             <span className="admin-capability-field-label mb-1.5 block text-xs text-foreground/62">{label}</span>
-            <InputNumber className="w-full" disabled={disabled} min={min} max={max} precision={0} value={value} onChange={onChange} />
+            <NumberInput className="w-full" disabled={disabled} min={min} max={max} precision={0} value={value} onChange={onChange} />
         </label>
     );
 }

@@ -1,10 +1,17 @@
 # Changelog
 
-All notable public changes to BeefTV are documented in this file.
+All notable public changes to Framely (formerly BeefTV) are documented in this file.
 
 ## Unreleased
 
-- Built-in BeefAPI can be connected from the desktop app without pasting a key.
+- Renamed the product from BeefTV to Framely: new logo, coral accent color, app bundle `Framely.app` (bundle ID `com.wails.framely`), `Framely.exe`, scripts and documentation.
+- Desktop data moves automatically from the `BeefTV` to the `Framely` application-data folder on first launch; quit BeefTV first. Existing BeefTV installs cannot auto-update across the rename and need a one-time manual install of Framely.
+- Desktop updates are published under the `framely/` updater channel.
+- Sign-in is now required: a standalone login page signs in to the configured model service account and syncs its models. The upstream service is never named in the UI; its address comes from `BEEFTV_GATEWAY_BASE_URL`.
+- Removed the built-in BeefAPI connection.
+- Replaced Ant Design with shadcn/ui (Radix) and Tailwind CSS across the app.
+- Video and image models are now recognized from the account catalog's declared endpoint types.
+- A generation result that races a concurrent canvas edit is now written to its target node instead of being dropped.
 - Prepared the first audited public source snapshot.
 - Added reproducible local builds, automated quality checks, and multi-architecture container publishing.
 - Standardized public artifacts, runtime identifiers, documentation, and repository links on the BeefTV name.

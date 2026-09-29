@@ -1,5 +1,7 @@
-import { Button, Modal } from "antd";
 import { Check, Star } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasNodeVideoPreviewUrl } from "@/lib/canvas/canvas-media-preview";
@@ -10,7 +12,7 @@ export function CanvasVersionCompareModal({ open, versions, onClose, onSetPrimar
     const theme = canvasThemes[useActiveTheme()];
     const modalWidth = Math.min(1180, Math.max(440, 112 + versions.length * 340));
     return (
-        <Modal title="版本对比" open={open} footer={null} width={modalWidth} centered onCancel={onClose} styles={{ body: { overflow: "hidden" } }}>
+        <AppModal title="版本对比" open={open} footer={null} width={modalWidth} onCancel={onClose} styles={{ body: { overflow: "hidden" } }}>
             <div className="thin-scrollbar grid max-h-[70vh] grid-flow-col auto-cols-[328px] gap-3 overflow-x-auto pb-2">
                 {versions.map((node) => {
                     const videoPreview = canvasNodeVideoPreviewUrl(node);
@@ -27,13 +29,13 @@ export function CanvasVersionCompareModal({ open, versions, onClose, onSetPrimar
                             <Info label="模型" value={node.metadata?.model || "默认模型"} />
                             <Info label="尺寸" value={node.metadata?.size || "默认尺寸"} />
                             <div><div className="whitespace-nowrap opacity-45">提示词</div><div className="mt-1 line-clamp-5 whitespace-pre-wrap break-words leading-5">{node.metadata?.composerContent || node.metadata?.prompt || "未填写"}</div></div>
-                            <Button block size="small" className="whitespace-nowrap" type={node.metadata?.versionPrimary ? "default" : "primary"} disabled={node.metadata?.versionPrimary} icon={<Star className="size-3.5" />} onClick={() => onSetPrimary(node.id)}>{node.metadata?.versionPrimary ? "当前主版本" : "设为主版本"}</Button>
+                            <Button size="sm" className="w-full whitespace-nowrap" variant={node.metadata?.versionPrimary ? "outline" : "default"} disabled={node.metadata?.versionPrimary} onClick={() => onSetPrimary(node.id)}><Star className="size-3.5" />{node.metadata?.versionPrimary ? "当前主版本" : "设为主版本"}</Button>
                         </div>
                     </article>
                     );
                 })}
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

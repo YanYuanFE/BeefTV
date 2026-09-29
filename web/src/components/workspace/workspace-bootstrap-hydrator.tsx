@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
@@ -12,6 +12,8 @@ import { useUserStore } from "@/stores/use-user-store";
 export function WorkspaceBootstrapHydrator({ children }: { children: ReactNode }) {
     const hydrated = useUserStore((state) => state.hydrated);
     const modelConfigReady = useRef(false);
+    // The login guard reads the model config, so routes wait until it is restored.
+    const [configRestored, setConfigRestored] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -28,11 +30,14 @@ export function WorkspaceBootstrapHydrator({ children }: { children: ReactNode }
         })
             .then(() => {
                 modelConfigReady.current = true;
-                if (!cancelled) preloadWorkspaceRoute(window.location.pathname);
+                if (cancelled) return;
+                setConfigRestored(true);
+                preloadWorkspaceRoute(window.location.pathname);
             })
             .catch(() => {
                 if (cancelled) return;
                 modelConfigReady.current = true;
+                setConfigRestored(true);
                 useUserStore.getState().setHydrated(true);
             });
         return () => {
@@ -58,7 +63,7 @@ export function WorkspaceBootstrapHydrator({ children }: { children: ReactNode }
         };
     }, []);
 
-    return hydrated ? children : <FullScreenLoader label="正在准备本地工作区" detail="加载项目、画布与模型配置" />;
+    return hydrated && configRestored ? children : <FullScreenLoader label="正在准备本地工作区" detail="加载项目、画布与模型配置" />;
 }
 
 export async function initializeWorkspaceState<T>({

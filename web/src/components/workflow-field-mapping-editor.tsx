@@ -1,10 +1,16 @@
-import { Button, Collapse, Input, InputNumber, Select, Tag } from "antd";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/base/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useMemo, useState } from "react";
 
 import { Switch } from "@/components/ui/base/switch";
 import { ToolButton } from "@/components/ui/base/buttons";
-import { ListFilter, ListPlus, Power, PowerOff } from "lucide-react";
+import { ChevronRight, ListFilter, ListPlus, Power, PowerOff } from "lucide-react";
 
 import type { WorkflowFieldMapping } from "@/stores/use-config-store";
 import { workflowFieldChoiceValues, workflowFieldConfigurationError, workflowFieldNumberBounds, workflowFieldPresetOptions } from "@/lib/model-capabilities";
@@ -36,6 +42,9 @@ const sourceOptions = [
     { label: "音频音量", value: "audioVolume" },
     { label: "音频指令", value: "audioInstructions" },
 ] as const;
+
+// Radix Select forbids an empty item value; the "keep workflow default" source uses this sentinel.
+const DEFAULT_SOURCE_VALUE = "__workflow_default__";
 
 const fieldTypeOptions = [
     { label: "文本", value: "TEXT" },
@@ -78,18 +87,19 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                     共 {fields.length} 个字段，已开启 {enabledCount} 个。字段调整会立即保存到当前工作流。
                 </p>
                 <div className="flex flex-wrap items-center gap-1">
-                    <Button type="text" size="small" icon={<Power className="size-3.5" />} disabled={disabled || enabledControllableCount === controllableFields.length} onClick={() => updateAllFields(true)}>
+                    <Button variant="ghost" size="sm" disabled={disabled || enabledControllableCount === controllableFields.length} onClick={() => updateAllFields(true)}>
+                        <Power className="size-3.5" />
                         开启全部
                     </Button>
-                    <Button type="text" size="small" danger icon={<PowerOff className="size-3.5" />} disabled={disabled || enabledControllableCount === 0} onClick={() => updateAllFields(false)}>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={disabled || enabledControllableCount === 0} onClick={() => updateAllFields(false)}>
+                        <PowerOff className="size-3.5" />
                         关闭全部
                     </Button>
                     <ToolButton size="sm" icon={<ListFilter />} active={showOnlyEnabled} label={showOnlyEnabled ? "显示全部" : "仅显示已开启"} onClick={() => setShowOnlyEnabled((current) => !current)} />
                 </div>
             </div>
-            <Collapse
-                size="small"
-                items={visibleFields.map(({ field, index }) => {
+            <div className="overflow-hidden rounded-md border border-border">
+                {visibleFields.map(({ field, index }) => {
                     const source = String(field.source || "");
                     const sourceLabel = sourceOptions.find((item) => item.value === source)?.label || source || "保留工作流默认值";
                     const enabled = field.enabled !== false;
@@ -101,40 +111,39 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                     const fieldDisabled = disabled || !enabled || !safeToOverride;
                     const configurationError = workflowFieldConfigurationError(field);
                     const roleLabel = field.role === "prompt" ? "提示词" : field.role === "media" ? "素材" : field.role === "internal" ? "内部参数" : "业务参数";
-                    return {
-                        key: field.id || `${field.nodeId}::${field.fieldName}::${index}`,
-                        label: (
-                            <div className="flex min-w-0 items-center gap-2">
+                    return (
+                        <Collapsible key={field.id || `${field.nodeId}::${field.fieldName}::${index}`} className="group/field border-b border-border last:border-b-0">
+                            <div className="flex min-w-0 items-center gap-2 bg-muted/40 px-3 py-2 text-sm">
+                            <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/field:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
                                 <span className="truncate font-medium">{field.label || field.fieldName}</span>
                                 <Tooltip title={`${field.nodeId}.${field.fieldName}`}>
                                     <span className="truncate text-xs text-foreground/50">
                                         {field.nodeId}.{field.fieldName}
                                     </span>
                                 </Tooltip>
-                                <Tag className="ml-auto shrink-0">{sourceLabel}</Tag>
-                                <Tag color={safeToOverride ? undefined : "error"} className="shrink-0">
+                                <Badge variant="outline" className="ml-auto shrink-0">{sourceLabel}</Badge>
+                                <Badge variant={safeToOverride ? "outline" : "destructive"} className="shrink-0">
                                     {safeToOverride ? roleLabel : "禁止覆盖"}
-                                </Tag>
-                            </div>
-                        ),
-                        extra: (
+                                </Badge>
+                            </CollapsibleTrigger>
                             <span onClick={(event) => event.stopPropagation()}>
                                 <Switch size="sm" checked={enabled} disabled={disabled || !safeToOverride} aria-label={`启用字段 ${field.label || field.fieldName}`} onChange={(checked) => updateField(index, { enabled: checked })} />
                             </span>
-                        ),
-                        children: (
-                            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                            </div>
+                            <CollapsibleContent>
+                            <div className="grid gap-3 border-t border-border p-3 md:grid-cols-2 lg:grid-cols-3">
                                 <label className="grid gap-1 text-xs text-foreground/60">
                                     显示名称
                                     <Input value={field.label || ""} disabled={fieldDisabled} placeholder={field.fieldName} onChange={(event) => updateField(index, { label: event.target.value })} />
                                 </label>
                                 <label className="grid gap-1 text-xs text-foreground/60">
                                     参数类型
-                                    <Select value={fieldType} disabled={fieldDisabled} options={fieldTypeOptions.map((item) => ({ ...item }))} onChange={(value) => updateField(index, { fieldType: value })} />
+                                    <Select value={fieldType} disabled={fieldDisabled} ariaLabel="参数类型" options={fieldTypeOptions.map((item) => ({ ...item }))} onChange={(value) => updateField(index, { fieldType: value })} />
                                 </label>
                                 <label className="grid gap-1 text-xs text-foreground/60">
                                     输入来源
-                                    <Select showSearch value={source} disabled={fieldDisabled} options={sourceOptions.map((item) => ({ ...item }))} optionFilterProp="label" onChange={(value) => updateField(index, sourcePatch(field, value))} />
+                                    <Select value={source || DEFAULT_SOURCE_VALUE} disabled={fieldDisabled} ariaLabel="输入来源" options={sourceOptions.map((item) => ({ label: item.label, value: item.value || DEFAULT_SOURCE_VALUE }))} onChange={(value) => updateField(index, sourcePatch(field, value === DEFAULT_SOURCE_VALUE ? "" : value))} />
                                 </label>
                                 {fieldType === "SELECT" || choices.length || presetOptions.length ? (
                                     <label className="grid gap-1 text-xs text-foreground/60 md:col-span-2 lg:col-span-3">
@@ -142,18 +151,19 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                                             <span>下拉选项（每行一个）</span>
                                             {presetOptions.length ? (
                                                 <Button
-                                                    type="text"
-                                                    size="small"
-                                                    icon={<ListPlus className="size-3.5" />}
+                                                    variant="ghost"
+                                                    size="sm"
                                                     disabled={fieldDisabled}
                                                     onClick={() => updateField(index, { fieldType: "SELECT", options: presetOptions, optionsSource: "preset" })}
                                                 >
+                                                    <ListPlus className="size-3.5" />
                                                     常用模板
                                                 </Button>
                                             ) : null}
                                         </span>
-                                        <Input.TextArea
-                                            autoSize={{ minRows: 2, maxRows: 6 }}
+                                        <Textarea
+                                            rows={2}
+                                            className="field-sizing-content min-h-14 max-h-36"
                                             value={choices.map(workflowOptionText).join("\n")}
                                             disabled={fieldDisabled}
                                             placeholder={"1:1\n16:9\n9:16"}
@@ -165,15 +175,15 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                                     <>
                                         <label className="grid gap-1 text-xs text-foreground/60">
                                             最小值
-                                            <InputNumber className="w-full" value={numberOrUndefined(field.min)} max={numberOrUndefined(field.max)} disabled={fieldDisabled} onChange={(value) => updateField(index, { min: value ?? undefined })} />
+                                            <NumberInput className="w-full" value={numberOrUndefined(field.min)} max={numberOrUndefined(field.max)} disabled={fieldDisabled} onChange={(value) => updateField(index, { min: value ?? undefined })} />
                                         </label>
                                         <label className="grid gap-1 text-xs text-foreground/60">
                                             最大值
-                                            <InputNumber className="w-full" value={numberOrUndefined(field.max)} min={numberOrUndefined(field.min)} disabled={fieldDisabled} onChange={(value) => updateField(index, { max: value ?? undefined })} />
+                                            <NumberInput className="w-full" value={numberOrUndefined(field.max)} min={numberOrUndefined(field.min)} disabled={fieldDisabled} onChange={(value) => updateField(index, { max: value ?? undefined })} />
                                         </label>
                                         <label className="grid gap-1 text-xs text-foreground/60">
                                             步长
-                                            <InputNumber className="w-full" min={0.000001} value={numberOrUndefined(field.step)} disabled={fieldDisabled} onChange={(value) => updateField(index, { step: value ?? undefined })} />
+                                            <NumberInput className="w-full" min={0.000001} value={numberOrUndefined(field.step)} disabled={fieldDisabled} onChange={(value) => updateField(index, { step: value ?? undefined })} />
                                         </label>
                                         {configurationError ? <div className="text-xs text-error md:col-span-2 lg:col-span-3">{configurationError}</div> : null}
                                     </>
@@ -181,7 +191,7 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                                 {sourceUsesIndex(source) ? (
                                     <label className="grid gap-1 text-xs text-foreground/60">
                                         {source === "referenceImage" ? "图片槽位" : source === "referenceVideo" ? "视频槽位" : "音频槽位"}
-                                        <InputNumber
+                                        <NumberInput
                                             className="w-full"
                                             min={1}
                                             precision={0}
@@ -208,10 +218,11 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                                     </label>
                                 ) : null}
                             </div>
-                        ),
-                    };
+                            </CollapsibleContent>
+                        </Collapsible>
+                    );
                 })}
-            />
+            </div>
             {showOnlyEnabled && !visibleFields.length ? <EmptyState size="compact" description="暂无已开启字段" /> : null}
         </div>
     );
@@ -225,23 +236,25 @@ function DefaultValueInput({ field, disabled, onChange }: { field: WorkflowField
     if (fieldType === "BOOLEAN" || typeof value === "boolean") {
         return (
             <Select
-                value={Boolean(value)}
+                value={String(Boolean(value))}
                 disabled={disabled}
                 options={[
-                    { label: "true", value: true },
-                    { label: "false", value: false },
+                    { label: "true", value: "true" },
+                    { label: "false", value: "false" },
                 ]}
-                onChange={onChange}
+                onChange={(next) => onChange(next === "true")}
             />
         );
     }
     if (choices.length) {
-        return <Select showSearch value={value} disabled={disabled} options={choices.map((option) => ({ label: workflowOptionText(option), value: workflowOptionValue(option) }))} onChange={onChange} />;
+        // Select works on strings; map back to the original (possibly numeric) option value on change.
+        const choiceValues = choices.map(workflowOptionValue);
+        return <Select value={value === undefined || value === null ? undefined : String(value)} disabled={disabled} options={choices.filter((option) => workflowOptionText(option) !== "").map((option) => ({ label: workflowOptionText(option), value: workflowOptionText(option) }))} onChange={(next) => onChange(next === undefined ? undefined : choiceValues.find((item) => String(item) === next) ?? next)} />;
     }
     if (fieldType === "NUMBER" || typeof value === "number" || bounds.min !== undefined || bounds.max !== undefined || bounds.step !== undefined) {
-        return <InputNumber className="w-full" value={numberOrUndefined(value)} disabled={disabled} min={bounds.min} max={bounds.max} step={bounds.step} onChange={onChange} />;
+        return <NumberInput className="w-full" value={numberOrUndefined(value)} disabled={disabled} min={bounds.min} max={bounds.max} step={bounds.step} onChange={onChange} />;
     }
-    return <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} value={displayValue(value)} disabled={disabled} onChange={(event) => onChange(event.target.value)} />;
+    return <Textarea rows={1} className="field-sizing-content min-h-8 max-h-28" value={displayValue(value)} disabled={disabled} onChange={(event) => onChange(event.target.value)} />;
 }
 
 function sourcePatch(field: WorkflowFieldMapping, source: string): Partial<WorkflowFieldMapping> {

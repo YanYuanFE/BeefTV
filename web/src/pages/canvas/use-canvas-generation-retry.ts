@@ -1,5 +1,4 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 
 import { buildNodeGenerationContext, hydrateNodeGenerationContext } from "@/components/canvas/canvas-node-generation";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
@@ -36,6 +35,7 @@ import { resolveModelRequestConfig, useConfigStore, useEffectiveConfig } from "@
 import type { Asset } from "@/stores/use-asset-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeTypeId } from "@/types/canvas";
 import { canvasGenerationFailureMetadata, canvasGenerationRetryBlocked, type CanvasGenerationFailureInput } from "./canvas-generation-failure";
+import { toast } from "sonner";
 
 type UseCanvasGenerationRetryOptions = {
     projectId: string;
@@ -70,19 +70,18 @@ export function useCanvasGenerationRetry({
     bindGenerationTask,
     applyGenerationTaskResult,
 }: UseCanvasGenerationRetryOptions) {
-    const { message } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
 
     return useCallback(
         async (node: CanvasNodeData) => {
             if (isDepthCaptureResultNode(node)) {
-                message.warning("深度动作捕捉节点必须使用本地深度任务重试");
+                toast.warning("深度动作捕捉节点必须使用本地深度任务重试");
                 return;
             }
             const retryMode = retryModeForNode(node.type);
             if (!retryMode) {
-                message.warning("当前节点不能使用通用生成重试");
+                toast.warning("当前节点不能使用通用生成重试");
                 return;
             }
             const batchRoot = node.metadata?.batchRootId ? nodesRef.current.find((item) => item.id === node.metadata?.batchRootId) : null;
@@ -122,7 +121,7 @@ export function useCanvasGenerationRetry({
                 }
             } catch (error) {
                 const failure = generationFailureMetadata(error, retryPromptSource, sourceNodeReferenceImages(generationSourceNode));
-                message.error(failure.errorDetails);
+                toast.error(failure.errorDetails);
                 setNodes((current) => current.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, ...failure } } : item)));
                 return;
             }
@@ -138,13 +137,13 @@ export function useCanvasGenerationRetry({
                     context = { ...rawContext, prompt: skillExecution.prompt };
                     skillMetadata = skillExecution.metadata;
                 } catch (error) {
-                    message.error(error instanceof Error ? error.message : "技能上下文加载失败");
+                    toast.error(error instanceof Error ? error.message : "技能上下文加载失败");
                     return;
                 }
             }
             const prompt = (context?.prompt || savedImageMetadata?.prompt || "").trim();
             if (!prompt) {
-                message.warning("找不到提示词，无法重试");
+                toast.warning("找不到提示词，无法重试");
                 return;
             }
             let mediaPrompt = prompt;
@@ -157,25 +156,25 @@ export function useCanvasGenerationRetry({
                         styleMetadata = { styleProfileJson: runtime.profileJson, styleExecutionPlan: runtime.plan };
                     }
                 } catch (error) {
-                    message.error(error instanceof Error ? error.message : "项目画风与当前模型不兼容");
+                    toast.error(error instanceof Error ? error.message : "项目画风与当前模型不兼容");
                     return;
                 }
             }
             if (retryMode === "audio" && context?.characterReferences.length) {
                 if (context.characterReferences.length !== 1) {
-                    message.error("角色配音一次只能引用一个角色卡");
+                    toast.error("角色配音一次只能引用一个角色卡");
                     return;
                 }
                 const voice = context.resolvedCharacterVoices[0];
                 if (!voice) {
-                    message.error("角色尚未绑定可用声音，无法重试角色配音任务");
+                    toast.error("角色尚未绑定可用声音，无法重试角色配音任务");
                     return;
                 }
                 generationConfig = { ...generationConfig, audioVoice: voice.voiceKey, audioInstructions: [voice.instructions, generationConfig.audioInstructions].filter(Boolean).join("；") };
             }
             const isEmotionRetry = Boolean(node.metadata?.emotionEdit);
             if (isEmotionRetry && resolveModelRequestConfig(generationConfig, generationConfig.model).interfaceType !== "openai-image") {
-                message.error("表情编辑需要支持蒙版的 OpenAI Images 渠道，当前渠道已拒绝整图重绘");
+                toast.error("表情编辑需要支持蒙版的 OpenAI Images 渠道，当前渠道已拒绝整图重绘");
                 return;
             }
             const useReferenceImages = !isEmotionRetry && (Boolean(context?.referenceImages.length) || (useStoredSource && savedImageMetadata?.generationType === "edit"));
@@ -186,21 +185,21 @@ export function useCanvasGenerationRetry({
                     : context?.referenceImages || [];
             if (useReferenceImages && !retryReferenceImages) {
                 markMissingReferences(node.id, setNodes);
-                message.error("参考图片已丢失，无法继续重试");
+                toast.error("参考图片已丢失，无法继续重试");
                 return;
             }
             const retryImages = retryReferenceImages || [];
             if (retryMode === "image") {
                 const referenceLimitError = canvasImageReferenceLimitError(generationConfig, retryImages);
                 if (referenceLimitError) {
-                    message.error(referenceLimitError);
+                    toast.error(referenceLimitError);
                     return;
                 }
             }
             const storedVideoImages = node.type === CanvasNodeType.Video && !context?.referenceImages.length ? await resolveStoredReferenceImages(node.metadata?.references) : [];
             if (storedVideoImages === null) {
                 markMissingReferences(node.id, setNodes);
-                message.error("参考图片已丢失，无法继续重试");
+                toast.error("参考图片已丢失，无法继续重试");
                 return;
             }
             const videoReferenceImages = context?.referenceImages.length ? context.referenceImages : storedVideoImages;
@@ -224,7 +223,7 @@ export function useCanvasGenerationRetry({
             const runAndConsumeRetry = async (input: Parameters<typeof runBackendCanvasGenerationTask>[0]) => {
                 submittedInput = input;
                 if (canvasGenerationRetryBlocked(node.metadata, input)) {
-                    message.warning(node.metadata?.errorDetails || "请先查看失败原因并调整输入，再重新生成");
+                    toast.warning(node.metadata?.errorDetails || "请先查看失败原因并调整输入，再重新生成");
                     return;
                 }
                 const originalError = { code: node.metadata?.generationErrorCode || node.metadata?.taskErrorCode, message: node.metadata?.errorDetails };
@@ -338,7 +337,7 @@ export function useCanvasGenerationRetry({
                     const nextEmotionEdit = { ...emotionEdit, editRegion: artifacts.editRegion, sourceWidth: artifacts.imageWidth, sourceHeight: artifacts.imageHeight, providerSize: emotionConfig.size, editMode: editPlan.mode };
                     const providerPrompt = normalizeEmotionPromptForProvider(mediaPrompt);
                     const mask = emotionProviderMask(editPlan, { id: `${emotionSource.id}-emotion-mask`, name: "emotion-mask.png", type: "image/png", dataUrl: artifacts.maskDataUrl });
-                    if (editPlan.notice) message.info(editPlan.notice);
+                    if (editPlan.notice) toast.info(editPlan.notice);
                     const generationMetadata = { ...buildImageGenerationMetadata("edit", emotionConfig, 1, [sourceReference]), size: `${artifacts.imageWidth}x${artifacts.imageHeight}` };
                     setNodes((current) =>
                         current.map((item) =>
@@ -396,14 +395,14 @@ export function useCanvasGenerationRetry({
             } catch (error) {
                 if (isGenerationCanceled(error)) return;
                 const failure = canvasGenerationFailureMetadata(error, submittedInput);
-                message.error(failure.errorDetails);
+                toast.error(failure.errorDetails);
                 setNodes((current) => current.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, ...failure } } : item)));
             } finally {
                 finishGenerationRequest(node.id, controller);
                 setRunningNodeId(null);
             }
         },
-        [addedSkills, applyGenerationTaskResult, assets, bindGenerationTask, connectionsRef, domainProjectId, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, nodesRef, projectId, setNodes, setRunningNodeId, startGenerationRequest],
+        [addedSkills, applyGenerationTaskResult, assets, bindGenerationTask, connectionsRef, domainProjectId, effectiveConfig, finishGenerationRequest, isAiConfigReady, nodesRef, projectId, setNodes, setRunningNodeId, startGenerationRequest],
     );
 }
 

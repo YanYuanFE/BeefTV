@@ -477,15 +477,16 @@
     border: 0;
 }
 
-.canvas-angle-slider.ant-slider .ant-slider-rail {
+.canvas-angle-slider [data-slot="slider-track"] {
     background: color-mix(in srgb, var(--fg) 16%, transparent) !important;
 }
 
-.canvas-angle-slider.ant-slider .ant-slider-track {
+.canvas-angle-slider [data-slot="slider-range"] {
     background: var(--fg) !important;
 }
 
-.canvas-angle-slider.ant-slider .ant-slider-handle::after {
+.canvas-angle-slider [data-slot="slider-thumb"] {
+    border-color: transparent !important;
     box-shadow: 0 0 0 2px var(--fg) !important;
     background: var(--bg) !important;
 }

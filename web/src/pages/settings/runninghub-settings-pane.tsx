@@ -1,10 +1,14 @@
-import { App, AutoComplete, Button, Form, Input, Popconfirm } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 import { Select } from "@/components/ui/base/select";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
+import { Button } from "@/components/ui/button";
+import { ConfirmPopover } from "@/components/ui/confirm-popover";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { WorkflowFieldMappingEditor } from "@/components/workflow-field-mapping-editor";
 import { WorkflowGraphEditor } from "@/components/workflow-graph-editor";
 import { WorkflowTestWorkbench } from "@/components/workflow-test-workbench";
@@ -21,6 +25,12 @@ import {
     type RunningHubWorkflowKind,
     type WorkflowFieldMapping,
 } from "@/stores/use-config-store";
+import { toast } from "sonner";
+
+const baseUrlOptions = [
+    { label: "中国站 · https://www.runninghub.cn", value: "https://www.runninghub.cn" },
+    { label: "国际站 · https://www.runninghub.ai", value: "https://www.runninghub.ai" },
+];
 
 const capabilityOptions = [
     { label: "图片", value: "image" },
@@ -57,7 +67,6 @@ function workflowNeedsMediaUpload(fields: WorkflowFieldMapping[]) {
 }
 
 export function RunningHubSettingsPane() {
-    const { message } = App.useApp();
     const config = useConfigStore((state) => state.config);
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const runningHub = config.runningHub;
@@ -112,8 +121,8 @@ export function RunningHubSettingsPane() {
 
     const fetchWorkflow = async () => {
         const id = draftId.trim();
-        if (!id) return message.warning(kind === "app" ? "请先填写 webappId" : "请先填写 workflowId");
-        if (!runningHub.apiKey.trim()) return message.warning("请先填写积分 API Key");
+        if (!id) return toast.warning(kind === "app" ? "请先填写 webappId" : "请先填写 workflowId");
+        if (!runningHub.apiKey.trim()) return toast.warning("请先填写积分 API Key");
         setFetching(true);
         try {
             // 管理接口只接受拉取参数所需的小请求，不能把已保存工作流及大段 JSON 一并提交。
@@ -139,11 +148,11 @@ export function RunningHubSettingsPane() {
             persistWorkflow(item, capability);
             setWorkflowText(item.workflowJson ? JSON.stringify(item.workflowJson, null, 2) : "");
             setTitle(item.title || "");
-            message.success(
+            toast.success(
                 workflowNeedsMediaUpload(item.fields || []) ? `${kind === "app" ? "RunningHub App" : "RunningHub 工作流"}参数已保存；生成时会调用 RunningHub 素材上传接口` : `${kind === "app" ? "RunningHub App" : "RunningHub 工作流"}参数已重新拉取并保存`,
             );
         } catch (error) {
-            message.error(error instanceof Error ? `拉取失败：${error.message}` : "拉取 RunningHub 参数失败");
+            toast.error(error instanceof Error ? `拉取失败：${error.message}` : "拉取 RunningHub 参数失败");
         } finally {
             setFetching(false);
         }
@@ -156,7 +165,7 @@ export function RunningHubSettingsPane() {
         setDraftId("");
         setWorkflowText("");
         setTitle("");
-        message.success(`已删除${workflowKind(workflow) === "app" ? " App" : " Workflow"}：${workflow.title || workflow.workflowId}`);
+        toast.success(`已删除${workflowKind(workflow) === "app" ? " App" : " Workflow"}：${workflow.title || workflow.workflowId}`);
     };
 
     const updateCapability = (value: RunningHubCapability) => {
@@ -174,7 +183,7 @@ export function RunningHubSettingsPane() {
             return;
         }
         const workflow = runningHub.workflows.find((item) => workflowEntryKey(item) === entryKey);
-        if (!workflow) return message.error("已保存条目不存在，请刷新页面后重试");
+        if (!workflow) return toast.error("已保存条目不存在，请刷新页面后重试");
         const nextCapability = workflowCapability(workflow, runningHub.capability);
         update({ workflowId: workflow.workflowId.trim(), selectedKind: workflowKind(workflow), capability: nextCapability });
         setDraftId(workflow.workflowId.trim());
@@ -194,13 +203,13 @@ export function RunningHubSettingsPane() {
 
     const updateWorkflowJson = (value: string) => {
         if (kind === "app") return;
-        if (!selected || !draftMatchesSelected) return message.warning("请先拉取或选择要编辑的 Workflow");
+        if (!selected || !draftMatchesSelected) return toast.warning("请先拉取或选择要编辑的 Workflow");
         try {
             const parsed = value.trim() ? JSON.parse(value) : {};
             if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("工作流 JSON 必须是对象");
             persistWorkflow({ ...selected, title: title.trim() || selected.title, workflowJson: parsed });
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "工作流 JSON 格式无效");
+            toast.error(error instanceof Error ? error.message : "工作流 JSON 格式无效");
         }
     };
 
@@ -215,7 +224,7 @@ export function RunningHubSettingsPane() {
     };
 
     return (
-        <Form layout="vertical" requiredMark={false}>
+        <div>
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>RunningHub 工作流</h2>
@@ -224,31 +233,32 @@ export function RunningHubSettingsPane() {
                 <Switch checked={runningHub.enabled} checkedChildren="启用" unCheckedChildren="停用" onChange={(enabled) => update({ enabled })} />
             </div>
             <div className="settings-section grid gap-3 lg:grid-cols-12">
-                <Form.Item label="Base URL" className="mb-0 lg:col-span-6">
-                    <AutoComplete
+                <SettingsField label="Base URL" htmlFor="runninghub-base-url" className="lg:col-span-6">
+                    <Input
+                        id="runninghub-base-url"
+                        list="runninghub-base-url-options"
                         className="w-full"
                         value={runningHub.baseUrl}
-                        options={[
-                            { label: "中国站 · https://www.runninghub.cn", value: "https://www.runninghub.cn" },
-                            { label: "国际站 · https://www.runninghub.ai", value: "https://www.runninghub.ai" },
-                        ]}
-                        onChange={(baseUrl) => update({ baseUrl })}
+                        placeholder="选择官方站点或填写兼容网关地址"
+                        onChange={(event) => update({ baseUrl: event.target.value })}
                         onBlur={() => update({ baseUrl: runningHub.baseUrl.trim().replace(/\/+$/, "") })}
-                    >
-                        <Input placeholder="选择官方站点或填写兼容网关地址" />
-                    </AutoComplete>
-                </Form.Item>
-                <Form.Item label="积分 API Key（工作流提交）" className="mb-0 lg:col-span-6" extra="用于拉取工作流参数、创建任务和查询结果；最终提交固定使用这把 Key。若提示企业版余额不足，请检查这里没有填企业级上传 Key。">
-                    <Input.Password autoComplete="new-password" value={runningHub.apiKey} onChange={(event) => update({ apiKey: event.target.value })} />
-                </Form.Item>
-                <Form.Item label="素材上传 API Key（企业级）" className="mb-0 lg:col-span-6" extra="仅用于上传参考图片、视频、音频和蒙版；没有参考素材时可以留空。">
-                    <Input.Password autoComplete="new-password" value={runningHub.uploadApiKey || ""} onChange={(event) => update({ uploadApiKey: event.target.value })} />
-                </Form.Item>
-                <Form.Item label="工作流用途" className="mb-0 lg:col-span-6">
-                    <Select className="w-full" value={capability} options={capabilityOptions} onChange={(value) => updateCapability(value as RunningHubCapability)} />
-                </Form.Item>
-                <Form.Item label="已保存条目" className="mb-0 lg:col-span-6">
+                    />
+                    <datalist id="runninghub-base-url-options">
+                        {baseUrlOptions.map((option) => <option key={option.value} value={option.value} label={option.label} />)}
+                    </datalist>
+                </SettingsField>
+                <SettingsField label="积分 API Key（工作流提交）" htmlFor="runninghub-api-key" className="lg:col-span-6" extra="用于拉取工作流参数、创建任务和查询结果；最终提交固定使用这把 Key。若提示企业版余额不足，请检查这里没有填企业级上传 Key。">
+                    <Input id="runninghub-api-key" type="password" autoComplete="new-password" value={runningHub.apiKey} onChange={(event) => update({ apiKey: event.target.value })} />
+                </SettingsField>
+                <SettingsField label="素材上传 API Key（企业级）" htmlFor="runninghub-upload-api-key" className="lg:col-span-6" extra="仅用于上传参考图片、视频、音频和蒙版；没有参考素材时可以留空。">
+                    <Input id="runninghub-upload-api-key" type="password" autoComplete="new-password" value={runningHub.uploadApiKey || ""} onChange={(event) => update({ uploadApiKey: event.target.value })} />
+                </SettingsField>
+                <SettingsField label="工作流用途" htmlFor="runninghub-capability" className="lg:col-span-6">
+                    <Select id="runninghub-capability" className="w-full" value={capability} options={capabilityOptions} onChange={(value) => updateCapability(value as RunningHubCapability)} />
+                </SettingsField>
+                <SettingsField label="已保存条目" htmlFor="runninghub-saved-entry" className="lg:col-span-6">
                     <Select
+                        id="runninghub-saved-entry"
                         className="w-full"
                         allowClear
                         value={selectedKey}
@@ -259,8 +269,8 @@ export function RunningHubSettingsPane() {
                         placeholder="选择已保存 Workflow / App"
                         onChange={selectWorkflow}
                     />
-                </Form.Item>
-                <Form.Item label="类型" className="mb-0 lg:col-span-3">
+                </SettingsField>
+                <SettingsField label="类型" className="lg:col-span-3">
                     <SegmentedControl
                         block
                         value={kind}
@@ -268,33 +278,37 @@ export function RunningHubSettingsPane() {
                             { label: "Workflow", value: "workflow" },
                             { label: "App", value: "app" },
                         ]}
+                        ariaLabel="类型"
                         onChange={(value) => changeKind(value as RunningHubWorkflowKind)}
                     />
-                </Form.Item>
-                <Form.Item label={kind === "app" ? "webappId" : "workflowId"} className="mb-0 lg:col-span-3">
-                    <Input value={draftId} placeholder={kind === "app" ? "RunningHub webappId" : "RunningHub workflowId"} onChange={(event) => setDraftId(event.target.value)} />
-                </Form.Item>
-                <Form.Item label="显示名称" className="mb-0 lg:col-span-6">
-                    <Input value={title} placeholder="可选" onChange={(event) => setTitle(event.target.value)} onBlur={updateTitle} />
-                </Form.Item>
-                <Form.Item label="操作" className="workflow-entry-actions-field mb-0 lg:col-span-6">
+                </SettingsField>
+                <SettingsField label={kind === "app" ? "webappId" : "workflowId"} htmlFor="runninghub-draft-id" className="lg:col-span-3">
+                    <Input id="runninghub-draft-id" value={draftId} placeholder={kind === "app" ? "RunningHub webappId" : "RunningHub workflowId"} onChange={(event) => setDraftId(event.target.value)} />
+                </SettingsField>
+                <SettingsField label="显示名称" htmlFor="runninghub-title" className="lg:col-span-6">
+                    <Input id="runninghub-title" value={title} placeholder="可选" onChange={(event) => setTitle(event.target.value)} onBlur={updateTitle} />
+                </SettingsField>
+                <SettingsField label="操作" className="workflow-entry-actions-field lg:col-span-6">
                     <div className="workflow-entry-actions">
-                        <Button type="primary" icon={<RefreshCw className="size-4" />} loading={fetching} onClick={() => void fetchWorkflow()}>
+                        <Button className="whitespace-nowrap" loading={fetching} onClick={() => void fetchWorkflow()}>
+                            {fetching ? null : <RefreshCw className="size-4" />}
                             拉取参数
                         </Button>
-                        <Popconfirm
+                        <ConfirmPopover
                             title="删除当前条目？"
                             description={selected ? `${workflowKind(selected) === "app" ? "App" : "Workflow"} · ${selected.title || selected.workflowId}` : undefined}
                             okText="删除"
                             cancelText="取消"
+                            danger
                             onConfirm={() => selected && removeWorkflow(selected)}
                         >
-                            <Button danger icon={<Trash2 className="size-4" />} disabled={!selected}>
+                            <Button variant="destructive" className="whitespace-nowrap" disabled={!selected}>
+                                <Trash2 className="size-4" />
                                 删除
                             </Button>
-                        </Popconfirm>
+                        </ConfirmPopover>
                     </div>
-                </Form.Item>
+                </SettingsField>
                 <div className="workflow-workspace-tabs lg:col-span-12">
                     <SegmentedControl
                         block
@@ -303,6 +317,7 @@ export function RunningHubSettingsPane() {
                             { label: "字段配置", value: "fields" },
                             { label: "测试画布", value: "test" },
                         ]}
+                        ariaLabel="工作区模式"
                         onChange={(value) => setWorkspaceMode(value as "fields" | "test")}
                     />
                 </div>
@@ -313,23 +328,25 @@ export function RunningHubSettingsPane() {
                         </div>
                         <details className="workflow-json-details lg:col-span-12">
                             <summary>查看或编辑 ComfyUI API JSON</summary>
-                            <Form.Item className="mb-0 mt-3" extra="RunningHub Workflow 与 ComfyUI 共用同一种拓扑解析合同；修改 JSON 后移出输入框即保存。">
-                                <Input.TextArea
+                            <SettingsField className="mt-3" extra="RunningHub Workflow 与 ComfyUI 共用同一种拓扑解析合同；修改 JSON 后移出输入框即保存。">
+                                <Textarea
                                     rows={12}
+                                    className="field-sizing-fixed"
+                                    aria-label="ComfyUI API JSON"
                                     value={workflowText}
                                     spellCheck={false}
                                     placeholder={'{"3":{"class_type":"...","inputs":{}}}'}
                                     onChange={(event) => setWorkflowText(event.target.value)}
                                     onBlur={() => updateWorkflowJson(workflowText)}
                                 />
-                            </Form.Item>
+                            </SettingsField>
                         </details>
                     </>
                 ) : null}
                 {workspaceMode === "fields" && kind === "app" ? (
-                    <Form.Item label="App 公开参数映射" className="mb-0 lg:col-span-12" extra="AI 应用不返回完整 ComfyUI 拓扑，只能编辑当前发布版本的公开参数；应用更新后请再次点击“拉取参数”。">
+                    <SettingsField label="App 公开参数映射" className="lg:col-span-12" extra="AI 应用不返回完整 ComfyUI 拓扑，只能编辑当前发布版本的公开参数；应用更新后请再次点击“拉取参数”。">
                         <WorkflowFieldMappingEditor fields={selected?.fields || []} disabled={!selected || !draftMatchesSelected} onChange={updateWorkflowFields} />
-                    </Form.Item>
+                    </SettingsField>
                 ) : null}
                 {workspaceMode === "test" ? (
                     <div className="lg:col-span-12">
@@ -347,7 +364,18 @@ export function RunningHubSettingsPane() {
                     </div>
                 ) : null}
             </div>
-        </Form>
+        </div>
+    );
+}
+
+/** Vertical label + control + help text, matching the former form item layout. */
+function SettingsField({ label, htmlFor, extra, className, children }: { label?: ReactNode; htmlFor?: string; extra?: ReactNode; className?: string; children: ReactNode }) {
+    return (
+        <div className={className ? `grid content-start gap-2 ${className}` : "grid content-start gap-2"}>
+            {label ? <Label htmlFor={htmlFor}>{label}</Label> : null}
+            {children}
+            {extra ? <p className="text-xs leading-5 text-muted-foreground">{extra}</p> : null}
+        </div>
     );
 }
 

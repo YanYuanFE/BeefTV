@@ -157,18 +157,19 @@
     min-width: 0;
 }
 
-.plugins-search.ant-input-affix-wrapper,
-.plugins-filter.ant-select .ant-select-selector {
+.plugins-search [data-slot=input],
+.plugins-filter [data-slot=select-trigger] {
     min-height: 38px;
     border-color: var(--workspace-border);
     border-radius: var(--r-lg);
     background: color-mix(in srgb, var(--workspace-surface-strong) 84%, transparent);
 }
 
-.plugins-search.ant-input-affix-wrapper:hover,
-.plugins-search.ant-input-affix-wrapper:focus-within,
-.plugins-filter.ant-select:hover .ant-select-selector,
-.plugins-filter.ant-select-focused .ant-select-selector {
+.plugins-search [data-slot=input]:hover,
+.plugins-search [data-slot=input]:focus-visible,
+.plugins-filter [data-slot=select-trigger]:hover,
+.plugins-filter [data-slot=select-trigger]:focus-visible,
+.plugins-filter [data-slot=select-trigger][data-state=open] {
     border-color: color-mix(in srgb, var(--workspace-accent) 48%, var(--workspace-border));
 }
 
@@ -459,7 +460,7 @@
     margin-right: auto;
 }
 
-.plugin-card-actions .ant-switch {
+.plugin-card-actions [data-slot=switch] {
     flex: 0 0 auto;
 }
 
@@ -553,18 +554,33 @@
     color: var(--workspace-accent);
 }
 
-.plugin-upload-dropzone.ant-upload-wrapper .ant-upload-drag {
+.plugin-upload-dropzone {
+    display: flex;
+    width: 100%;
     min-height: 250px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed;
+    padding: var(--space-4);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color var(--motion-state) ease-out, background-color var(--motion-state) ease-out;
     border-color: color-mix(in srgb, var(--workspace-accent) 32%, var(--workspace-border));
     border-radius: var(--r-md);
     background: color-mix(in srgb, var(--workspace-accent) 4%, transparent);
 }
 
-.plugin-upload-dropzone.ant-upload-wrapper .ant-upload-drag:hover {
+.plugin-upload-dropzone:hover {
     border-color: var(--workspace-accent);
 }
 
-.plugin-upload-dropzone-shell.is-dragging .plugin-upload-dropzone.ant-upload-wrapper .ant-upload-drag {
+.plugin-upload-dropzone:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}
+
+.plugin-upload-dropzone-shell.is-dragging .plugin-upload-dropzone {
     border-color: var(--workspace-accent);
     background: color-mix(in srgb, var(--workspace-accent) 11%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--workspace-accent) 24%, transparent);
@@ -577,13 +593,14 @@
     color: var(--workspace-accent);
 }
 
-.plugin-upload-dropzone .ant-upload-text {
+.plugin-upload-dropzone-text {
+    margin-bottom: var(--space-1);
     color: var(--foreground);
     font-size: var(--fs-body);
     font-weight: 650;
 }
 
-.plugin-upload-dropzone .ant-upload-hint {
+.plugin-upload-dropzone-hint {
     color: color-mix(in srgb, var(--foreground) 45%, transparent);
     font-size: var(--fs-label);
 }
@@ -797,8 +814,8 @@
     font-weight: 600;
 }
 
-.plugin-settings-fields .ant-input,
-.plugin-settings-fields .ant-select {
+.plugin-settings-fields [data-slot=input],
+.plugin-settings-fields .plugin-settings-select {
     width: 100%;
     margin-top: var(--space-2);
 }
@@ -807,7 +824,7 @@
     margin-top: var(--space-half);
 }
 
-.plugin-setting-label-row .ant-btn-link {
+.plugin-setting-label-row [data-slot=button][data-variant=link] {
     padding: 0;
 }
 
@@ -962,7 +979,7 @@
         padding: var(--space-3);
     }
 
-    .plugin-upload-dropzone.ant-upload-wrapper .ant-upload-drag {
+    .plugin-upload-dropzone {
         min-height: 210px;
     }
 
@@ -983,14 +1000,15 @@
         flex: 1 1 0;
     }
 
-    .plugins-toolbar-actions .ant-btn {
+    .plugins-toolbar-actions [data-slot=button] {
         width: 100%;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .plugin-card,
-    .plugin-icon-tile {
+    .plugin-icon-tile,
+    .plugin-upload-dropzone {
         transition: none;
     }
 }

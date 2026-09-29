@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { applyMaterializedGenerationTaskResultToNodes } from "@/lib/canvas/canvas-generation-task-sync";
-import { parseCanvasStorageDocument, rebaseCanvasProjects, serializeCanvasStorageDocument } from "@/lib/canvas/canvas-storage-revision";
+import { parseCanvasStorageDocument, rebaseCanvasProjects, rebaseGenerationTargetNodes, serializeCanvasStorageDocument } from "@/lib/canvas/canvas-storage-revision";
 import { localForageStorageForScope } from "@/lib/localforage-storage";
 import { getActiveUserScope } from "@/lib/user-scope";
 import type { GenerationTask, GenerationTaskOutput } from "@/services/api/task-center";
@@ -411,6 +411,28 @@ function generationProjectDelta(input: CanvasGenerationEffectInput, memoryProjec
     return { baseProject, localProject, stamped: stampedNodes.length > 0 || stampedSessions.length > 0 };
 }
 
+// Concurrent-update fallback: writes only the generation's target nodes onto the latest durable project.
+// Effects that also touch connections or chat sessions keep the conflict, since narrowing them is not safe.
+function rebaseGenerationOntoTargetNodes(durable: ReturnType<typeof parseCanvasStorageDocument>, delta: ReturnType<typeof generationProjectDelta>, input: CanvasGenerationEffectInput) {
+    const { baseProject, localProject } = delta;
+    const nodeOnly =
+        JSON.stringify(localProject.connections) === JSON.stringify(baseProject.connections) &&
+        JSON.stringify(localProject.chatSessions) === JSON.stringify(baseProject.chatSessions) &&
+        localProject.activeChatId === baseProject.activeChatId;
+    if (!nodeOnly) return undefined;
+    const durableProject = durable.state.projects.find((project) => project.id === input.projectId);
+    if (!durableProject) return undefined;
+    const patched = rebaseGenerationTargetNodes({
+        durable: durableProject,
+        baseNodes: baseProject.nodes,
+        localNodes: localProject.nodes,
+        isTarget: (node) => generationEffectApplied(node.metadata || {}, input.effectKey),
+    });
+    if (!patched) return undefined;
+    const result = rebaseCanvasProjects({ document: durable, baseProjects: [durableProject], localProjects: [patched], baseRevision: durable.storageRevision });
+    return result.conflicts.length ? undefined : result;
+}
+
 function rebaseCommittedCanvasGenerationOntoLiveProject(scope: string, projectId: string, committedDocument: ReturnType<typeof parseCanvasStorageDocument>, liveBaseProject: CanvasProject, baseRevision: number) {
     const committedProject = committedDocument.state.projects.find((project) => project.id === projectId);
     if (!committedProject) return undefined;
@@ -475,15 +497,20 @@ export async function persistCanvasGenerationEffect(input: CanvasGenerationEffec
                 const durable = parseCanvasStorageDocument(await storage.getItem(CANVAS_STORE_KEY), memoryProjects);
                 latestDurable = durable;
                 throwIfAborted(input.signal);
-                const rebased = rebaseCanvasProjects({
+                let rebased = rebaseCanvasProjects({
                     document: durable,
                     baseProjects: [delta.baseProject],
                     localProjects: [delta.localProject],
                     baseRevision,
                 });
                 if (rebased.conflicts.some((conflict) => conflict.reason === "concurrent-update")) {
-                    reconcileLiveOnFailure = true;
-                    throw new Error("画布生成副作用与并发修改冲突");
+                    const targetOnly = rebaseGenerationOntoTargetNodes(durable, delta, input);
+                    if (!targetOnly) {
+                        reconcileLiveOnFailure = true;
+                        throw new Error("画布生成副作用与并发修改冲突");
+                    }
+                    console.warn("画布生成结果与并发修改冲突，已只写入目标节点", { projectId: input.projectId, effectKey: input.effectKey });
+                    rebased = targetOnly;
                 }
                 if (rebased.conflicts.length) {
                     reconcileLiveOnFailure = true;

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 
 import { createShortDramaPipeline, deriveShortDramaProgress, persistShortDramaGuideDismissed, readShortDramaGuideDismissed, type CanvasShortDramaStepId } from "@/lib/canvas/canvas-short-drama";
 import type { CanvasConnection, CanvasNodeData, Position } from "@/types/canvas";
+import { toast } from "sonner";
 
 type UseCanvasShortDramaOptions = {
     nodes: CanvasNodeData[];
@@ -22,7 +22,6 @@ type UseCanvasShortDramaOptions = {
 };
 
 export function useCanvasShortDrama({ nodes, connections, nodesRef, connectionsRef, selectedNodeIdsRef, getCanvasCenter, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setStylePickerOpen, fitCanvasSelection, focusCanvasNode, openTextEditor }: UseCanvasShortDramaOptions) {
-    const { message } = App.useApp();
     const dismissedRef = useRef(readShortDramaGuideDismissed());
     const [guideCollapsed, setGuideCollapsed] = useState(dismissedRef.current);
     const progress = useMemo(() => deriveShortDramaProgress(nodes, connections), [connections, nodes]);
@@ -35,7 +34,7 @@ export function useCanvasShortDrama({ nodes, connections, nodesRef, connectionsR
     }, [selectedNodeIdsRef, setSelectedConnectionId, setSelectedNodeIds]);
 
     const createPipeline = useCallback(() => {
-        if (nodesRef.current.length) return message.info("当前画布已有内容，请在新画布创建短剧流水线");
+        if (nodesRef.current.length) return toast.info("当前画布已有内容，请在新画布创建短剧流水线");
         const pipeline = createShortDramaPipeline(getCanvasCenter());
         nodesRef.current = pipeline.nodes;
         connectionsRef.current = pipeline.connections;
@@ -47,8 +46,8 @@ export function useCanvasShortDrama({ nodes, connections, nodesRef, connectionsR
             fitCanvasSelection();
             setStylePickerOpen(true);
         });
-        message.success("短剧流水线已创建");
-    }, [connectionsRef, fitCanvasSelection, getCanvasCenter, message, nodesRef, selectNodes, setConnections, setNodes, setStylePickerOpen]);
+        toast.success("短剧流水线已创建");
+    }, [connectionsRef, fitCanvasSelection, getCanvasCenter, nodesRef, selectNodes, setConnections, setNodes, setStylePickerOpen]);
 
     const openStoryInput = useCallback((nodeId?: string) => {
         const storyNode = (nodeId ? nodesRef.current.find((node) => node.id === nodeId) : undefined)

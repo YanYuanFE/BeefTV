@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button } from "antd";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
 
 import { WorkspacePage } from "@/components/layout/workspace-page";
@@ -23,7 +23,7 @@ export function RequireFeature({ feature, children }: { feature: FeatureKey; chi
 
         return (
             <WorkspacePage>
-                <WorkspaceState icon="empty" title={`${featureNames[feature]}暂不可用`} description="当前本地工作区未启用此模块。" action={<Button type="primary" onClick={() => navigate("/", { replace: true })}>返回创作台</Button>} />
+                <WorkspaceState icon="empty" title={`${featureNames[feature]}暂不可用`} description="当前本地工作区未启用此模块。" action={<Button onClick={() => navigate("/", { replace: true })}>返回创作台</Button>} />
             </WorkspacePage>
         );
     }

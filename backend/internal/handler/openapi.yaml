@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: BeefTV HTTP API
+  title: Framely HTTP API
   version: "1.0.0"
   description: |
     路径前缀是 `/api`。前后端一起发布，不按路径做 API 版本。
@@ -23,44 +23,31 @@ tags:
   - name: tasks
   - name: assets
   - name: admin
-  - name: beefapi
+  - name: gateway
 paths:
-  /beefapi/connection:
-    get:
-      tags: [beefapi]
-      summary: 读取内置 BeefAPI 连接状态
-      description: 只返回账号和状态，不含密钥或 device_code。
-      responses:
-        "200":
-          description: 信封 data 为连接摘要
-  /beefapi/connection/start:
+  /account/login:
     post:
-      tags: [beefapi]
-      summary: 开始企业授权并打开系统浏览器确认页
+      tags: [gateway]
+      summary: 账号登录并签发访问密钥
+      description: 本地后端代为调用部署配置的 new-api 兼容服务（BEEFTV_GATEWAY_BASE_URL）完成登录、双重验证和令牌签发；复用或创建 beeftv-auto 前缀的密钥。服务端不保存会话，调用方把返回的密钥写入账号模型渠道。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+                twoFactorCode: { type: string }
       responses:
         "200":
-          description: 进入 pending 或返回已连接状态
-  /beefapi/connection/cancel:
-    post:
-      tags: [beefapi]
-      summary: 取消尚未完成的授权
-      responses:
-        "200":
-          description: 当前连接摘要
-  /beefapi/connection/disconnect:
-    post:
-      tags: [beefapi]
-      summary: 断开当前连接并吊销本机这把密钥
-      responses:
-        "200":
-          description: 当前连接摘要
-  /beefapi/connection/open-wallet:
-    post:
-      tags: [beefapi]
-      summary: 在系统浏览器打开企业充值页 /console/topup
-      responses:
-        "200":
-          description: 已打开
+          description: 信封 data 为 { baseUrl, apiKey, keyName, account }
+        "400":
+          description: 账号或验证码错误；reason 为 two_factor_required 时需补充双重验证码
+        "502":
+          description: 模型服务不可达或返回异常
   /canvas-projects/{id}:
     parameters:
       - in: path

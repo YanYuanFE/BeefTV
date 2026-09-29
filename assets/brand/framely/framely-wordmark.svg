@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 64" role="img" aria-label="Framely">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="6">
+    <path d="M13 51V13h26M13 30h14" stroke="#ffffff"/>
+    <path d="M51 37v14H37" stroke="#FF6B4A"/>
+  </g>
+  <!-- Text uses a system font stack; outline it to paths before print or trademark filing. -->
+  <text x="74" y="46" fill="#ffffff" font-family="Inter, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="560" letter-spacing="-0.8">Framely</text>
+</svg>

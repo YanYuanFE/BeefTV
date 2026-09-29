@@ -68,7 +68,7 @@
     padding: 12px 10px 0;
 }
 
-.workflow-library-panel .ant-segmented {
+.workflow-library-panel > [role="radiogroup"] {
     flex: 0 0 auto;
 }
 
@@ -248,9 +248,9 @@
     padding: 14px 18px 18px;
 }
 
-.workflow-shot-form .ant-form-item { margin-bottom: 14px; }
-.workflow-shot-form .ant-form-item-label { padding-bottom: 5px; }
-.workflow-shot-form .ant-form-item-label > label,
+.workflow-shot-form .workflow-form-item { margin-bottom: 14px; gap: 5px; }
+.workflow-shot-form .workflow-form-item [data-slot="form-message"] { margin-top: -1px; }
+.workflow-shot-form .workflow-form-item-label,
 .workflow-field-label { color: color-mix(in srgb, var(--foreground) 52%, transparent); font-size: var(--fs-micro); font-weight: 560; }
 
 .workflow-form-section-heading {
@@ -374,7 +374,7 @@
 }
 
 .workflow-disclosure-content { padding: 13px 14px 4px; }
-.workflow-disclosure .ant-form-item { margin-bottom: 10px; }
+.workflow-shot-form .workflow-disclosure .workflow-form-item { margin-bottom: 10px; }
 
 .workflow-model-picker.canvas-composer-model-picker {
     width: 100%;
@@ -471,10 +471,12 @@
     color: color-mix(in srgb, var(--foreground) 42%, transparent);
 }
 
-.workflow-bound-asset-preview .ant-image,
-.workflow-bound-asset-preview .ant-image-img { display: block; width: 40px !important; height: 40px !important; }
-.workflow-bound-asset-preview .ant-image-img { object-fit: cover; }
-.workflow-bound-asset-preview .ant-image-mask { font-size: var(--fs-micro); }
+.workflow-bound-asset-preview-button { position: relative; display: block; width: 40px; height: 40px; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.workflow-bound-asset-preview-button:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.workflow-bound-asset-preview-button img { display: block; width: 40px; height: 40px; object-fit: cover; }
+.workflow-bound-asset-preview-mask { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.45); color: white; font-size: var(--fs-micro); opacity: 0; transition: opacity var(--motion-state) ease; }
+.workflow-bound-asset-preview-button:hover .workflow-bound-asset-preview-mask,
+.workflow-bound-asset-preview-button:focus-visible .workflow-bound-asset-preview-mask { opacity: 1; }
 .workflow-bound-asset-preview > svg { width: 16px; height: 16px; }
 
 .workflow-bound-asset-copy {

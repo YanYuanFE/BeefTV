@@ -1,7 +1,7 @@
-import { Popover } from "antd";
 import { useState } from "react";
 import { UserRound } from "lucide-react";
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { WorkspaceAccountCard } from "./workspace-account-card";
 import { UserAvatar } from "./user-avatar";
@@ -18,13 +18,13 @@ export function WorkspaceAccountMenu() {
     }
 
     return user ? (
-        <><Popover
-            trigger="click"
-            placement="bottomRight"
-            rootClassName="workspace-account-popover"
-            open={menuOpen}
-            onOpenChange={setMenuOpen}
-            content={(
+        <><Popover open={menuOpen} onOpenChange={setMenuOpen}>
+            <PopoverTrigger asChild>
+                <button type="button" className="app-workspace-topbar-icon-button app-workspace-account-trigger" aria-label="账户菜单" title={user.displayName || user.username}>
+                    <UserAvatar user={user} className="size-6" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="end" className="workspace-account-popover">
                 <div className="workspace-topbar-account-menu">
                     <WorkspaceAccountCard onNavigate={() => setMenuOpen(false)} />
 
@@ -32,11 +32,7 @@ export function WorkspaceAccountMenu() {
                         <AppChangelogButton className="flex h-8 w-full items-center gap-2 rounded px-2 text-[var(--fs-label)] text-foreground/58 hover:bg-surface-hover hover:text-foreground [&_svg]:size-3.5" showLabel showVersion versionClassName="ml-auto text-[var(--fs-micro)] tabular-nums text-foreground/32" />
                     </div>
                 </div>
-            )}
-        >
-            <button type="button" className="app-workspace-topbar-icon-button app-workspace-account-trigger" aria-label="账户菜单" title={user.displayName || user.username}>
-                <UserAvatar user={user} className="size-6" />
-            </button>
+            </PopoverContent>
         </Popover></>
     ) : <span className="app-workspace-topbar-icon-button grid place-items-center" aria-label="本地工作区" title="本地工作区"><UserRound className="size-4 opacity-70" /></span>;
 }

@@ -29,7 +29,7 @@ import { flushCanvasStorePersistence, useCanvasStore } from "@/stores/canvas/use
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { useCanvasThemeStore, useCanvasThemeScope } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { App, Button } from "antd";
+import { Button } from "@/components/ui/button";
 import { ArrowLeftRight } from "lucide-react";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { getNodeSpec } from "@/constant/canvas";
@@ -171,6 +171,8 @@ import {
 } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 const CanvasDirectorWorkbench = lazy(() => import("@/components/canvas/director/canvas-director-workbench").then((module) => ({ default: module.CanvasDirectorWorkbench })));
 const CanvasDrawingEditorModal = lazy(() => import("@/components/canvas/canvas-drawing-editor-modal").then((module) => ({ default: module.CanvasDrawingEditorModal })));
@@ -252,8 +254,6 @@ export default function CanvasPage() {
 }
 
 function InfiniteCanvasPage() {
-    // 命令式确认必须走 App.useApp().modal；静态 Modal.confirm 拿不到主题和 App 上下文。
-    const { message, modal } = App.useApp();
     const queryClient = useQueryClient();
     const params = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -440,9 +440,9 @@ function InfiniteCanvasPage() {
     const saveCanvasAppearanceDefault = useCallback(
         (next: CanvasAppearance) => {
             writeCanvasAppearanceDefault({ appearance: next, backgroundMode });
-            message.success("已保存为当前账号在本机的新建画布默认外观");
+            toast.success("已保存为当前账号在本机的新建画布默认外观");
         },
-        [backgroundMode, message],
+        [backgroundMode],
     );
 
     const { getHistoryCleanupContext, historyPausedRef, historyState, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
@@ -725,13 +725,13 @@ function InfiniteCanvasPage() {
     const renameCanvasFromMenu = useCallback(async (canvasId: string, canvasTitle: string) => {
         updateProject(canvasId, { canvasTitle });
         await flushCanvasStorePersistence();
-        message.success("画布已重命名");
-    }, [message, updateProject]);
+        toast.success("画布已重命名");
+    }, [updateProject]);
 
     const duplicateCanvasFromMenu = useCallback(async (canvasId: string) => {
         const source = useCanvasStore.getState().openProject(canvasId);
         if (!source) {
-            message.error("画布不存在或已被删除");
+            toast.error("画布不存在或已被删除");
             return;
         }
         const sourceSnapshot = canvasId === projectId ? {
@@ -753,8 +753,8 @@ function InfiniteCanvasPage() {
             updatedAt: now,
         }, canvasWorkspaceProjectId(sourceSnapshot));
         await flushCanvasStorePersistence();
-        message.success("画布副本已创建");
-    }, [canvasProjects, importCanvasProject, message, projectId]);
+        toast.success("画布副本已创建");
+    }, [canvasProjects, importCanvasProject, projectId]);
 
     const deleteCanvasFromMenu = useCallback((canvasId: string) => {
         const canvasTitle = canvasProjects.find((canvas) => canvas.id === canvasId)?.title || "该画布";
@@ -764,22 +764,22 @@ function InfiniteCanvasPage() {
                 return;
             }
             await deleteWorkspaceCanvasProjects([canvasId]);
-            message.success(`「${canvasTitle}」已移入回收站`);
-        })().catch((error) => message.error(error instanceof Error ? `删除画布失败：${error.message}` : "删除画布失败"));
-    }, [canvasProjects, deleteCurrentProject, message, modal, projectId]);
+            toast.success(`「${canvasTitle}」已移入回收站`);
+        })().catch((error) => toast.error(error instanceof Error ? `删除画布失败：${error.message}` : "删除画布失败"));
+    }, [canvasProjects, deleteCurrentProject, projectId]);
 
     const versions = useCanvasVersionHistory(projectId, restoreCanvasProjectVersion, currentProject);
     const openVersions = () => { setVersionCompareRootId(null); versions.show(); };
     // 修复素材关联仍遵守当前画布版本，不能替用户确认覆盖云端的新内容。
     const confirmForceSaveCanvas = useCallback(() => {
-        modal.confirm({
+        confirmDialog({
             title: "修复素材关联并保存？",
             content: "核对画布媒体与素材库的关联，补齐缺失素材后保存。若云端已有新版本，会保留本地草稿并提示加载最新版。",
             okText: "修复并保存",
             cancelText: "取消",
             onOk: () => forceSaveCanvasProject(),
         });
-    }, [forceSaveCanvasProject, modal]);
+    }, [forceSaveCanvasProject]);
 
     const applyLibTVImport = useCallback(
         async (importedNodes: CanvasNodeData[], importedConnections: CanvasConnection[]) => {
@@ -842,11 +842,11 @@ function InfiniteCanvasPage() {
                         }),
                     );
                     void refetchLinkedProject();
-                    message.success(`已归档到“${folder.title}”`);
+                    toast.success(`已归档到“${folder.title}”`);
                 })
-                .catch((error) => message.error(error instanceof Error ? error.message : "素材归档失败"));
+                .catch((error) => toast.error(error instanceof Error ? error.message : "素材归档失败"));
         },
-        [linkedProjectId, message, projectId, refetchLinkedProject, setNodes],
+        [linkedProjectId, projectId, refetchLinkedProject, setNodes],
     );
     useEffect(() => {
         if (!projectLoaded || !linkedProjectQuery.data) return;
@@ -869,7 +869,7 @@ function InfiniteCanvasPage() {
 
     const cancelCanvasTask = useCallback(
         (task: import("@/services/api/task-center").GenerationTask) => {
-            modal.confirm({
+            confirmDialog({
                 title: "取消生成任务？",
                 content: localOnly ? "任务会立即停止本地执行。" : "任务会立即停止本地执行；如果已经提交到上游，系统会继续核对取消结果和积分状态。",
                 okText: "取消任务",
@@ -882,14 +882,14 @@ function InfiniteCanvasPage() {
                         if (node) bindGenerationTask(node.id, next);
                         setTaskDetail((current) => (current?.id === task.id ? next : current));
                         await queryClient.invalidateQueries({ queryKey: ["canvas-active-tasks", projectId] });
-                        message.success("任务已取消");
+                        toast.success("任务已取消");
                     } catch (error) {
-                        message.error(error instanceof Error ? error.message : "取消任务失败");
+                        toast.error(error instanceof Error ? error.message : "取消任务失败");
                     }
                 },
             });
         },
-        [bindGenerationTask, localOnly, message, modal, nodesRef, projectId, queryClient, setTaskDetail],
+        [bindGenerationTask, localOnly, nodesRef, projectId, queryClient, setTaskDetail],
     );
 
     // 旧内置 Agent 的深链参数（?agent=1 / ?conversation=）仍然存在于历史书签里。
@@ -1127,8 +1127,8 @@ function InfiniteCanvasPage() {
 
     useEffect(() => {
         if (!projectLoaded || searchParams.get("mode") !== "handoff") return;
-        void loadAssetsForUse(canvasAssetHandoffIds(searchParams)).catch((error) => message.error(error instanceof Error ? error.message : "转入素材读取失败"));
-    }, [projectLoaded, searchParams, message]);
+        void loadAssetsForUse(canvasAssetHandoffIds(searchParams)).catch((error) => toast.error(error instanceof Error ? error.message : "转入素材读取失败"));
+    }, [projectLoaded, searchParams]);
 
     useEffect(() => {
         if (!projectLoaded || !assetsHydrated || searchParams.get("mode") !== "handoff") return;
@@ -1164,7 +1164,7 @@ function InfiniteCanvasPage() {
         void insertion.then(persistHandoff).catch(() => {
             assetHandoffRef.current = "";
         });
-    }, [assets, assetsHydrated, handleProjectAssetsInsert, message, nodesRef, projectId, projectLoaded, searchParams, setSearchParams, updateProject]);
+    }, [assets, assetsHydrated, handleProjectAssetsInsert, nodesRef, projectId, projectLoaded, searchParams, setSearchParams, updateProject]);
 
     const {
         angleNodeId,
@@ -1279,7 +1279,7 @@ function InfiniteCanvasPage() {
             setContextMenu((current) => (current?.type === "node" && removedIds.has(current.nodeId) ? null : current));
             const removedDrawingIds = removedNodes.flatMap((node) => (node.type === CanvasNodeType.Drawing && node.metadata?.drawingId ? [node.metadata.drawingId] : []));
             if (removedDrawingIds.length) {
-                void Promise.all(removedDrawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => message.warning("绘图节点已删除，但本地绘图缓存清理失败"));
+                void Promise.all(removedDrawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => toast.warning("绘图节点已删除，但本地绘图缓存清理失败"));
             }
             cleanupCanvasFiles({ projectId, nodes: nextNodes, chatSessions });
             // Node operations update the local store synchronously, but the
@@ -1294,7 +1294,6 @@ function InfiniteCanvasPage() {
         [
             chatSessions,
             cleanupCanvasFiles,
-            message,
             projectId,
             setAngleNodeId,
             setAnnotationNodeId,
@@ -1416,13 +1415,13 @@ function InfiniteCanvasPage() {
             setNodes(nextNodes);
             setSelectedNodeIds(new Set([applied.node.id]));
             setGenerationHistoryOpen(false);
-            message.success("已从生成历史插入到画布");
+            toast.success("已从生成历史插入到画布");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "生成结果无法插入画布");
+            toast.error(error instanceof Error ? error.message : "生成结果无法插入画布");
         } finally {
             insertingHistoryRef.current = false;
         }
-    }, [currentProject?.projectId, getCanvasCenter, message, nodesRef, projectId, setNodes, setSelectedNodeIds]);
+    }, [currentProject?.projectId, getCanvasCenter, nodesRef, projectId, setNodes, setSelectedNodeIds]);
 
     const handleReplaceNodeReference = useCallback(
         (targetNodeId: string, oldReference: { id: string; nodeId?: string; label?: string; title?: string }, sourceNodeId: string) => {
@@ -1470,9 +1469,9 @@ function InfiniteCanvasPage() {
             connectionsRef.current = nextConnections;
             setNodes(nextNodes);
             setConnections(nextConnections);
-            message.success(`已将参考图「${oldReference.label || "参考图"}」替换为「${sourceNode.title || "新图片"}」，提示词已同步更新`);
+            toast.success(`已将参考图「${oldReference.label || "参考图"}」替换为「${sourceNode.title || "新图片"}」，提示词已同步更新`);
         },
-        [connectionsRef, message, nodesRef, setConnections, setNodes],
+        [connectionsRef, nodesRef, setConnections, setNodes],
     );
 
     const handleReplaceNodeReferenceFiles = useCallback(
@@ -1481,11 +1480,11 @@ function InfiniteCanvasPage() {
             if (!file || !oldReference.nodeId) return;
             void replaceNodeMedia(oldReference.nodeId, file).then((success: boolean) => {
                 if (success) {
-                    message.success("参考图片已替换");
+                    toast.success("参考图片已替换");
                 }
             });
         },
-        [message, replaceNodeMedia],
+        [replaceNodeMedia],
     );
 
     const {
@@ -2049,7 +2048,7 @@ function InfiniteCanvasPage() {
     const clearCanvas = useCallback(() => {
         const drawingIds = nodesRef.current.flatMap((node) => (node.type === CanvasNodeType.Drawing && node.metadata?.drawingId ? [node.metadata.drawingId] : []));
         if (drawingIds.length) {
-            void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => message.warning("画布已清空，但部分本地绘图缓存清理失败"));
+            void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => toast.warning("画布已清空，但部分本地绘图缓存清理失败"));
         }
         setNodes([]);
         setConnections([]);
@@ -2069,7 +2068,7 @@ function InfiniteCanvasPage() {
         deselectCanvas();
         setClearConfirmOpen(false);
         clearCanvasFiles();
-    }, [clearCanvasFiles, deselectCanvas, message, nodesRef, projectId, setEmotionNodeId]);
+    }, [clearCanvasFiles, deselectCanvas, nodesRef, projectId, setEmotionNodeId]);
 
     useCanvasKeyboard({
         enabled: projectLoaded && !versions.preview,
@@ -2136,11 +2135,11 @@ function InfiniteCanvasPage() {
                     const handled = await pasteSystemClipboard(position);
                     if (!handled) pasteCopiedNodes(position);
                 } catch {
-                    if (!pasteCopiedNodes(position)) message.warning("无法读取剪贴板内容");
+                    if (!pasteCopiedNodes(position)) toast.warning("无法读取剪贴板内容");
                 }
             })();
         },
-        [message, pasteCopiedNodes, pasteSystemClipboard, shouldPreferCopiedNodes],
+        [pasteCopiedNodes, pasteSystemClipboard, shouldPreferCopiedNodes],
     );
 
     const copyingNodeContentRef = useRef(false);
@@ -2154,7 +2153,7 @@ function InfiniteCanvasPage() {
             const copySource = content || (node?.type === CanvasNodeType.Image && resourceId ? resourceFileUrl(resourceId) : "");
             if (!node || !copySource) {
                 copyingNodeContentRef.current = false;
-                message.warning("没有可复制的内容");
+                toast.warning("没有可复制的内容");
                 return;
             }
 
@@ -2162,17 +2161,17 @@ function InfiniteCanvasPage() {
                 if (node.type === CanvasNodeType.Image) {
                     try {
                         await copyImageToSystemClipboard(copySource, node.metadata?.storageKey);
-                        message.success("图片已复制到剪贴板");
+                        toast.success("图片已复制到剪贴板");
                         return;
                     } catch (imageErr) {
                         const fallbackUrl = new URL(copySource, window.location.href).toString();
                         if (navigator.clipboard?.writeText) {
                             await navigator.clipboard.writeText(fallbackUrl).catch(() => undefined);
-                            message.info("由于浏览器未获得焦点，已为您复制图片地址");
+                            toast.info("由于浏览器未获得焦点，已为您复制图片地址");
                             return;
                         }
                         if (await copyToClipboard(fallbackUrl)) {
-                            message.info("由于浏览器未获得焦点，已为您复制图片地址");
+                            toast.info("由于浏览器未获得焦点，已为您复制图片地址");
                             return;
                         }
                         throw imageErr;
@@ -2181,14 +2180,14 @@ function InfiniteCanvasPage() {
 
                 if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(copySource);
                 else if (!copyToClipboard(copySource)) throw new Error("当前浏览器不支持写入剪贴板");
-                message.success(node.type === CanvasNodeType.Text ? "文本已复制" : "内容链接已复制");
+                toast.success(node.type === CanvasNodeType.Text ? "文本已复制" : "内容链接已复制");
             } catch (error) {
-                message.error(error instanceof Error ? error.message : "复制失败，请检查浏览器剪贴板权限");
+                toast.error(error instanceof Error ? error.message : "复制失败，请检查浏览器剪贴板权限");
             } finally {
                 copyingNodeContentRef.current = false;
             }
         },
-        [message, releaseCopiedNodesPastePriority],
+        [releaseCopiedNodesPastePriority],
     );
 
     const copyNodeMediaUrlToClipboard = useCallback(
@@ -2203,24 +2202,24 @@ function InfiniteCanvasPage() {
                 if (!mediaURL) throw new Error("当前媒体只有本地内容，没有可复制的地址");
                 if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(mediaURL);
                 else if (!(await copyToClipboard(mediaURL))) throw new Error("当前浏览器不支持写入剪贴板");
-                message.success(node?.type === CanvasNodeType.Video ? "视频地址已复制" : "图片地址已复制");
+                toast.success(node?.type === CanvasNodeType.Video ? "视频地址已复制" : "图片地址已复制");
             } catch (error) {
-                message.error(error instanceof Error ? error.message : "媒体地址复制失败");
+                toast.error(error instanceof Error ? error.message : "媒体地址复制失败");
             }
         },
-        [message, releaseCopiedNodesPastePriority],
+        [releaseCopiedNodesPastePriority],
     );
 
     const uploadNodeImageToArkPrivateAsset = useCallback(
         async (node: CanvasNodeData) => {
             if (node.type !== CanvasNodeType.Image || !node.metadata?.content) {
-                message.warning("请选择一张可用图片后再上传");
+                toast.warning("请选择一张可用图片后再上传");
                 return;
             }
             if (arkPrivateAssetUploadNodeId === node.id) return;
             const feedbackKey = `ark-private-asset-${node.id}`;
             setArkPrivateAssetUploadNodeId(node.id);
-            message.loading({ key: feedbackKey, content: "正在保存并上传到方舟素材库...", duration: 0 });
+            toast.loading("正在保存并上传到方舟素材库...", { id: feedbackKey, duration: Infinity });
             try {
                 let resourceID = resourceIdFromStorageKey(node.metadata.storageKey);
                 let persistedNode = node;
@@ -2234,19 +2233,19 @@ function InfiniteCanvasPage() {
                 const asset = await ensureCanvasNodeAsset({ canvasId: projectId, domainProjectId: currentProject?.projectId, node: persistedNode, source: "canvas-manual" });
                 handleConfigNodeChange(node.id, { assetId: asset.assetId });
                 await syncResourceToArkPrivateAsset(resourceID);
-                message.success({ key: feedbackKey, content: "已同步到方舟素材库，Seedance 将自动复用该素材", duration: 4 });
+                toast.success("已同步到方舟素材库，Seedance 将自动复用该素材", { id: feedbackKey, duration: 4000 });
             } catch (error) {
-                message.error({ key: feedbackKey, content: error instanceof Error ? error.message : "上传到方舟素材库失败", duration: 5 });
+                toast.error(error instanceof Error ? error.message : "上传到方舟素材库失败", { id: feedbackKey, duration: 5000 });
             } finally {
                 setArkPrivateAssetUploadNodeId((current) => (current === node.id ? null : current));
             }
         },
-        [arkPrivateAssetUploadNodeId, currentProject?.projectId, handleConfigNodeChange, localOnly, message, projectId],
+        [arkPrivateAssetUploadNodeId, currentProject?.projectId, handleConfigNodeChange, localOnly, projectId],
     );
 
     const confirmUploadNodeImageToArkPrivateAsset = useCallback(
         (node: CanvasNodeData) => {
-            modal.confirm({
+            confirmDialog({
                 title: "上传到方舟素材库",
                 content: "仅可上传你拥有肖像、版权或其他合法使用权的图片。方舟审核通过后，Seedance 会使用受控素材标识生成视频。",
                 okText: "确认拥有使用权并上传",
@@ -2254,7 +2253,7 @@ function InfiniteCanvasPage() {
                 onOk: () => uploadNodeImageToArkPrivateAsset(node),
             });
         },
-        [modal, uploadNodeImageToArkPrivateAsset],
+        [uploadNodeImageToArkPrivateAsset],
     );
 
     const handleCanvasContextMenu = useCallback(
@@ -2264,7 +2263,7 @@ function InfiniteCanvasPage() {
 
             event.preventDefault();
             event.stopPropagation();
-            if (target?.closest("[data-canvas-no-zoom],.ant-modal,.ant-popover,.ant-dropdown")) {
+            if (target?.closest("[data-canvas-no-zoom],[data-slot=app-modal],[data-slot=popover-content],[data-slot=dropdown-menu-content]")) {
                 setContextMenu(null);
                 return;
             }
@@ -2380,7 +2379,7 @@ function InfiniteCanvasPage() {
             const taskId = node.metadata?.taskId;
             if (!taskId || !node.metadata?.resourceReloadAvailable) return;
             if (isLocalWorkspaceMode() || import.meta.env.VITE_CANVAS_LOCAL_MODE !== "false") {
-                message.info("本地工作区不会从云端重新加载任务资源，请直接在画布中重新生成");
+                toast.info("本地工作区不会从云端重新加载任务资源，请直接在画布中重新生成");
                 return;
             }
             setNodes((current) => current.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: "loading", taskStage: "正在重新加载资源", errorDetails: undefined } } : item)));
@@ -2410,7 +2409,7 @@ function InfiniteCanvasPage() {
     const retryImageBatchChildren = useCallback(
         (rootId: string, children: CanvasNodeData[]) => {
             const retryableChildren = children.filter((child) => !shouldBlockAutomaticRetry({ code: child.metadata?.generationErrorCode || child.metadata?.taskErrorCode, message: child.metadata?.errorDetails }, child.metadata?.taskStage));
-            if (retryableChildren.length < children.length) message.warning("部分图片需要先处理失败原因，请打开对应节点查看");
+            if (retryableChildren.length < children.length) toast.warning("部分图片需要先处理失败原因，请打开对应节点查看");
             if (!retryableChildren.length) return;
             const childIds = retryableChildren.map((child) => child.id);
             setNodes((current) => markImageBatchRetrying(rootId, childIds, current));
@@ -2421,14 +2420,14 @@ function InfiniteCanvasPage() {
                 }),
             ).finally(() => reconcileImageBatchRootNode(rootId));
         },
-        [handleRetryNode, message, reconcileImageBatchRootNode, setNodes],
+        [handleRetryNode, reconcileImageBatchRootNode, setNodes],
     );
 
     const generateImageFromTextNode = useCallback(
         (node: CanvasNodeData) => {
             const prompt = (node.metadata?.content || node.metadata?.prompt || "").trim();
             if (!prompt) {
-                message.warning("文本节点为空，无法生图");
+                toast.warning("文本节点为空，无法生图");
                 return;
             }
             const sourceNode = nodesRef.current.find((item) => item.id === node.id);
@@ -2462,7 +2461,7 @@ function InfiniteCanvasPage() {
             setSelectedConnectionId(null);
             setDialogNodeId(imageNode.id);
         },
-        [effectiveConfig, message],
+        [effectiveConfig],
     );
 
     const renderCanvasNodePanel = useCallback(
@@ -2500,7 +2499,7 @@ function InfiniteCanvasPage() {
                             setConnections(linked.connections);
                             return linked.reference;
                         } catch (cause) {
-                            message.warning(cause instanceof Error ? cause.message : "文本引用失败");
+                            toast.warning(cause instanceof Error ? cause.message : "文本引用失败");
                             return undefined;
                         }
                     }}
@@ -2531,7 +2530,6 @@ function InfiniteCanvasPage() {
             handleReplaceNodeReference,
             handleReplaceNodeReferenceFiles,
             mentionReferencesByNodeId,
-            message,
             projectId,
             runningNodeId,
             skillMentionReferences,
@@ -2723,7 +2721,7 @@ function InfiniteCanvasPage() {
             if (node.type === CanvasNodeType.Script) {
                 const prompt = (node.metadata?.composerContent || node.metadata?.prompt || "").trim();
                 if (!prompt) {
-                    message.warning("分镜脚本缺少剧情内容，无法重试");
+                    toast.warning("分镜脚本缺少剧情内容，无法重试");
                     return;
                 }
                 void generateScriptRows(node.id, prompt);
@@ -2732,10 +2730,10 @@ function InfiniteCanvasPage() {
             if (node.type === CanvasNodeType.Image && node.metadata?.isBatchRoot) {
                 const failedChildren = failedImageBatchChildren(node, nodesRef.current);
                 if (!failedChildren.length) {
-                    message.info("当前批次没有需要重试的失败图片");
+                    toast.info("当前批次没有需要重试的失败图片");
                     return;
                 }
-                message.info(`正在重试 ${failedChildren.length} 个失败图片`);
+                toast.info(`正在重试 ${failedChildren.length} 个失败图片`);
                 retryImageBatchChildren(node.id, failedChildren);
                 return;
             }
@@ -2746,7 +2744,7 @@ function InfiniteCanvasPage() {
             }
             void handleRetryNode(node);
         },
-        [generateScriptRows, handleRetryNode, message, nodesRef, reconcileImageBatchRootNode, retryDepthCaptureNode, retryImageBatchChildren],
+        [generateScriptRows, handleRetryNode, nodesRef, reconcileImageBatchRootNode, retryDepthCaptureNode, retryImageBatchChildren],
     );
     const openCanvasNodeTaskDetails = useCallback(
         (node: CanvasNodeData) => {
@@ -2760,19 +2758,19 @@ function InfiniteCanvasPage() {
     const locateProjectStyleNode = useCallback(() => {
         const styleNode = nodesRef.current.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard");
         if (!styleNode) {
-            message.info("项目画风节点正在同步，请稍后再试");
+            toast.info("项目画风节点正在同步，请稍后再试");
             return;
         }
         focusCanvasNode(styleNode.id);
-    }, [focusCanvasNode, message, nodesRef]);
+    }, [focusCanvasNode, nodesRef]);
     const openFrameAnalysisOrCreate = useCallback(() => {
         const selectedVideo = nodesRef.current.find((node) => selectedNodeIds.has(node.id) && node.type === CanvasNodeType.Video);
         if (selectedVideo) {
             setFrameDialogNodeId(selectedVideo.id);
             return;
         }
-        message.info("请先选中一个视频节点，再打开逐帧拉片");
-    }, [message, nodesRef, selectedNodeIds, setFrameDialogNodeId]);
+        toast.info("请先选中一个视频节点，再打开逐帧拉片");
+    }, [nodesRef, selectedNodeIds, setFrameDialogNodeId]);
     const freeformCreateCommands = useCanvasCreateCommands({
         workspaceMode,
         isProjectLinked: Boolean(shortDramaEnabled && currentProject?.projectId),
@@ -2828,7 +2826,7 @@ function InfiniteCanvasPage() {
         return (
             <main className="flex h-full flex-col items-center justify-center gap-4">
                 <p role="alert">{loadError}</p>
-                <Button onClick={retryLoad}>重新加载</Button>
+                <Button variant="outline" onClick={retryLoad}>重新加载</Button>
                 <Link to="/canvas">返回画布库</Link>
             </main>
         );
@@ -2860,7 +2858,7 @@ function InfiniteCanvasPage() {
                                             setScriptEditorNodeId(script.id);
                                             focusCanvasNode(script.id);
                                         } else {
-                                            message.info("当前画布还没有脚本节点，请先从添加节点中创建脚本");
+                                            toast.info("当前画布还没有脚本节点，请先从添加节点中创建脚本");
                                         }
                                     } else {
                                         setWorkspaceView(view);
@@ -3188,7 +3186,7 @@ function InfiniteCanvasPage() {
                         ) : null}
 
                         {lightingNode?.metadata?.content ? (
-                            <AppModal flush open centered title={null} closable={false} footer={null} width={720} onCancel={() => setLightingNodeId(null)}>
+                            <AppModal flush open title={null} closable={false} footer={null} width={720} onCancel={() => setLightingNodeId(null)}>
                                 <CanvasNodeLightingPanel
                                     dataUrl={lightingNode.metadata.content}
                                     onClose={() => setLightingNodeId(null)}
@@ -3543,7 +3541,7 @@ function InfiniteCanvasPage() {
                                                     : node,
                                             ),
                                         );
-                                        message.success("绘图已保存");
+                                        toast.success("绘图已保存");
                                     }}
                                 />
                             </Suspense>
@@ -3572,7 +3570,7 @@ function InfiniteCanvasPage() {
                                 }
                             }}
                             onCopyPrompt={(prompt) => {
-                                void navigator.clipboard?.writeText(prompt).then(() => message.success("已复制全景提示词"));
+                                void navigator.clipboard?.writeText(prompt).then(() => toast.success("已复制全景提示词"));
                             }}
                             previewImageUrl={panoramaConfigNodeId ? nodes.find((n) => n.id === panoramaConfigNodeId)?.metadata?.content : undefined}
                             nodes={nodes}

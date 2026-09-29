@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from "react";
-import { App } from "antd";
 
 import type { InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
 import type { CanvasNodeData, Position } from "@/types/canvas";
 import type { TimelineDirectMedia } from "@/types/timeline";
+import { toast } from "sonner";
 
 type UseCanvasTimelineAssetInsertOptions = {
     linkedProjectId?: string;
@@ -42,7 +42,6 @@ export function useCanvasTimelineAssetInsert({
     handleProjectAssetsInsert,
     openAssetsAtPosition,
 }: UseCanvasTimelineAssetInsertOptions) {
-    const { message } = App.useApp();
     // 时间线弹窗内新增素材的回填通道：素材库/上传创建节点后由弹窗通过 ref 加入草稿。
     const timelineAddNodeRef = useRef<((node: CanvasNodeData) => void) | null>(null);
     // 时间线作用域直连媒体入轨通道：素材库/项目资产/本地上传不落画布，仅加入时间线草稿。
@@ -80,13 +79,13 @@ export function useCanvasTimelineAssetInsert({
                         inserted += 1;
                     }
                 }
-                if (inserted < payloads.length) message.info("图片/文本/角色素材暂不支持直接入轨，仅音视频素材已加入时间线");
+                if (inserted < payloads.length) toast.info("图片/文本/角色素材暂不支持直接入轨，仅音视频素材已加入时间线");
                 return;
             }
             const created = await handleProjectAssetsInsert(payloads, projectAssetInsertPosition);
             created.forEach((node) => timelineAddNodeRef.current?.(node));
         },
-        [handleProjectAssetsInsert, message, projectAssetInsertPosition, projectAssetScope],
+        [handleProjectAssetsInsert, projectAssetInsertPosition, projectAssetScope],
     );
 
     const openProjectAssets = useCallback(

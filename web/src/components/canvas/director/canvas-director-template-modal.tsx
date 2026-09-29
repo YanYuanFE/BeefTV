@@ -1,4 +1,4 @@
-import { Modal } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 import { DIRECTOR_TEMPLATES, type DirectorTemplateId } from "@/lib/canvas/director/director-templates";
 
@@ -11,7 +11,7 @@ import { DIRECTOR_TEMPLATES, type DirectorTemplateId } from "@/lib/canvas/direct
  */
 export function CanvasDirectorTemplateModal({ open, onClose, onSelect }: { open: boolean; onClose: () => void; onSelect: (templateId: DirectorTemplateId) => void }) {
     return (
-        <Modal open={open} onCancel={onClose} footer={null} width={560} title="选择镜头模板" destroyOnHidden>
+        <AppModal open={open} onCancel={onClose} footer={null} width={560} title="选择镜头模板">
             <div className="director-template-grid">
                 {DIRECTOR_TEMPLATES.map((template) => (
                     <button
@@ -29,6 +29,6 @@ export function CanvasDirectorTemplateModal({ open, onClose, onSelect }: { open:
                     </button>
                 ))}
             </div>
-        </Modal>
+        </AppModal>
     );
 }

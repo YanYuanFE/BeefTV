@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { lazy, Suspense, useLayoutEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { App, ConfigProvider } from "antd";
-import zhCN from "antd/locale/zh_CN";
 
 import { WorkspaceBootstrapHydrator } from "@/components/workspace/workspace-bootstrap-hydrator";
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
-import { getAntThemeConfig } from "@/lib/app-theme";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { applySkinTheme } from "@/lib/skin-themes";
 import { appQueryClient } from "@/lib/query-client";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -39,9 +39,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && window.location.pathname === "/dev/director-repro";
 
     return (
-        <ConfigProvider locale={zhCN} theme={getAntThemeConfig(dark, appearance.activeSkin)}>
-            <App message={{ duration: 3, maxCount: 3 }} notification={{ duration: 4.5, maxCount: 3, placement: "topRight" }}>
-                <QueryClientProvider client={appQueryClient}>
+        <TooltipProvider delayDuration={350}>
+            <QueryClientProvider client={appQueryClient}>
                     {isolateDevRepro ? (
                         children
                     ) : (
@@ -49,8 +48,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
                             <ClientRootBoundary>{children}</ClientRootBoundary>
                         </WorkspaceBootstrapHydrator>
                     )}
-                </QueryClientProvider>
-            </App>
-        </ConfigProvider>
+            </QueryClientProvider>
+            <Toaster position="top-center" visibleToasts={3} duration={3000} />
+            <ConfirmDialogHost />
+        </TooltipProvider>
     );
 }

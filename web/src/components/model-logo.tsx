@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps } from "react";
-import { Button, Input, Modal } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { Cpu, Search, X } from "lucide-react";
 
 import { toc } from "@lobehub/icons/es/toc";
@@ -65,7 +67,7 @@ export function ModelLogo({ icon, size = 18, className }: { icon?: string; size?
 export function ModelIconPicker({ value, onChange }: { value?: string; onChange?: (value: string) => void }) {
     const [open, setOpen] = useState(false);
     const [keyword, setKeyword] = useState("");
-    const searchInputRef = useRef<any>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (open) {
@@ -109,20 +111,19 @@ export function ModelIconPicker({ value, onChange }: { value?: string; onChange?
                 )}
             </button>
 
-            <Modal
+            <AppModal
                 title="选择模型 Logo"
                 open={open}
                 onCancel={() => setOpen(false)}
                 width={540}
-                centered
-                destroyOnClose
                 footer={
-                    <div className="flex items-center justify-between py-1 text-xs text-foreground/45">
+                    <div className="flex w-full items-center justify-between py-1 text-xs text-foreground/45">
                         <span>共 {filteredIcons.length} 个可用 Logo</span>
                         <div className="flex items-center gap-2">
                             {value ? (
                                 <Button
-                                    size="small"
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => {
                                         onChange?.("");
                                         setOpen(false);
@@ -131,7 +132,7 @@ export function ModelIconPicker({ value, onChange }: { value?: string; onChange?
                                     清除 Logo
                                 </Button>
                             ) : null}
-                            <Button type="primary" size="small" onClick={() => setOpen(false)}>
+                            <Button size="sm" onClick={() => setOpen(false)}>
                                 完成
                             </Button>
                         </div>
@@ -139,14 +140,21 @@ export function ModelIconPicker({ value, onChange }: { value?: string; onChange?
                 }
             >
                 <div className="space-y-3 pt-2">
-                    <Input
-                        ref={searchInputRef}
-                        prefix={<Search className="size-4 text-foreground/40" />}
-                        value={keyword}
-                        onChange={(event) => setKeyword(event.target.value)}
-                        placeholder="搜索品牌或模型名称（如 OpenAI, Claude, Google, Flux...）"
-                        allowClear
-                    />
+                    <div className="relative flex items-center">
+                        <Search className="pointer-events-none absolute left-2.5 size-4 text-foreground/40" />
+                        <Input
+                            ref={searchInputRef}
+                            className="pl-8 pr-8"
+                            value={keyword}
+                            onChange={(event) => setKeyword(event.target.value)}
+                            placeholder="搜索品牌或模型名称（如 OpenAI, Claude, Google, Flux...）"
+                        />
+                        {keyword ? (
+                            <button type="button" aria-label="清除搜索" className="absolute right-2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setKeyword("")}>
+                                <X className="size-3.5" />
+                            </button>
+                        ) : null}
+                    </div>
                     <div
                         className="grid max-h-[380px] grid-cols-8 gap-2 overflow-y-auto pr-1 sm:grid-cols-9"
                         role="listbox"
@@ -182,7 +190,7 @@ export function ModelIconPicker({ value, onChange }: { value?: string; onChange?
                         )}
                     </div>
                 </div>
-            </Modal>
+            </AppModal>
         </>
     );
 }

@@ -61,7 +61,7 @@ describe("creation library button", () => {
         expect(createSource).toContain('setPreviewType(kind === "video" ? "video" : "image")');
         expect(createSource).toContain("<CreationMediaPreviewModal url={previewUrl} type={previewType}");
         expect(canvasSource).toContain("canPreview ? setImagePreview(reference) : onInsert(reference)");
-        expect(canvasSource).toContain("<AntImage");
+        expect(canvasSource).toContain("<CanvasImagePreview src={imagePreview.previewUrl}");
         expect(canvasSource).toContain("onClick={() => onInsert(reference)}");
     });
 
@@ -172,7 +172,7 @@ describe("creation thread chrome", () => {
     test("parameter popovers use the user surface without a hairline stroke", () => {
         const css = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-product.css"), "utf8");
 
-        expect(css).toContain(".creation-control-popover .ant-popover-inner");
+        expect(css).toContain(".app-user-overlays .creation-control-popover-surface,");
         expect(css).toContain("background: var(--user-surface-raised) !important");
         expect(css).toContain("border: 0 !important");
         expect(css).toContain("--border: transparent");

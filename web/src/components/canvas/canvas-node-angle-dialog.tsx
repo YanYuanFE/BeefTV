@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Slider } from "antd";
+import { Slider } from "@/components/ui/slider";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { motion, useReducedMotion } from "motion/react";
 import { Camera, RotateCcw, Send, X } from "lucide-react";
@@ -143,7 +143,7 @@ function AngleSlider({ label, value, min, max, step = 1, suffix, onChange }: { l
     return (
         <div className="grid h-8 grid-cols-[62px_minmax(0,1fr)_60px] items-center gap-2">
             <span className="text-[var(--fs-tiny)] font-medium opacity-60">{label}</span>
-            <Slider className="canvas-angle-slider m-0" min={min} max={max} step={step} value={value} tooltip={{ open: false }} onChange={onChange} />
+            <Slider className="canvas-angle-slider m-0" min={min} max={max} step={step} value={[value]} onValueChange={([next]) => onChange(next)} />
             <span className="text-right text-[var(--fs-tiny)] font-semibold">{Number.isInteger(value) ? value : value.toFixed(1)}{suffix.startsWith("°") ? suffix : ` ${suffix}`}</span>
         </div>
     );

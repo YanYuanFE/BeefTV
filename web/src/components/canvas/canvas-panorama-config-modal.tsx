@@ -1,7 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Button, Input, Switch } from "antd";
 import { Check, Compass, Copy, Globe, Image as ImageIcon, Info, Plus, Search, Sparkles, X } from "lucide-react";
 
+import { Switch } from "@/components/ui/base/switch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
@@ -333,7 +336,8 @@ const PanoramaSetupForm = memo(
                             <div>
                                 <div className="mb-1.5 flex items-center justify-between gap-2">
                                     <div className="text-[11px] font-semibold text-foreground">{sourceMode === "image" ? "全景源图" : "参考图"}</div>
-                                    <Button size="small" type="text" icon={<Plus className="size-3.5" />} onClick={openAssetPicker} className="!h-6 !px-2 !text-[10px]">
+                                    <Button size="sm" variant="ghost" onClick={openAssetPicker} className="!h-6 !px-2 !text-[10px]">
+                                        <Plus className="size-3.5" />
                                         {sourceMode === "image" && selectedReferences.length > 0 ? "替换" : "添加"}
                                     </Button>
                                 </div>
@@ -348,11 +352,12 @@ const PanoramaSetupForm = memo(
                             {sourceMode === "ai" && (
                                 <div>
                                     <div className="mb-1.5 text-[11px] font-semibold text-foreground">场景描述</div>
-                                    <Input.TextArea
+                                    <Textarea
                                         value={prompt}
                                         onChange={(event) => setPrompt(event.target.value)}
                                         placeholder="例如：黄昏的海边木屋，能看到天空、地面和四周环境"
-                                        autoSize={{ minRows: 2, maxRows: 4 }}
+                                        rows={2}
+                                        className="field-sizing-content min-h-[3.5rem] max-h-[6.5rem] resize-none"
                                     />
                                 </div>
                             )}
@@ -404,10 +409,11 @@ const PanoramaSetupForm = memo(
                                             <div className="text-[11px] font-semibold text-foreground">智能比例</div>
                                             <div className="text-[9px] leading-tight text-foreground/50">模型不支持时自动裁切</div>
                                         </div>
-                                        <Switch size="small" checked={smartBase} onChange={setSmartBase} />
+                                        <Switch size="sm" checked={smartBase} onChange={setSmartBase} aria-label="智能比例" />
                                     </div>
                                     {sourceMode === "ai" && (
-                                        <Button size="small" type="text" icon={<Copy className="size-3.5" />} onClick={() => onCopyPrompt?.(composed)} className="!h-6 !px-2 !text-[10px]">
+                                        <Button size="sm" variant="ghost" onClick={() => onCopyPrompt?.(composed)} className="!h-6 !px-2 !text-[10px]">
+                                            <Copy className="size-3.5" />
                                             复制完整提示词
                                         </Button>
                                     )}
@@ -421,10 +427,11 @@ const PanoramaSetupForm = memo(
                             {sourceMode === "image" ? (directReference ? "已选源图" : "请选择源图") : selectedReferences.length > 0 ? `${selectedReferences.length} 张参考图` : "无参考图"}
                         </span>
                         <div className="flex shrink-0 items-center gap-2">
-                            <Button size="small" onClick={onCancel}>
+                            <Button size="sm" variant="outline" onClick={onCancel}>
                                 取消
                             </Button>
-                            <Button size="small" type="primary" icon={sourceMode === "image" ? <ImageIcon className="size-3.5" /> : <Sparkles className="size-3.5" />} disabled={!canSubmit} onClick={handleSubmit}>
+                            <Button size="sm" disabled={!canSubmit} onClick={handleSubmit}>
+                                {sourceMode === "image" ? <ImageIcon className="size-3.5" /> : <Sparkles className="size-3.5" />}
                                 {sourceMode === "image" ? "创建全景图" : "生成全景图"}
                             </Button>
                         </div>
@@ -452,7 +459,15 @@ const PanoramaSetupForm = memo(
                                 </button>
                             </div>
                             <div className="border-b border-border px-5 py-2">
-                                <Input size="small" allowClear value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} placeholder="搜索图片名称" prefix={<Search className="size-3.5 text-foreground/35" />} />
+                                <div className="relative">
+                                    <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-foreground/35" />
+                                    <Input className="h-7 px-7" value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} placeholder="搜索图片名称" aria-label="搜索图片名称" />
+                                    {assetQuery ? (
+                                        <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setAssetQuery("")}>
+                                            <X className="size-3.5" />
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
                             <div className="ui-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
                                 {filteredReferences.length === 0 ? (
@@ -484,10 +499,10 @@ const PanoramaSetupForm = memo(
                                 )}
                             </div>
                             <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-                                <Button size="small" onClick={() => setIsAssetPickerOpen(false)}>
+                                <Button size="sm" variant="outline" onClick={() => setIsAssetPickerOpen(false)}>
                                     取消
                                 </Button>
-                                <Button size="small" type="primary" disabled={sourceMode === "image" && draftSelectedIds.length === 0} onClick={confirmAssetPicker}>
+                                <Button size="sm" disabled={sourceMode === "image" && draftSelectedIds.length === 0} onClick={confirmAssetPicker}>
                                     {sourceMode === "image" ? "使用此图" : `加入 ${draftSelectedIds.length}`}
                                 </Button>
                             </div>
@@ -503,7 +518,7 @@ PanoramaSetupForm.displayName = "PanoramaSetupForm";
 
 export function CanvasPanoramaConfigModal({ open, onCancel, onConfirm, onCopyPrompt, previewImageUrl, initialProjection, initialSourceMode, initialSmartBase, nodes }: CanvasPanoramaConfigModalProps) {
     return (
-        <AppModal open={open} centered footer={null} width={680} flush onCancel={onCancel}>
+        <AppModal open={open} footer={null} width={680} flush onCancel={onCancel}>
             <div className="flex min-h-0 flex-col overflow-hidden" style={{ maxHeight: "min(640px, calc(100vh - 100px))" }}>
                 <div className="relative flex min-h-0 flex-1">
                     <PanoramaSetupForm

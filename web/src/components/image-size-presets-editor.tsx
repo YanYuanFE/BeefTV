@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
-import { Button, Input } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Check, Plus } from "lucide-react";
 import { Switch } from "@/components/ui/base/switch";
 import "./image-size-picker.css";
@@ -101,13 +102,15 @@ export function ImageSizePresetsEditor({ profile, disabled, onChange }: { profil
                                         setDrafts((current) => ({ ...current, [tier]: event.target.value }));
                                         setErrors((current) => ({ ...current, [tier]: "" }));
                                     }}
-                                    onPressEnter={(event) => {
+                                    onKeyDown={(event) => {
+                                        if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
                                         event.preventDefault();
                                         event.stopPropagation();
                                         addRatio(tier);
                                     }}
                                 />
-                                <Button disabled={disabled || !drafts[tier]?.trim()} icon={<Plus size={14} />} onClick={() => addRatio(tier)} aria-label={`添加 ${tier.toUpperCase()} 比例`}>
+                                <Button variant="outline" disabled={disabled || !drafts[tier]?.trim()} onClick={() => addRatio(tier)} aria-label={`添加 ${tier.toUpperCase()} 比例`}>
+                                    <Plus size={14} />
                                     添加
                                 </Button>
                             </div>

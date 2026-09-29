@@ -1,8 +1,8 @@
 import { AppDrawer } from "@/components/ui/product/app-drawer";
 import { EmptyState } from "@/components/ui/product/empty-state";
-import { App, Button, Grid, Spin } from "antd";
-import { Check, ChevronDown, Cloud, Download, FileClock, History, RefreshCw, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Check, ChevronDown, Cloud, Download, FileClock, History, Loader2, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getCanvasHistoryEntry, listCanvasHistory, type CanvasHistoryEntry } from "@/services/api/workspace-data";
 import { preserveCanvasSyncDraft, readCanvasSyncDrafts, type CanvasSyncDraft } from "@/services/canvas-sync-drafts";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
@@ -11,6 +11,8 @@ import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useSyncProgressStore } from "@/stores/use-sync-progress-store";
 import { workspaceCapabilities } from "@/services/workspace-mode";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import "./canvas-version-history.css";
 
 export type CanvasVersionPreviewState = {
@@ -23,9 +25,22 @@ export type CanvasVersionPreviewState = {
     error?: string;
 };
 
+// Tracks the lg breakpoint (min-width 992px).
+const DESKTOP_QUERY = "(min-width: 992px)";
+function useDesktopBreakpoint() {
+    return useSyncExternalStore(
+        (onChange) => {
+            const media = window.matchMedia(DESKTOP_QUERY);
+            media.addEventListener("change", onChange);
+            return () => media.removeEventListener("change", onChange);
+        },
+        () => window.matchMedia(DESKTOP_QUERY).matches,
+        () => false,
+    );
+}
+
 export function useCanvasVersionHistory(projectId: string, onRestore: (snapshotId: string, revision: number) => Promise<void>, projectFromEditor?: CanvasProject) {
-    const { message, modal } = App.useApp();
-    const desktop = Boolean(Grid.useBreakpoint().lg);
+    const desktop = useDesktopBreakpoint();
     const scope = getActiveUserScope();
     const contextRef = useRef({ projectId, scope });
     contextRef.current = { projectId, scope };
@@ -138,7 +153,7 @@ export function useCanvasVersionHistory(projectId: string, onRestore: (snapshotI
         const selected = preview?.snapshot;
         if (!selected || !preview.project || currentRevision === undefined || restoring) return;
         setConfirming(true);
-        modal.confirm({
+        confirmDialog({
             title: `恢复版本 ${selected.revision} 的内容？`,
             content: "恢复前会备份当前云端内容，并保留本地草稿。恢复后会生成一个新版本，画布的项目归属保持当前设置。",
             okText: "恢复此版本",
@@ -146,7 +161,7 @@ export function useCanvasVersionHistory(projectId: string, onRestore: (snapshotI
             afterClose: () => setConfirming(false),
             onOk: async () => {
                 if (!isCurrentContext()) {
-                    message.error("画布或账号已切换，请重新打开版本记录");
+                    toast.error("画布或账号已切换，请重新打开版本记录");
                     return;
                 }
                 setRestoring(true);
@@ -154,11 +169,11 @@ export function useCanvasVersionHistory(projectId: string, onRestore: (snapshotI
                     await onRestore(selected.id, currentRevision);
                     returnToCurrent();
                     setReload((value) => value + 1);
-                    message.success("已恢复内容并保存为新版本");
+                    toast.success("已恢复内容并保存为新版本");
                 } catch (cause) {
                     const detail = cause instanceof Error ? cause.message : "恢复失败，请重试";
                     setError(detail);
-                    message.error(detail);
+                    toast.error(detail);
                 } finally {
                     setRestoring(false);
                 }
@@ -172,9 +187,9 @@ export function useCanvasVersionHistory(projectId: string, onRestore: (snapshotI
         try {
             // Drawing strokes are not versioned; never mix today's local strokes into an old snapshot.
             const result = await exportCanvasProjects([preview.project], `${preview.project.title}-${preview.label}`, { includeLocalDrawings: false });
-            if (result === "saved") message.success("已下载，可从画布列表导入为新画布");
+            if (result === "saved") toast.success("已下载，可从画布列表导入为新画布");
         } catch (cause) {
-            message.error(cause instanceof Error ? cause.message : "下载失败，请重试");
+            toast.error(cause instanceof Error ? cause.message : "下载失败，请重试");
         } finally {
             setExporting(false);
         }
@@ -262,8 +277,8 @@ export function CanvasVersionHistory({ history }: { history: CanvasVersionHistor
             <header className="canvas-version-header">
                 <History size={17} />
                 <h2>版本记录</h2>
-                <Button type="text" size="small" aria-label="刷新版本记录" icon={<RefreshCw size={15} />} disabled={restoring || loading} onClick={history.refresh} />
-                <Button type="text" size="small" aria-label="关闭版本记录" icon={<X size={17} />} disabled={restoring} onClick={history.close} />
+                <Button variant="ghost" size="icon-sm" aria-label="刷新版本记录" disabled={restoring || loading} onClick={history.refresh}><RefreshCw size={15} /></Button>
+                <Button variant="ghost" size="icon-sm" aria-label="关闭版本记录" disabled={restoring} onClick={history.close}><X size={17} /></Button>
             </header>
             {!localOnly ? <div
                 className="canvas-version-tabs"
@@ -327,7 +342,7 @@ export function CanvasVersionHistory({ history }: { history: CanvasVersionHistor
                         ) : null}
                         {loading ? (
                             <div className="canvas-version-empty">
-                                <Spin size="small" />
+                                <Loader2 className="size-4 animate-spin" />
                             </div>
                         ) : !entries.length && !error ? (
                             <EmptyState size="compact" description="暂无历史版本，后续保存时会自动保留" />
@@ -365,7 +380,7 @@ export function CanvasVersionHistory({ history }: { history: CanvasVersionHistor
                         ) : null}
                         {draftLoading ? (
                             <div className="canvas-version-empty">
-                                <Spin size="small" />
+                                <Loader2 className="size-4 animate-spin" />
                             </div>
                         ) : !displayDrafts.length && !draftError ? (
                             <EmptyState size="compact" description="暂无本地草稿" />
@@ -402,11 +417,12 @@ export function CanvasVersionHistory({ history }: { history: CanvasVersionHistor
                         {preview.project?.nodes.some((node) => node.type === "drawing") ? <p className="canvas-version-hint">绘图仅保留已上传的预览，不含本机历史笔画。</p> : null}
                         <div className="canvas-version-actions">
                             {preview.kind === "cloud" ? (
-                                <Button block type="primary" loading={restoring} disabled={!preview.project || currentRevision === undefined || loading} onClick={history.restore}>
+                                <Button className="w-full" loading={restoring} disabled={!preview.project || currentRevision === undefined || loading} onClick={history.restore}>
                                     恢复此版本
                                 </Button>
                             ) : null}
-                            <Button block type={preview.kind === "draft" ? "primary" : "default"} icon={<Download size={14} />} loading={exporting} disabled={!preview.project || restoring} onClick={() => void history.download()}>
+                            <Button className="w-full" variant={preview.kind === "draft" ? "default" : "outline"} loading={exporting} disabled={!preview.project || restoring} onClick={() => void history.download()}>
+                                <Download size={14} />
                                 {preview.kind === "draft" ? "下载草稿" : "下载此版本"}
                             </Button>
                         </div>
@@ -424,7 +440,6 @@ export function CanvasVersionHistory({ history }: { history: CanvasVersionHistor
         <AppDrawer
             flush
             open={history.listOpen}
-            focusable={{ trap: !history.confirming }}
             placement="right"
             title={null}
             closable={false}

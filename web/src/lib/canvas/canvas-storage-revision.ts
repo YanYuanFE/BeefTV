@@ -392,3 +392,46 @@ export function rebaseCanvasProjects(input: { document: CanvasStorageDocument; b
     document.storageRevision = nextRevision;
     return { document, conflicts };
 }
+
+/**
+ * Re-applies a generation's own node changes onto the latest durable project after a concurrent-update
+ * conflict. Only target nodes change, and on them only the fields (and metadata keys) the generation
+ * changed relative to its base; everything else keeps the durable version. Returns undefined when a
+ * target existed at submit time but was deleted since, so the caller can respect the deletion.
+ */
+export function rebaseGenerationTargetNodes(input: { durable: CanvasProject; baseNodes: CanvasNodeData[]; localNodes: CanvasNodeData[]; isTarget: (node: CanvasNodeData) => boolean }): CanvasProject | undefined {
+    const baseById = new Map(input.baseNodes.map((node) => [node.id, node]));
+    const nodes = [...input.durable.nodes];
+    for (const target of input.localNodes.filter(input.isTarget)) {
+        const base = baseById.get(target.id);
+        const index = nodes.findIndex((node) => node.id === target.id);
+        if (index < 0) {
+            if (base) return undefined;
+            nodes.push(target);
+            continue;
+        }
+        nodes[index] = overlayOwnChanges(base, target, nodes[index]!);
+    }
+    return { ...input.durable, nodes };
+}
+
+function overlayOwnChanges(base: CanvasNodeData | undefined, local: CanvasNodeData, durable: CanvasNodeData): CanvasNodeData {
+    const baseRecord = (base || {}) as Record<string, unknown>;
+    const localRecord = local as unknown as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...(durable as unknown as Record<string, unknown>) };
+    for (const key of new Set([...Object.keys(baseRecord), ...Object.keys(localRecord)])) {
+        if (key === "metadata" || deepEqual(localRecord[key], baseRecord[key])) continue;
+        if (Object.prototype.hasOwnProperty.call(localRecord, key)) merged[key] = localRecord[key];
+        else delete merged[key];
+    }
+    const baseMeta = (baseRecord.metadata || {}) as Record<string, unknown>;
+    const localMeta = (local.metadata || {}) as Record<string, unknown>;
+    const metadata: Record<string, unknown> = { ...((durable.metadata || {}) as Record<string, unknown>) };
+    for (const key of new Set([...Object.keys(baseMeta), ...Object.keys(localMeta)])) {
+        if (deepEqual(localMeta[key], baseMeta[key])) continue;
+        if (Object.prototype.hasOwnProperty.call(localMeta, key)) metadata[key] = localMeta[key];
+        else delete metadata[key];
+    }
+    merged.metadata = metadata;
+    return merged as unknown as CanvasNodeData;
+}

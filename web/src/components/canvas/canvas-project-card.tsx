@@ -1,7 +1,9 @@
 import { Check, Clapperboard, CloudUpload, Download, FileText, Frame, HardDriveUpload, Image as ImageIcon, MoreHorizontal, Music2, Pencil, Plus, Settings2, Sparkles, Trash2, Video, Workflow, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { App, Dropdown, Input } from "antd";
+
+import { Input } from "@/components/ui/input";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
 
 import { flushCanvasStorePersistence, useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
@@ -16,6 +18,7 @@ import { resolveMediaUrl } from "@/services/file-storage";
 import { MediaPlaceholder } from "@/components/ui/product/media-placeholder";
 import { cn } from "@/lib/utils";
 import { useSyncProgressStore } from "@/stores/use-sync-progress-store";
+import { toast } from "sonner";
 
 type ProjectPreviewMedia = { node: CanvasNodeData; url: string; storageKey?: string; kind: "image" | "video" };
 const projectPreviewMediaCache = new WeakMap<CanvasNodeData[], { first: ProjectPreviewMedia[]; latest: ProjectPreviewMedia[] }>();
@@ -33,7 +36,6 @@ export function CanvasCreateCard({ disabled, onClick }: { disabled?: boolean; on
 }
 
 export function CanvasProjectCard({ project, projectName, variant = "library", readOnly = false, footer }: { project: CanvasProject; projectName?: string; variant?: "library" | "recent"; readOnly?: boolean; footer?: ReactNode }) {
-    const { message } = App.useApp();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const renameProject = useCanvasStore((state) => state.renameProject);
@@ -115,21 +117,18 @@ export function CanvasProjectCard({ project, projectName, variant = "library", r
                             <button type="button" onClick={() => startEditing(project.id, project.title)} aria-label={`重命名 ${project.title}`} title="重命名">
                                 <Pencil className="size-3.5" />
                             </button>
-                            <Dropdown
-                                trigger={["click"]}
-                                menu={{
-                                    onClick: ({ domEvent }) => domEvent.stopPropagation(),
-                                    items: [
-                                        { key: "export", icon: <Download className="size-3.5" />, label: "导出画布", onClick: () => void reportOwnedMediaSave(message, exportCanvasProjects([project], project.title || "画布")) },
-                                        { type: "divider" },
-                                        { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "删除", onClick: () => setDeleteIds([project.id]) },
-                                    ],
-                                }}
+                            <MenuDropdown
+                                onClick={({ domEvent }) => domEvent.stopPropagation()}
+                                items={[
+                                    { key: "export", icon: <Download className="size-3.5" />, label: "导出画布", onClick: () => void reportOwnedMediaSave(toast, exportCanvasProjects([project], project.title || "画布")) },
+                                    { type: "divider" },
+                                    { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "删除", onClick: () => setDeleteIds([project.id]) },
+                                ]}
                             >
                                 <button type="button" aria-label={`${project.title} 画布操作`} title="更多操作">
                                     <MoreHorizontal className="size-4" />
                                 </button>
-                            </Dropdown>
+                            </MenuDropdown>
                         </div>
                     ) : null}
                 </div>

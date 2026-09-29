@@ -1,5 +1,4 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 import { nanoid } from "nanoid";
 
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
@@ -9,6 +8,8 @@ import { buildGenerationConfig, resetGenerationTaskMetadata } from "@/lib/canvas
 import { navigateToSettings } from "@/lib/settings-navigation";
 import { modelDisplayName, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { CanvasNodeType, type CanvasBatchRow, type CanvasBatchTableData, type CanvasConnection, type CanvasGenerationBatchMode, type CanvasNodeData } from "@/types/canvas";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 type Options = {
     nodesRef: { current: CanvasNodeData[] };
@@ -20,7 +21,6 @@ type Options = {
 };
 
 export function useCanvasBatchTable({ nodesRef, connectionsRef, setNodes, setConnections, setSelectedNodeIds, enqueueGenerationBatch }: Options) {
-    const { message, modal } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
 
@@ -50,24 +50,24 @@ export function useCanvasBatchTable({ nodesRef, connectionsRef, setNodes, setCon
         const table = nodesRef.current.find((item) => item.id === nodeId)?.metadata?.batchTable;
         if (!table) return;
         const columns = batchReferenceColumns(table);
-        if (columns.length >= 6) return message.info("最多支持 6 组参考图");
+        if (columns.length >= 6) return toast.info("最多支持 6 组参考图");
         const nextIndex = columns.length + 1;
         patchTable(nodeId, { referenceColumns: [...columns, { id: `reference-${nanoid()}`, label: `参考图 ${nextIndex}` }] });
-    }, [message, nodesRef, patchTable]);
+    }, [nodesRef, patchTable]);
 
     const removeReferenceColumn = useCallback((nodeId: string) => {
         const table = nodesRef.current.find((item) => item.id === nodeId)?.metadata?.batchTable;
         if (!table) return;
         const columns = batchReferenceColumns(table);
         const nextTable = removeLastBatchReferenceColumn(table);
-        if (!nextTable) return message.info("至少保留 1 组参考图");
+        if (!nextTable) return toast.info("至少保留 1 组参考图");
         const removed = columns.at(-1);
         patchTable(nodeId, nextTable);
         if (removed) {
             const handleId = batchReferenceHandleId(removed.id);
             setConnections((current) => current.filter((connection) => !(connection.toNodeId === nodeId && connection.toHandleId === handleId)));
         }
-    }, [message, nodesRef, patchTable, setConnections]);
+    }, [nodesRef, patchTable, setConnections]);
 
     const syncRowsFromConnections = useCallback((nodeId: string, silent = false) => {
         const node = nodesRef.current.find((item) => item.id === nodeId);
@@ -79,22 +79,22 @@ export function useCanvasBatchTable({ nodesRef, connectionsRef, setNodes, setCon
             return input?.type === CanvasNodeType.Image && Boolean(input.metadata?.content || input.metadata?.storageKey);
         }));
         if (!columns.some((column) => column.length)) {
-            if (!silent) message.warning("请先把图片节点连接到批量创作表");
+            if (!silent) toast.warning("请先把图片节点连接到批量创作表");
             return false;
         }
         const rows = createBatchRowsFromColumns(table.operation, columns, table.rows);
         if (!rows.length) {
-            if (!silent) message.warning("批量换装至少需要一张人物图和一张服装图");
+            if (!silent) toast.warning("批量换装至少需要一张人物图和一张服装图");
             return false;
         }
         if (JSON.stringify(rows) === JSON.stringify(table.rows)) return true;
         patchTable(nodeId, { rows });
         if (!silent) {
             const added = Math.max(0, rows.length - table.rows.length);
-            message.success(added ? `已同步连线并新增 ${added} 行，原有任务均已保留` : "已同步最新连线，原有任务均已保留");
+            toast.success(added ? `已同步连线并新增 ${added} 行，原有任务均已保留` : "已同步最新连线，原有任务均已保留");
         }
         return true;
-    }, [connectionsRef, message, nodesRef, patchTable]);
+    }, [connectionsRef, nodesRef, patchTable]);
 
     const fillRowsFromConnections = useCallback((nodeId: string) => {
         syncRowsFromConnections(nodeId);
@@ -136,13 +136,12 @@ export function useCanvasBatchTable({ nodesRef, connectionsRef, setNodes, setCon
             if (requested) return true;
             return !output?.metadata?.content;
         });
-        if (!rows.length) return message.info("没有可提交的未完成任务，请检查参考图和提示词");
-        const confirmed = await new Promise<boolean>((resolve) => modal.confirm({
+        if (!rows.length) return toast.info("没有可提交的未完成任务，请检查参考图和提示词");
+        const confirmed = await new Promise<boolean>((resolve) => confirmDialog({
             title: `确认提交 ${rows.length} 个批量图片任务`,
             content: `模型：${modelDisplayName(effectiveConfig, imageModel)}；并发上限：${table.concurrency}。这些任务可能消耗积分或产生外部模型费用。`,
             okText: "确认生成",
             cancelText: "取消",
-            centered: true,
             onOk: () => resolve(true),
             onCancel: () => resolve(false),
         }));
@@ -190,8 +189,8 @@ export function useCanvasBatchTable({ nodesRef, connectionsRef, setNodes, setCon
         setNodes(nextNodes);
         setConnections(nextConnections);
         setSelectedNodeIds(new Set(targets.map((target) => target.nodeId)));
-        if (enqueueGenerationBatch(nodeId, "batch_image", targets, { concurrency: table.concurrency })) message.success(`${targets.length} 个任务已加入并发队列`);
-    }, [connectionsRef, effectiveConfig, enqueueGenerationBatch, isAiConfigReady, message, modal, nodesRef, setConnections, setNodes, setSelectedNodeIds]);
+        if (enqueueGenerationBatch(nodeId, "batch_image", targets, { concurrency: table.concurrency })) toast.success(`${targets.length} 个任务已加入并发队列`);
+    }, [connectionsRef, effectiveConfig, enqueueGenerationBatch, isAiConfigReady, nodesRef, setConnections, setNodes, setSelectedNodeIds]);
 
     return { addReferenceColumn, addRow, fillRowsFromConnections, generateRows, moveReferenceCell, patchTable, removeReferenceColumn, removeRow, reorderReferenceColumns, syncRowsFromConnections, updateRow };
 }

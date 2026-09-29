@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch, type SetStateAction } from "react";
 
 import type { CanvasNodeData, ContextMenuState } from "@/types/canvas";
+import { OVERLAY_SELECTOR } from "@/lib/overlay-selectors";
 
 type UseCanvasKeyboardOptions = {
     enabled?: boolean;
@@ -119,7 +120,7 @@ export function useCanvasKeyboard({
                 return;
             }
             if (isModifierShortcut && !event.altKey && key === "f") {
-                if (target?.closest(".ant-modal-wrap, .ant-dropdown, .ant-popover")) return;
+                if (target?.closest(OVERLAY_SELECTOR)) return;
                 event.preventDefault();
                 event.stopPropagation();
                 if (!event.repeat) {
@@ -132,7 +133,7 @@ export function useCanvasKeyboard({
             const isCanvasControlTarget = Boolean(target?.closest("[data-canvas-no-zoom]"));
             if (isCanvasControlTarget && !(isModifierShortcut && !event.altKey && (key === "c" || key === "v"))) return;
             if (event.altKey && event.shiftKey && !isModifierShortcut && key === "f") {
-                if (target?.closest(".ant-modal-wrap, .ant-dropdown, .ant-popover")) return;
+                if (target?.closest(OVERLAY_SELECTOR)) return;
                 event.preventDefault();
                 if (!event.repeat) autoArrangeCanvasNodes();
                 return;
@@ -207,7 +208,7 @@ export function useCanvasKeyboard({
             }
             if (event.key === "Escape") {
                 // 沉浸专注：无选中且无弹窗/下拉/右键菜单时，Esc 退出专注；否则保留原有取消选择行为。
-                const hasFocusOverlay = Boolean(document.querySelector(".ant-modal-wrap, .ant-dropdown, .ant-select-dropdown, .ant-popover, [data-canvas-context-menu]"));
+                const hasFocusOverlay = Boolean(document.querySelector(`${OVERLAY_SELECTOR},[data-canvas-context-menu]`));
                 if (focusMode && !selectedNodeIdsRef.current.size && !hasFocusOverlay) {
                     event.stopPropagation();
                     exitFocusMode();

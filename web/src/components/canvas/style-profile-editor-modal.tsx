@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { App, Button, Input, Segmented, Select } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { TagsInput } from "@/components/ui/tags-input";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Braces, Image, Layers3, Save, Sparkles } from "lucide-react";
 
 import { StyleAssetBindingModal } from "@/components/canvas/style-asset-binding-modal";
 import { createStyleProfileSnapshot, styleProfileValidationMessage, type StyleProfileSnapshot } from "@/lib/canvas/style-profile";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 type EditorSection = "identity" | "prompt" | "execution";
 
@@ -17,7 +23,6 @@ type StyleProfileEditorModalProps = {
 };
 
 export function StyleProfileEditorModal({ open, initialProfile, saving = false, onClose, onSave }: StyleProfileEditorModalProps) {
-    const { message, modal } = App.useApp();
     const [section, setSection] = useState<EditorSection>("identity");
     const [draft, setDraft] = useState<StyleProfileSnapshot | null>(initialProfile);
     const [baseline, setBaseline] = useState("");
@@ -41,11 +46,11 @@ export function StyleProfileEditorModal({ open, initialProfile, saving = false, 
             onClose();
             return;
         }
-        modal.confirm({ title: "放弃未保存的风格修改？", content: "名称、Prompt、封面和执行配置中的改动都会丢失。", okText: "放弃修改", cancelText: "继续编辑", okButtonProps: { danger: true }, onOk: onClose });
+        confirmDialog({ title: "放弃未保存的风格修改？", content: "名称、Prompt、封面和执行配置中的改动都会丢失。", okText: "放弃修改", cancelText: "继续编辑", okButtonProps: { danger: true }, onOk: onClose });
     };
     const submit = (applyToProject: boolean) => {
         if (validationMessage) {
-            message.error(validationMessage);
+            toast.error(validationMessage);
             return;
         }
         onSave(createStyleProfileSnapshot({ ...draft, source: "user" }), applyToProject);
@@ -54,16 +59,15 @@ export function StyleProfileEditorModal({ open, initialProfile, saving = false, 
     return (
         <>
             <AppModal
-                rootClassName="style-profile-editor-modal"
+                rootClassName="style-profile-editor-modal rounded-[var(--r-2xl)] bg-transparent"
                 open={open}
                 title={null}
                 footer={null}
-                centered
                 width="min(1120px, calc(100vw - 24px))"
                 onCancel={requestClose}
                 flush
             >
-                <div className="flex max-h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
+                <div className="flex h-[var(--style-center-height)] max-h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
                     <header className="flex min-h-16 items-center border-b border-border px-4 pr-12 sm:px-5 sm:pr-14">
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
@@ -94,9 +98,9 @@ export function StyleProfileEditorModal({ open, initialProfile, saving = false, 
                     <footer className="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                         <p className={`text-[var(--fs-tiny)] ${validationMessage ? "text-red-500" : "text-foreground/45"}`}>{validationMessage || "保存后进入“我的风格”；应用时会把当前版本复制为项目快照"}</p>
                         <div className="flex shrink-0 flex-wrap justify-end gap-2">
-                            <Button onClick={requestClose}>取消</Button>
-                            <Button icon={<Save className="size-3.5" />} disabled={Boolean(validationMessage)} loading={saving} onClick={() => submit(false)}>保存到我的风格</Button>
-                            <Button type="primary" icon={<Sparkles className="size-3.5" />} disabled={Boolean(validationMessage)} loading={saving} onClick={() => submit(true)}>保存并应用</Button>
+                            <Button variant="outline" onClick={requestClose}>取消</Button>
+                            <Button variant="outline" disabled={Boolean(validationMessage)} loading={saving} onClick={() => submit(false)}><Save className="size-3.5" />保存到我的风格</Button>
+                            <Button disabled={Boolean(validationMessage)} loading={saving} onClick={() => submit(true)}><Sparkles className="size-3.5" />保存并应用</Button>
                         </div>
                     </footer>
                 </div>
@@ -145,10 +149,10 @@ function IdentityFields({ profile, onChange }: EditorFieldsProps) {
         <div className="space-y-5">
             <SectionHeading title="风格身份" description="名称、封面和标签会出现在“我的风格”中" />
             <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="风格名称" className="sm:col-span-2"><Input maxLength={80} showCount value={profile.title} placeholder="例如：东方志怪 · 工笔暗彩" onChange={(event) => onChange({ title: event.target.value })} /></Field>
-                <Field label="风格简介" className="sm:col-span-2"><Input.TextArea maxLength={500} showCount autoSize={{ minRows: 3, maxRows: 6 }} value={profile.description} placeholder="说明适用题材、画面气质和核心辨识度" onChange={(event) => onChange({ description: event.target.value })} /></Field>
+                <Field label="风格名称" className="sm:col-span-2"><CountedField count={profile.title.length} max={80}><Input maxLength={80} className="pr-14" value={profile.title} placeholder="例如：东方志怪 · 工笔暗彩" onChange={(event) => onChange({ title: event.target.value })} /></CountedField></Field>
+                <Field label="风格简介" className="sm:col-span-2"><CountedField count={(profile.description || "").length} max={500} below><Textarea maxLength={500} rows={3} className="max-h-36 min-h-[4.5rem]" value={profile.description} placeholder="说明适用题材、画面气质和核心辨识度" onChange={(event) => onChange({ description: event.target.value })} /></CountedField></Field>
                 <Field label="封面图 URL" className="sm:col-span-2"><Input value={profile.coverUrl} placeholder="可填写项目资源 URL 或可访问的图片地址" onChange={(event) => onChange({ coverUrl: event.target.value })} /></Field>
-                <Field label="标签" className="sm:col-span-2"><Select mode="tags" maxCount={20} tokenSeparators={[",", "，"]} value={profile.tags} placeholder="输入题材、媒介、色彩或质感后回车" onChange={(tags) => onChange({ tags })} /></Field>
+                <Field label="标签" className="sm:col-span-2"><TagsInput maxCount={20} tokenSeparators={[",", "，"]} value={profile.tags} placeholder="输入题材、媒介、色彩或质感后回车" onChange={(tags) => onChange({ tags })} /></Field>
             </div>
             <SectionHeading title="辅助标注" description="这些字段用于检索和理解，不会限制你自由编写 Prompt" />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -166,10 +170,10 @@ function PromptFields({ profile, onChange }: EditorFieldsProps) {
         <div className="space-y-5">
             <SectionHeading title="完整风格 Prompt" description="直接定义项目长期稳定的美术系统；这里没有固定组合限制" />
             <Field label="正向 Prompt">
-                <Input.TextArea value={profile.prompt} autoSize={{ minRows: 16, maxRows: 28 }} placeholder="填写视觉媒介、角色设计、色彩、材质、建筑世界观、影像基线和一致性规则……" onChange={(event) => onChange({ prompt: event.target.value })} />
+                <Textarea value={profile.prompt} rows={16} className="max-h-[42rem] min-h-96" placeholder="填写视觉媒介、角色设计、色彩、材质、建筑世界观、影像基线和一致性规则……" onChange={(event) => onChange({ prompt: event.target.value })} />
             </Field>
             <Field label="推荐负面 Prompt">
-                <Input.TextArea value={profile.negativePrompt} autoSize={{ minRows: 6, maxRows: 14 }} placeholder="填写需要全项目避免的媒介漂移、人物错误、材质错误、文字水印等" onChange={(event) => onChange({ negativePrompt: event.target.value })} />
+                <Textarea value={profile.negativePrompt} rows={6} className="max-h-[21rem] min-h-36" placeholder="填写需要全项目避免的媒介漂移、人物错误、材质错误、文字水印等" onChange={(event) => onChange({ negativePrompt: event.target.value })} />
             </Field>
         </div>
     );
@@ -181,8 +185,9 @@ function ExecutionFields({ profile, onChange, onEditAssets }: EditorFieldsProps 
         <div className="space-y-5">
             <SectionHeading title="生成执行" description="控制模型资产不兼容时是继续使用 Prompt，还是阻止任务" />
             <Field label="执行策略">
-                <Segmented
+                <SegmentedControl
                     block
+                    ariaLabel="执行策略"
                     value={profile.executionPolicy || "compatible-fallback"}
                     options={[{ value: "compatible-fallback", label: "兼容降级" }, { value: "strict-assets", label: "严格阻止" }]}
                     onChange={(executionPolicy) => onChange({ executionPolicy: executionPolicy as StyleProfileSnapshot["executionPolicy"] })}
@@ -193,7 +198,7 @@ function ExecutionFields({ profile, onChange, onEditAssets }: EditorFieldsProps 
                     <h4 className="text-sm font-medium">执行资产</h4>
                     <p className="mt-1 text-[var(--fs-label)] text-foreground/45">{profile.assets.length} 个已绑定，{enabled.length} 个已启用</p>
                 </div>
-                <Button icon={<Layers3 className="size-3.5" />} onClick={onEditAssets}>配置 LoRA、模板与参考图</Button>
+                <Button variant="outline" onClick={onEditAssets}><Layers3 className="size-3.5" />配置 LoRA、模板与参考图</Button>
             </div>
             {profile.assets.length ? <div className="divide-y divide-border border-b border-border">{profile.assets.map((asset) => <div key={asset.id} className="flex items-center gap-3 py-3 text-xs"><span className={`size-1.5 shrink-0 rounded-full ${asset.enabled !== false && asset.status === "validated" ? "bg-emerald-500" : asset.status === "unavailable" ? "bg-red-500" : "bg-amber-500"}`} /><span className="min-w-0 flex-1 truncate font-medium">{asset.title}</span><span className="shrink-0 text-foreground/40">{asset.kind.toUpperCase()} · {asset.status === "validated" ? "已验证" : asset.status === "unavailable" ? "不可用" : "待验证"}</span></div>)}</div> : <div className="grid min-h-36 place-items-center border-b border-border text-center text-xs text-foreground/38">尚未绑定执行资产，当前风格将只通过 Prompt 执行</div>}
             <p className="text-[var(--fs-tiny)] leading-5 text-foreground/42">LoRA 与参考图已支持绑定、验证和兼容判断；具体生成渠道没有原生适配器时，兼容策略会降级到 Prompt，严格策略会阻止生成。</p>
@@ -209,6 +214,13 @@ function SectionHeading({ title, description }: { title: string; description: st
 
 function Field({ label, className = "", children }: { label: string; className?: string; children: ReactNode }) {
     return <label className={`grid gap-1.5 text-xs ${className}`}><span className="font-medium text-foreground/62">{label}</span>{children}</label>;
+}
+
+// Character counter beside or below a field, replacing AntD showCount.
+function CountedField({ count, max, below = false, children }: { count: number; max: number; below?: boolean; children: ReactNode }) {
+    const counter = <span className="text-[var(--fs-tiny)] tabular-nums text-muted-foreground">{count} / {max}</span>;
+    if (below) return <span className="grid gap-1">{children}<span className="justify-self-end">{counter}</span></span>;
+    return <span className="relative block">{children}<span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2">{counter}</span></span>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

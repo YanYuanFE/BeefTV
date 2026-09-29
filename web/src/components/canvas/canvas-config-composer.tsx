@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
-import { Button, Image } from "antd";
 import { FileText, Image as ImageIcon, Music2, Pencil, Sparkles, Video, X } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { isCanvasWorkflowProvider } from "@/lib/canvas/canvas-workflow";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -10,6 +10,7 @@ import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-refer
 import { generationInputMentionLabel, normalizeGenerationNodeMentionTokens, type NodeGenerationInput } from "./canvas-node-generation";
 import { CanvasVideoPromptTools } from "./canvas-video-prompt-tools";
 import { CanvasPresetPicker, type CanvasPromptPreset } from "./canvas-preset-picker";
+import { CanvasImagePreview } from "./canvas-image-preview";
 import type { CanvasGenerationMode, CanvasNodeMetadata, CanvasWorkspaceMode } from "@/types/canvas";
 
 type CanvasConfigComposerProps = {
@@ -178,7 +179,7 @@ export function CanvasConfigComposer({ value, inputs, skillReferences = [], gene
                     <div className="truncate text-[var(--fs-label)] opacity-55">{simpleMode ? "已连接素材会自动带入" : workflowVideoReferenceMode ? "已连接媒体会按工作流字段顺序自动带入" : "@ 引用已连接素材或已激活技能，发送前自动组装"}</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                    <Button size="small" type="text" className="!h-7 !w-7 !min-w-7 !p-0" icon={<X className="size-3.5" />} onClick={onClose} />
+                    <Button size="icon-sm" variant="ghost" className="!h-7 !w-7 !min-w-7 !p-0" aria-label="关闭" onClick={onClose}><X className="size-3.5" /></Button>
                 </div>
             </div>
             {generationMode === "video" && onMetadataChange && !simpleMode ? (
@@ -250,7 +251,7 @@ export function CanvasConfigComposer({ value, inputs, skillReferences = [], gene
                 />
                 {mention && candidates.length ? <MentionMenu candidates={candidates} allInputs={inputs} activeIndex={Math.min(activeIndex, candidates.length - 1)} theme={theme} onSelect={insertCandidate} /> : null}
             </div>
-            {imagePreview ? <Image src={imagePreview} alt="引用图片预览" style={{ display: "none" }} preview={{ visible: true, src: imagePreview, onVisibleChange: (visible) => !visible && setImagePreview(null) }} /> : null}
+            {imagePreview ? <CanvasImagePreview src={imagePreview} alt="引用图片预览" onClose={() => setImagePreview(null)} /> : null}
         </div>
     );
 

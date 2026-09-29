@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { App } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Check, Maximize2, X } from "lucide-react";
 
@@ -8,6 +7,7 @@ import { drawingEngineForNode, drawingEngineLabel } from "@/lib/canvas/canvas-dr
 import { loadCanvasDrawing, saveCanvasDrawing, type CanvasDrawingSnapshot } from "@/lib/canvas/canvas-drawing-storage";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { CanvasNodeData } from "@/types/canvas";
+import { toast } from "sonner";
 
 const CanvasDrawingExcalidrawEditor = lazy(() => import("@/components/canvas/canvas-drawing-excalidraw-editor").then((module) => ({ default: module.CanvasDrawingExcalidrawEditor })));
 
@@ -20,7 +20,6 @@ type CanvasDrawingEditorModalProps = {
 };
 
 export function CanvasDrawingEditorModal({ open, projectId, node, onClose, onSaved }: CanvasDrawingEditorModalProps) {
-    const { message } = App.useApp();
     const colorScheme = useActiveTheme();
     const engine = drawingEngineForNode(node);
     const currentRef = useRef<CanvasDrawingSnapshot | null>(null);
@@ -49,10 +48,10 @@ export function CanvasDrawingEditorModal({ open, projectId, node, onClose, onSav
             if (cancelled) return;
             const detail = error instanceof Error ? error.message : "本地绘图文档无法读取";
             setLoadError(detail);
-            message.error(`绘图加载失败：${detail}`);
+            toast.error(`绘图加载失败：${detail}`);
         });
         return () => { cancelled = true; };
-    }, [engine, message, node?.metadata?.drawingId, open, projectId]);
+    }, [engine, node?.metadata?.drawingId, open, projectId]);
 
     const handleSave = async () => {
         if (!node?.metadata?.drawingId || !ready || !editorRef.current) return false;
@@ -64,7 +63,7 @@ export function CanvasDrawingEditorModal({ open, projectId, node, onClose, onSav
             onSaved(node.id, saved);
             return true;
         } catch (error) {
-            message.error(error instanceof Error ? `绘图保存失败：${error.message}` : "绘图保存失败");
+            toast.error(error instanceof Error ? `绘图保存失败：${error.message}` : "绘图保存失败");
             return false;
         } finally {
             setSaving(false);
@@ -77,7 +76,7 @@ export function CanvasDrawingEditorModal({ open, projectId, node, onClose, onSav
     };
 
     return (
-        <AppModal flush open={open} onCancel={() => void handleClose()} footer={null} closable={false} destroyOnHidden width="100vw" centered className="canvas-drawing-editor-modal">
+        <AppModal flush open={open} onCancel={() => void handleClose()} footer={null} closable={false} width="100vw" className="canvas-drawing-editor-modal">
             <div className="flex h-[min(92dvh,980px)] flex-col">
                 <div className="flex h-12 shrink-0 items-center justify-between border-b px-4" style={{ background: "var(--background)", borderColor: "var(--border)" }}>
                     <div className="flex min-w-0 items-center gap-2"><Maximize2 className="size-4 opacity-55" /><span className="truncate text-sm font-semibold">{node?.title || "绘图"}</span><span className="text-[var(--fs-label)] opacity-45">{drawingEngineLabel(engine)} · {ready ? "已加载" : "正在加载"}</span></div>

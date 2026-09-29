@@ -1,8 +1,8 @@
-import { Button, Spin } from "antd";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useEffect, useRef, useState } from "react";
 
-import { Check, Mic, Square, X } from "lucide-react";
+import { Check, Loader2, Mic, Square, X } from "lucide-react";
 
 import { AudioWaveform } from "./audio-waveform";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
@@ -121,27 +121,31 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
                     {speechSupported ? (
                         <Tooltip title="重试">
                             <Button
-                                type="text"
-                                size="small"
-                                icon={<Mic className="size-3.5" />}
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="重试"
                                 onClick={handleRetry}
                                 style={{ color: theme.node.muted }}
-                            />
+                            >
+                                <Mic className="size-3.5" />
+                            </Button>
                         </Tooltip>
                     ) : null}
                     <Tooltip title="取消">
                         <Button
-                            type="text"
-                            size="small"
-                            icon={<X className="size-3.5" />}
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="取消"
                             onClick={onCancel}
                             style={{ color: theme.node.muted }}
-                        />
+                        >
+                            <X className="size-3.5" />
+                        </Button>
                     </Tooltip>
                 </div>
             ) : transcribeState === "transcribing" ? (
                 <div className="flex items-center gap-2 px-2" style={{ color: theme.node.muted }}>
-                    <Spin size="small" />
+                    <Loader2 className="size-4 animate-spin" />
                     <span className="text-xs">正在转写...</span>
                 </div>
             ) : transcribeState === "done" ? (
@@ -165,26 +169,30 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
                     ) : null}
                     <Tooltip title="取消">
                         <Button
-                            type="text"
-                            size="small"
-                            icon={<X className="size-3.5" />}
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="取消"
                             onClick={() => {
                                 cancelRecording();
                                 cancelSpeech();
                                 onCancel();
                             }}
                             style={{ color: theme.node.muted }}
-                        />
+                        >
+                            <X className="size-3.5" />
+                        </Button>
                     </Tooltip>
                     <Tooltip title="停止并转写">
                         <Button
-                            type="text"
-                            size="small"
-                            icon={<Square className="size-3.5" />}
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="停止并转写"
                             onClick={handleStop}
                             disabled={state !== "recording" || transcribeState !== "idle"}
                             style={{ color: theme.accent.primary }}
-                        />
+                        >
+                            <Square className="size-3.5" />
+                        </Button>
                     </Tooltip>
                 </>
             )}

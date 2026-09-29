@@ -84,7 +84,7 @@ func TestSignVerifyRoundTripAndTamper(t *testing.T) {
 		t.Fatalf("notes %q", body.Notes)
 	}
 	asset := body.Platforms[platformDarwinARM64]
-	if asset.URL != "https://updates.beefapi.com/beeftv/v1.6.0/BeefTV-v1.6.0-darwin-arm64.zip" {
+	if asset.URL != "https://updates.beefapi.com/framely/v1.6.0/Framely-v1.6.0-darwin-arm64.zip" {
 		t.Fatalf("url %q", asset.URL)
 	}
 	if asset.Size <= 0 || len(asset.SHA256) != 64 {
@@ -210,9 +210,9 @@ func packageNamed(t *testing.T, dir, platform, version string) string {
 		}
 		writer := zip.NewWriter(file)
 		for name, body := range map[string]string{
-			"BeefTV.app/Contents/MacOS/BeefTV":                                 "binary",
-			"BeefTV.app/Contents/Info.plist":                                   "<plist></plist>",
-			"BeefTV.app/Contents/Resources/plugin-packages/core.beeftv-plugin": "plugin",
+			"Framely.app/Contents/MacOS/Framely":                                 "binary",
+			"Framely.app/Contents/Info.plist":                                   "<plist></plist>",
+			"Framely.app/Contents/Resources/plugin-packages/core.beeftv-plugin": "plugin",
 		} {
 			header := &zip.FileHeader{Name: name, Method: zip.Deflate}
 			header.SetMode(0o755)
@@ -238,7 +238,7 @@ func packageNamed(t *testing.T, dir, platform, version string) string {
 	}
 	switch platform {
 	case platformDarwinARM64, platformDarwinAMD64:
-		writeFakeDarwinApp(t, filepath.Join(input, "BeefTV.app"))
+		writeFakeDarwinApp(t, filepath.Join(input, "Framely.app"))
 	case platformWindowsAMD64:
 		writeFakeWindowsBin(t, input)
 	}

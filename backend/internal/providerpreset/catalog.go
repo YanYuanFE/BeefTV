@@ -1,16 +1,11 @@
 package providerpreset
 
 import (
-	"bytes"
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 )
-
-//go:embed catalog/*.json
-var catalogFiles embed.FS
 
 type ModelProfile struct {
 	Model            string          `json:"model"`
@@ -30,7 +25,8 @@ type ChannelPreset struct {
 	Metadata        map[string]any `json:"metadata,omitempty"`
 }
 
-var builtins = mustLoadCatalog()
+// ponytail: no built-in channels ship now; add a catalog loader back when one does.
+var builtins []ChannelPreset
 
 func BuiltinChannels() []ChannelPreset {
 	result := make([]ChannelPreset, len(builtins))
@@ -38,15 +34,6 @@ func BuiltinChannels() []ChannelPreset {
 		result[index] = builtins[index].Clone()
 	}
 	return result
-}
-
-func BeefAPI() ChannelPreset {
-	for _, preset := range builtins {
-		if preset.ID == "beefapi" {
-			return preset.Clone()
-		}
-	}
-	panic("BeefAPI preset missing")
 }
 
 func (preset ChannelPreset) Model(name string) (ModelProfile, bool) {
@@ -97,34 +84,6 @@ func Validate(preset ChannelPreset) error {
 		}
 	}
 	return nil
-}
-
-func mustLoadCatalog() []ChannelPreset {
-	entries, err := catalogFiles.ReadDir("catalog")
-	if err != nil {
-		panic(err)
-	}
-	presets := make([]ChannelPreset, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		body, err := catalogFiles.ReadFile("catalog/" + entry.Name())
-		if err != nil {
-			panic(err)
-		}
-		decoder := json.NewDecoder(bytes.NewReader(body))
-		decoder.DisallowUnknownFields()
-		var preset ChannelPreset
-		if err := decoder.Decode(&preset); err != nil {
-			panic(fmt.Errorf("decode provider preset %s: %w", entry.Name(), err))
-		}
-		if err := Validate(preset); err != nil {
-			panic(fmt.Errorf("validate provider preset %s: %w", entry.Name(), err))
-		}
-		presets = append(presets, preset)
-	}
-	return presets
 }
 
 func knownProtocol(value string) bool {

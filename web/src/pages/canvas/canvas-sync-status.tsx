@@ -1,4 +1,3 @@
-import { App, Button, Dropdown, Popover } from "antd";
 import { CheckCircle2, CloudCheck, CloudOff, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
@@ -7,9 +6,12 @@ import { getActiveUserScope } from "@/lib/user-scope";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useSyncProgressStore } from "@/stores/use-sync-progress-store";
 import { workspaceCapabilities } from "@/services/workspace-mode";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export function CanvasSyncStatus({ projectId, onLoadLatest, onOpenVersions }: { projectId: string; onLoadLatest: () => Promise<void>; onOpenVersions?: () => void }) {
-    const { message } = App.useApp();
     const progress = useSyncProgressStore((state) => state.syncingProjects[projectId]);
     const localOnly = workspaceCapabilities().local;
     const [busy, setBusy] = useState(false);
@@ -24,7 +26,7 @@ export function CanvasSyncStatus({ projectId, onLoadLatest, onOpenVersions }: { 
         try {
             await operation();
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "操作失败，请重试");
+            toast.error(error instanceof Error ? error.message : "操作失败，请重试");
         } finally {
             setBusy(false);
         }
@@ -32,21 +34,29 @@ export function CanvasSyncStatus({ projectId, onLoadLatest, onOpenVersions }: { 
 
     return (
         <>
-            <Popover
-                trigger="click"
-                placement="bottom"
-                open={statusOpen}
-                onOpenChange={setStatusOpen}
-                content={
+            <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className={!localOnly && failed ? "text-destructive hover:text-destructive" : undefined}
+                        aria-label={`画布保存状态：${label}`}
+                    >
+                        {localOnly ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : saving ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : failed ? <CloudOff className="size-3.5" /> : <CloudCheck className="size-3.5" />}
+                        <span className="canvas-sync-status-label text-xs">{label}</span>
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="center" className="w-auto p-3">
                     <div className="max-w-80 space-y-3" data-canvas-no-zoom>
                         <p role="status" className="text-sm">
                             {localOnly ? "画布已保存在本机。" : progress?.message || (phase === "done" ? "画布已同步到云端" : "尚未确认云端保存，请保留本地内容")}
                         </p>
                         {!localOnly && conflict ? <p className="text-xs text-muted-foreground">此画布的自动提交已暂停。加载最新版前会保留本地草稿，可下载后从画布列表导入为副本。</p> : null}
                         <div className="flex flex-wrap gap-2">
-                            {!localOnly ? <Button size="small" loading={busy} onClick={() => void run(onLoadLatest)}>加载云端最新版本</Button> : null}
+                            {!localOnly ? <Button variant="outline" size="sm" loading={busy} onClick={() => void run(onLoadLatest)}>加载云端最新版本</Button> : null}
                             <Button
-                                size="small"
+                                variant="outline"
+                                size="sm"
                                 disabled={busy}
                                 onClick={() =>
                                     void run(async () => {
@@ -62,7 +72,8 @@ export function CanvasSyncStatus({ projectId, onLoadLatest, onOpenVersions }: { 
                             </Button>
                             {onOpenVersions ? (
                                 <Button
-                                    size="small"
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => {
                                         setStatusOpen(false);
                                         onOpenVersions();
@@ -73,31 +84,19 @@ export function CanvasSyncStatus({ projectId, onLoadLatest, onOpenVersions }: { 
                             ) : null}
                         </div>
                     </div>
-                }
-            >
-                <Button
-                    type="text"
-                    size="small"
-                    danger={!localOnly && failed}
-                    aria-label={`画布保存状态：${label}`}
-                    icon={localOnly ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : saving ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : failed ? <CloudOff className="size-3.5" /> : <CloudCheck className="size-3.5" />}
-                >
-                    <span className="canvas-sync-status-label text-xs">{label}</span>
-                </Button>
+                </PopoverContent>
             </Popover>
         </>
     );
 }
 
 export function CanvasSyncDraftMenu({ projectId }: { projectId?: string }) {
-    const { message } = App.useApp();
     const [drafts, setDrafts] = useState<CanvasSyncDraft[]>([]);
     const [draftScope, setDraftScope] = useState("");
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     return (
-        <Dropdown
-            trigger={["click"]}
+        <MenuDropdown
             onOpenChange={(open) => {
                 if (!open) return;
                 const scope = getActiveUserScope();
@@ -108,35 +107,35 @@ export function CanvasSyncDraftMenu({ projectId }: { projectId?: string }) {
                     .then((items) => {
                         if (getActiveUserScope() === scope) setDrafts(items.reverse());
                     })
-                    .catch(() => message.error("读取本地草稿失败"))
+                    .catch(() => toast.error("读取本地草稿失败"))
                     .finally(() => setLoading(false));
             }}
-            menu={{
-                items: drafts.length
+            items={
+                drafts.length
                     ? drafts.map((draft) => ({
                           key: draft.id,
                           label: `${draft.project.title} · ${new Date(draft.savedAt).toLocaleString()}`,
                           onClick: () => {
                               if (getActiveUserScope() !== draftScope) {
                                   setDrafts([]);
-                                  message.error("账号已切换，请重新打开本地草稿");
+                                  toast.error("账号已切换，请重新打开本地草稿");
                                   return;
                               }
                               setExporting(true);
                               void exportCanvasProjects([draft.project], `${draft.project.title}-本地草稿`, { includeLocalDrawings: false })
                                   .then((result) => {
-                                      if (result === "saved") message.success("草稿已下载，可从画布列表导入为新画布");
+                                      if (result === "saved") toast.success("草稿已下载，可从画布列表导入为新画布");
                                   })
-                                  .catch(() => message.error("草稿下载失败，请重试"))
+                                  .catch(() => toast.error("草稿下载失败，请重试"))
                                   .finally(() => setExporting(false));
                           },
                       }))
-                    : [{ key: "empty", label: loading ? "正在读取草稿…" : "暂无本地草稿", disabled: true }],
-            }}
+                    : [{ key: "empty", label: loading ? "正在读取草稿…" : "暂无本地草稿", disabled: true }]
+            }
         >
-            <Button size={projectId ? "small" : "middle"} loading={exporting}>
+            <Button variant="outline" size={projectId ? "sm" : "default"} loading={exporting}>
                 本地草稿
             </Button>
-        </Dropdown>
+        </MenuDropdown>
     );
 }

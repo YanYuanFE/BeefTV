@@ -1,4 +1,4 @@
-import { Button } from "antd";
+import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/base/buttons";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { Eye, FileText, FolderKanban, Image as ImageIcon, Play, RotateCcw, Video } from "lucide-react";
@@ -82,14 +82,15 @@ export function TaskListRow({
                 {isFailed ? (
                     <Tooltip title={retryDisabled ? "请先查看原因，不要立即重新提交" : "重试任务"}>
                         <Button
-                            type="text"
-                            size="small"
-                            icon={<RotateCcw className="size-3.5" />}
+                            variant="ghost"
+                            size="icon-sm"
                             aria-label="重试任务"
                             loading={actingId === task.id}
                             disabled={retryDisabled}
                             onClick={onRetry}
-                        />
+                        >
+                            {actingId === task.id ? null : <RotateCcw className="size-3.5" />}
+                        </Button>
                     </Tooltip>
                 ) : null}
             </div>

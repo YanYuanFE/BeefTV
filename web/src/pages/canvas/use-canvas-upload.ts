@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type Dispatch, type DragEvent, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
 
 import { CANVAS_IMAGE_ASSET_DND_TYPE } from "@/components/canvas/canvas-asset-tray";
 import type { InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
@@ -24,6 +23,7 @@ import { useAssetStore, type ImageAsset } from "@/stores/use-asset-store";
 import { CanvasNodeType, type CanvasNodeData, type ContextMenuState, type Position } from "@/types/canvas";
 import type { TimelineDirectMedia } from "@/types/timeline";
 import type { CanvasUploadStatus } from "./canvas-project-feedback";
+import { toast } from "sonner";
 
 type UseCanvasUploadOptions = {
     canvasId: string;
@@ -70,7 +70,6 @@ export function useCanvasUpload({
     setContextMenu,
     setDialogNodeId,
 }: UseCanvasUploadOptions) {
-    const { message } = App.useApp();
     const queryClient = useQueryClient();
     const imageInputRef = useRef<HTMLInputElement>(null);
     const uploadTargetRef = useRef<{ nodeId?: string; position?: Position } | null>(null);
@@ -122,10 +121,10 @@ export function useCanvasUpload({
             if (domainProjectId) await queryClient.invalidateQueries({ queryKey: ["project", domainProjectId] });
             return true;
         } catch (error) {
-            message.warning(error instanceof Error ? `媒体已添加到画布，但素材同步失败：${error.message}` : "媒体已添加到画布，但素材同步失败");
+            toast.warning(error instanceof Error ? `媒体已添加到画布，但素材同步失败：${error.message}` : "媒体已添加到画布，但素材同步失败");
             return false;
         }
-    }, [canvasId, domainProjectId, message, queryClient, setNodes]);
+    }, [canvasId, domainProjectId, queryClient, setNodes]);
 
     const persistTimelineMedia = useCallback(async (media: TimelineDirectMedia) => {
         const type = media.kind === "audio" ? CanvasNodeType.Audio : media.kind === "video" ? CanvasNodeType.Video : CanvasNodeType.Image;
@@ -225,7 +224,7 @@ export function useCanvasUpload({
             const localOnly = browserFallback && localRuntime;
             const remotePending = browserFallback && !localRuntime;
             progress.done(localOnly ? "已保存在本机" : remotePending ? "已保存在本机，等待远端同步" : persisted ? "文件已添加到画布" : "文件已添加，项目资产待重试");
-            if (remotePending) message.warning("已保存在本机缓存，资源服务暂不可用；等待远端同步");
+            if (remotePending) toast.warning("已保存在本机缓存，资源服务暂不可用；等待远端同步");
             return id;
         } catch (error) {
             const details = error instanceof Error ? error.message : "文件上传失败";
@@ -233,19 +232,19 @@ export function useCanvasUpload({
                 ...item, width: original.width, height: original.height, metadata: original.metadata,
             } : { ...item, metadata: { ...item.metadata, fileUpload: "error", fileUploadProgress: undefined, errorDetails: details } }));
             progress.fail(details);
-            message.error(details);
+            toast.error(details);
             return null;
         } finally {
             activeUploadsRef.current.delete(id);
         }
-    }, [domainProjectId, message, nodesRef, persistMediaNode, selectInsertedNode, setNodes, startUploadStatus]);
+    }, [domainProjectId, nodesRef, persistMediaNode, selectInsertedNode, setNodes, startUploadStatus]);
 
     const createImageAssetNode = useCallback(async (asset: ImageAsset, position?: Position) => {
         try {
             let storageKey = asset.data.storageKey;
             let content = storageKey ? await resolveImageUrl(storageKey, asset.data.dataUrl || asset.coverUrl) : asset.data.dataUrl || asset.coverUrl;
             if (!content) {
-                message.error("素材图片不可用");
+                toast.error("素材图片不可用");
                 return;
             }
             // Legacy browser assets can still contain data URLs. They are fine
@@ -296,9 +295,9 @@ export function useCanvasUpload({
             setNodes((current) => [...current, node]);
             selectInsertedNode(id, "close");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "素材图片读取失败");
+            toast.error(error instanceof Error ? error.message : "素材图片读取失败");
         }
-    }, [getCanvasCenter, message, selectInsertedNode, setNodes]);
+    }, [getCanvasCenter, selectInsertedNode, setNodes]);
 
     const createTextNodeFromClipboard = useCallback((text: string, position?: Position) => {
         const trimmed = text.trim();
@@ -319,7 +318,7 @@ export function useCanvasUpload({
             try {
                 sourceText = (await getProjectUnit(chapter.projectId, chapter.id)).unit.sourceText;
             } catch (error) {
-                message.error(error instanceof Error ? `章节正文读取失败：${error.message}` : "章节正文读取失败");
+                toast.error(error instanceof Error ? `章节正文读取失败：${error.message}` : "章节正文读取失败");
                 return;
             }
         }
@@ -341,8 +340,8 @@ export function useCanvasUpload({
         setNodes((current) => [...current, node]);
         selectInsertedNode(node.id, "preserve");
         setContextMenu(null);
-        message.success(`已添加“${chapter.title}”`);
-    }, [getCanvasCenter, message, selectInsertedNode, setContextMenu, setNodes]);
+        toast.success(`已添加“${chapter.title}”`);
+    }, [getCanvasCenter, selectInsertedNode, setContextMenu, setNodes]);
 
     const handleUploadRequest = useCallback((nodeId?: string, position?: Position) => {
         uploadTargetRef.current = { nodeId, position };
@@ -363,7 +362,7 @@ export function useCanvasUpload({
     const handleUploadFiles = useCallback(async (files: File[]) => {
         const supportedFiles = files.filter((file) => uploadNodeType(file));
         if (!supportedFiles.length) {
-            message.warning("请选择图片、视频、音频或 TXT / Markdown 文件");
+            toast.warning("请选择图片、视频、音频或 TXT / Markdown 文件");
             return false;
         }
         const center = uploadTargetRef.current?.position || getCanvasCenter();
@@ -384,16 +383,16 @@ export function useCanvasUpload({
         setSelectedConnectionId(null);
         setDialogNodeId(null);
         const failedCount = supportedFiles.length - createdIds.length;
-        if (failedCount) message.warning(`已添加 ${createdIds.length} 个文件，${failedCount} 个上传失败`);
-        else message.success(`已添加 ${createdIds.length} 个文件到画布`);
+        if (failedCount) toast.warning(`已添加 ${createdIds.length} 个文件，${failedCount} 个上传失败`);
+        else toast.success(`已添加 ${createdIds.length} 个文件到画布`);
         return true;
-    }, [createFileNode, getCanvasCenter, message, setDialogNodeId, setSelectedConnectionId, setSelectedNodeIds]);
+    }, [createFileNode, getCanvasCenter, setDialogNodeId, setSelectedConnectionId, setSelectedNodeIds]);
 
     // 时间线专用：把本地音视频文件上传为直连媒体（仅时间线作用域，不创建画布节点），返回媒体描述数组。
     const uploadTimelineMedia = useCallback(async (files: File[]): Promise<TimelineDirectMedia[]> => {
         const supportedFiles = files.filter((file) => file.type.startsWith("video/") || isAudioFile(file));
         if (!supportedFiles.length) {
-            message.warning("请选择视频、MP3 或 WAV 文件");
+            toast.warning("请选择视频、MP3 或 WAV 文件");
             return [];
         }
         const created: TimelineDirectMedia[] = [];
@@ -431,12 +430,12 @@ export function useCanvasUpload({
                     created.push(media);
                 }
             } catch (error) {
-                message.error(error instanceof Error ? `素材上传失败：${error.message}` : "素材上传失败");
+                toast.error(error instanceof Error ? `素材上传失败：${error.message}` : "素材上传失败");
             }
         }
-        if (created.length) message.success(`已上传 ${created.length} 个素材到时间线`);
+        if (created.length) toast.success(`已上传 ${created.length} 个素材到时间线`);
         return created;
-    }, [message, persistTimelineMedia]);
+    }, [persistTimelineMedia]);
 
     // 组装能力闭环：把时间线合成结果（MP4 Blob）上传并创建为新的视频节点放回画布，
     // 复用上传/持久化/选中逻辑，新节点可继续编辑字幕与样式。
@@ -467,10 +466,10 @@ export function useCanvasUpload({
         } catch (error) {
             const details = error instanceof Error ? error.message : "合成视频片段失败";
             progress.fail(details);
-            message.error(details);
+            toast.error(details);
             return null;
         }
-    }, [domainProjectId, getCanvasCenter, message, persistMediaNode, selectInsertedNode, setNodes, startUploadStatus]);
+    }, [domainProjectId, getCanvasCenter, persistMediaNode, selectInsertedNode, setNodes, startUploadStatus]);
 
     const replaceNodeMedia = useCallback(async (nodeId: string, file: File) => {
         const currentNode = nodesRef.current.find((node) => node.id === nodeId);
@@ -488,11 +487,11 @@ export function useCanvasUpload({
         const pasteImageFile = async (file: File) => {
             const selected = nodesRef.current.filter((node) => selectedNodeIdsRef.current.has(node.id));
             if (selected.length === 1 && selected[0].type === CanvasNodeType.Image) {
-                if (await replaceNodeMedia(selected[0].id, file)) message.success("已用剪切板图片替换，可撤销恢复");
+                if (await replaceNodeMedia(selected[0].id, file)) toast.success("已用剪切板图片替换，可撤销恢复");
                 return true;
             }
             const inserted = await createFileNode(file, position || getCanvasCenter());
-            if (inserted) message.success("已从剪切板添加图片");
+            if (inserted) toast.success("已从剪切板添加图片");
             return Boolean(inserted);
         };
 
@@ -535,14 +534,14 @@ export function useCanvasUpload({
             const text = eventText || (navigator.clipboard?.readText ? await navigator.clipboard.readText() : "");
             if (isNodeMarker(text)) return false;
             if (createTextNodeFromClipboard(text, position)) {
-                message.success("已从剪切板添加文本");
+                toast.success("已从剪切板添加文本");
                 return true;
             }
         } catch {
             // ignore
         }
         return false;
-    }, [createFileNode, createTextNodeFromClipboard, getCanvasCenter, message, nodesRef, replaceNodeMedia, selectedNodeIdsRef]);
+    }, [createFileNode, createTextNodeFromClipboard, getCanvasCenter, nodesRef, replaceNodeMedia, selectedNodeIdsRef]);
 
     const handleImageInputChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files || []);
@@ -555,7 +554,7 @@ export function useCanvasUpload({
                 const compatible = targetNode && (targetNode.type === uploadNodeType(file)
                     || ![CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio, CanvasNodeType.Text].includes(targetNode.type as CanvasNodeType));
                 if (!compatible) {
-                    message.warning("请选择与当前节点相同类型的媒体文件");
+                    toast.warning("请选择与当前节点相同类型的媒体文件");
                     return;
                 }
                 await replaceNodeMedia(target.nodeId, file);
@@ -566,7 +565,7 @@ export function useCanvasUpload({
             uploadTargetRef.current = null;
             event.target.value = "";
         }
-    }, [getCanvasCenter, handleUploadFiles, message, nodesRef, replaceNodeMedia]);
+    }, [getCanvasCenter, handleUploadFiles, nodesRef, replaceNodeMedia]);
 
     const handleDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
         if (isBatchTableDragEvent(event)) {
@@ -587,7 +586,7 @@ export function useCanvasUpload({
         if (imageAssetId) {
             const asset = useAssetStore.getState().assets.find((item): item is ImageAsset => item.kind === "image" && item.id === imageAssetId);
             if (!asset) {
-                message.warning("素材不存在");
+                toast.warning("素材不存在");
                 return;
             }
             void createImageAssetNode(asset, screenToCanvas(event.clientX, event.clientY));
@@ -607,12 +606,12 @@ export function useCanvasUpload({
         });
         if (target) {
             void replaceNodeMedia(target.id, file).then((replaced) => {
-                if (replaced) message.success("媒体已替换，可撤销恢复");
+                if (replaced) toast.success("媒体已替换，可撤销恢复");
             });
             return;
         }
         void createFileNode(file, position);
-    }, [createFileNode, createImageAssetNode, handleProjectChapterInsert, handleUploadFiles, message, nodesRef, replaceNodeMedia, screenToCanvas]);
+    }, [createFileNode, createImageAssetNode, handleProjectChapterInsert, handleUploadFiles, nodesRef, replaceNodeMedia, screenToCanvas]);
 
     const handleFileDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
         if (isBatchTableDragEvent(event)) {
@@ -653,9 +652,9 @@ export function useCanvasUpload({
 
     const pasteAssistantImage = useCallback((file: File) => {
         void createFileNode(file, getCanvasCenter()).then((inserted) => {
-            if (inserted) message.success("已从剪切板添加图片");
+            if (inserted) toast.success("已从剪切板添加图片");
         });
-    }, [createFileNode, getCanvasCenter, message]);
+    }, [createFileNode, getCanvasCenter]);
 
     const openAssetsAtPosition = useCallback((position?: Position) => {
         assetInsertPositionRef.current = position || null;
@@ -738,13 +737,13 @@ export function useCanvasUpload({
             setSelectedNodeIds(new Set(created.map((node) => node.id)));
             setSelectedConnectionId(null);
             setDialogNodeId(null);
-            message.success(successMessage);
+            toast.success(successMessage);
             return created;
         } catch (error) {
-            message.error(error instanceof Error ? error.message : failureMessage);
+            toast.error(error instanceof Error ? error.message : failureMessage);
             throw error;
         }
-    }, [createAssetPayloadNode, message, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+    }, [createAssetPayloadNode, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const handleAssetsInsert = useCallback(async (payloads: InsertAssetPayload[]): Promise<CanvasNodeData[]> => {
         const origin = assetInsertPositionRef.current || getCanvasCenter();

@@ -1,10 +1,12 @@
-import { App, Button, Input } from "antd";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/base/select";
 import { Activity, CheckCircle2, Clock3, Download, FileText, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { exportDiagnosticBundle, downloadDiagnosticBundle, previewDiagnosticBundle, type DiagnosticExportInput, type DiagnosticPreview } from "@/services/diagnostics/diagnostics-api";
 import { getClientDiagnosticEvents, getDiagnosticRuntime } from "@/services/diagnostics/client-diagnostics";
+import { toast } from "sonner";
 
 type DiagnosticsPanelProps = {
     taskId?: string;
@@ -21,7 +23,6 @@ const rangeOptions: { value: DiagnosticRange; label: string }[] = [
 ];
 
 export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanelProps) {
-    const { message } = App.useApp();
     const [range, setRange] = useState<DiagnosticRange>("30m");
     const [description, setDescription] = useState("");
     const [preview, setPreview] = useState<DiagnosticPreview | null>(null);
@@ -53,9 +54,9 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
             const download = await exportDiagnosticBundle(buildInput(range, description, taskId, projectId));
             downloadDiagnosticBundle(download);
             setBundleId(download.bundleId);
-            message.success("诊断包已下载，请连同诊断编号提交给支持人员");
+            toast.success("诊断包已下载，请连同诊断编号提交给支持人员");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "导出诊断包失败");
+            toast.error(error instanceof Error ? error.message : "导出诊断包失败");
         } finally {
             setExporting(false);
         }
@@ -139,7 +140,8 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                         </div>
                         <label className="mt-4 block" htmlFor="diagnostic-description">
                             <span className="sr-only">遇到了什么问题？</span>
-                            <Input.TextArea id="diagnostic-description" rows={4} maxLength={1000} showCount value={description} onChange={(event) => setDescription(event.target.value)} placeholder="例如：点击生成后一直显示处理中，刷新页面也没有结果。" />
+                            <Textarea id="diagnostic-description" rows={4} maxLength={1000} className="field-sizing-fixed resize-y" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="例如：点击生成后一直显示处理中，刷新页面也没有结果。" />
+                            <span className="mt-1 block text-right text-xs tabular-nums text-muted-foreground" aria-hidden="true">{description.length} / 1000</span>
                         </label>
                     </section>
                 </div>
@@ -153,7 +155,8 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                                 诊断编号：{bundleId}
                             </span>
                         ) : null}
-                        <Button size="large" type="primary" icon={<Download className="size-4" strokeWidth={2} />} loading={exporting} onClick={() => void handleExport()}>
+                        <Button size="lg" loading={exporting} onClick={() => void handleExport()}>
+                            {exporting ? null : <Download className="size-4" strokeWidth={2} />}
                             导出诊断包
                         </Button>
                     </div>

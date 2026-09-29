@@ -1,4 +1,4 @@
-import { Tabs } from "antd";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppModal } from "@/components/ui/product/app-modal";
 import type { ReactNode } from "react";
 import "./model-editor-modal.css";
@@ -28,15 +28,31 @@ export function ModelEditorModal({
     admin?: boolean;
     children?: ReactNode | ((tabs: ReactNode) => ReactNode);
 }) {
-    const tabs = items?.length ? <Tabs activeKey={activeKey} onChange={onTabChange} animated={false} items={items.map((item) => ({ ...item, forceRender: true, children: <div className="model-editor-panel">{item.children}</div> }))} /> : null;
+    const tabs = items?.length ? (
+        <Tabs className="model-editor-tabs gap-0" value={activeKey} defaultValue={items[0].key} onValueChange={onTabChange}>
+            <TabsList variant="line" className="model-editor-tabs-nav">
+                {items.map((item) => (
+                    <TabsTrigger key={item.key} value={item.key} className="flex-none">
+                        {item.label}
+                    </TabsTrigger>
+                ))}
+            </TabsList>
+            <div className="model-editor-tabs-body">
+                {/* forceMount keeps every panel's fields mounted, like AntD forceRender. */}
+                {items.map((item) => (
+                    <TabsContent key={item.key} value={item.key} forceMount className="data-[state=inactive]:hidden">
+                        <div className="model-editor-panel">{item.children}</div>
+                    </TabsContent>
+                ))}
+            </div>
+        </Tabs>
+    ) : null;
     const content = typeof children === "function" ? children(tabs) : children || tabs;
 
     return (
         <AppModal
             open={open}
-            centered
             width={1120}
-            destroyOnHidden
             rootClassName={`${admin ? "admin-modal-root " : ""}model-editor-modal`}
             title={
                 <div>
@@ -44,7 +60,7 @@ export function ModelEditorModal({
                     {subtitle && <p className="model-editor-subtitle">{subtitle}</p>}
                 </div>
             }
-            mask={{ closable: false }}
+            maskClosable={false}
             keyboard={!busy}
             closable={!busy}
             onCancel={onClose}

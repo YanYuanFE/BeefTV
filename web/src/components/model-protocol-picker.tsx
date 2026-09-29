@@ -1,5 +1,6 @@
 import { AudioLines, Check, Film, Flame, Image, MessageSquareText, Network, Settings2, Sparkles } from "lucide-react";
-import { Button, Modal } from "antd";
+import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { ModelIcon } from "@/components/model-picker";
@@ -140,24 +141,23 @@ export function ModelCapabilityProtocolModal({
     return (
         <>
             <Button
-                size="small"
+                variant="outline"
+                size="sm"
                 className="max-w-full justify-start"
-                icon={<Settings2 className="size-3.5" />}
                 onClick={() => {
                     setDraft(value);
                     setOpen(true);
                 }}
             >
+                <Settings2 className="size-3.5" />
                 <span className="max-w-[min(56vw,360px)] truncate">
                     {capabilityLabel(value.capability)} · {modelProtocolLabel(value.protocol, protocols)}
                 </span>
             </Button>
-            <Modal
+            <AppModal
                 title="配置模型能力与请求协议"
                 open={open}
                 width="min(720px, calc(100vw - 24px))"
-                centered
-                destroyOnHidden
                 onCancel={() => setOpen(false)}
                 okText="应用配置"
                 cancelText="取消"
@@ -176,7 +176,7 @@ export function ModelCapabilityProtocolModal({
                         <ProtocolCardPicker capability={draft.capability} value={draft.protocol} protocols={protocols} onChange={(protocol) => setDraft((current) => ({ ...current, protocol }))} />
                     </section>
                 </div>
-            </Modal>
+            </AppModal>
         </>
     );
 }

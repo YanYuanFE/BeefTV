@@ -23,8 +23,8 @@ description: 签名清单、打包布局、密钥、发布工作流、回滚和�
 
 | 系统 | 更新包内容 | 数据目录（不会进包、不会被替换） |
 | --- | --- | --- |
-| macOS | `BeefTV.app` | `~/Library/Application Support/BeefTV` |
-| Windows | `BeefTV.exe` 与 `plugin-packages/*.beeftv-plugin` | `%AppData%\BeefTV` |
+| macOS | `Framely.app` | `~/Library/Application Support/Framely` |
+| Windows | `Framely.exe` 与 `plugin-packages/*.beeftv-plugin` | `%AppData%\Framely` |
 
 应用包身份和可执行文件路径保持稳定，前端 IndexedDB 可以继续用。官方插件随应用包更新；装在数据目录里的自定义插件会留下来。打包时遇到 `.env`、数据库或用户数据目录会失败。
 
@@ -51,7 +51,7 @@ description: 签名清单、打包布局、密钥、发布工作流、回滚和�
   "notes": "发行说明",
   "platforms": {
     "darwin-arm64": {
-      "url": "https://github.com/glanderness/BeefTV/releases/download/vX.Y.Z/BeefTV-vX.Y.Z-darwin-arm64.zip",
+      "url": "https://github.com/glanderness/BeefTV/releases/download/vX.Y.Z/Framely-vX.Y.Z-darwin-arm64.zip",
       "sha256": "hex",
       "size": 123
     }
@@ -105,9 +105,9 @@ go run ./cmd/update-release gen-key \
 固定文件名：
 
 ```text
-BeefTV-vX.Y.Z-darwin-arm64.zip
-BeefTV-vX.Y.Z-darwin-amd64.zip
-BeefTV-vX.Y.Z-windows-amd64.zip
+Framely-vX.Y.Z-darwin-arm64.zip
+Framely-vX.Y.Z-darwin-amd64.zip
+Framely-vX.Y.Z-windows-amd64.zip
 desktop-update.json
 ```
 
@@ -118,7 +118,7 @@ desktop-update.json
 ```bash
 cd backend
 go test ./cmd/update-release
-go run ./cmd/update-release package --platform windows-amd64 --input cmd/desktop/build/bin --output /tmp/BeefTV-vX.Y.Z-windows-amd64.zip
+go run ./cmd/update-release package --platform windows-amd64 --input cmd/desktop/build/bin --output /tmp/Framely-vX.Y.Z-windows-amd64.zip
 ```
 
 ## 回滚

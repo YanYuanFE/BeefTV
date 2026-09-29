@@ -1,9 +1,15 @@
-import { Button, Input, InputNumber, Segmented, Select, Slider } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, Dice5, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, Sparkles, Video, Workflow as WorkflowIcon } from "lucide-react";
 
 import { Switch } from "@/components/ui/base/switch";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { Select } from "@/components/ui/base/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { isSeedance25Model } from "@/lib/model-capabilities";
 import { resolveVideoOperation } from "@/lib/model-selection";
 
@@ -214,39 +220,16 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     </span>
                 ) : (
                     <div className="cursor-default" data-canvas-no-zoom onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                        <Segmented
-                            size="small"
+                        <SegmentedControl
+                            size="sm"
+                            ariaLabel="生成模式"
                             className="canvas-config-mode !rounded-md !p-0.5"
                             value={mode}
                             onChange={(value) => onConfigChange(node.id, { generationMode: value as CanvasGenerationMode, runningHubWorkflowId: undefined, runningHubWorkflowKind: undefined, workflowParameters: {} })}
                             options={[
-                                {
-                                    value: "image",
-                                    label: (
-                                        <span className="inline-flex items-center gap-1">
-                                            <ImageIcon className="size-3.5" />
-                                            生图
-                                        </span>
-                                    ),
-                                },
-                                {
-                                    value: "video",
-                                    label: (
-                                        <span className="inline-flex items-center gap-1">
-                                            <Video className="size-3.5" />
-                                            视频
-                                        </span>
-                                    ),
-                                },
-                                {
-                                    value: "audio",
-                                    label: (
-                                        <span className="inline-flex items-center gap-1">
-                                            <Music2 className="size-3.5" />
-                                            音频
-                                        </span>
-                                    ),
-                                },
+                                { value: "image", icon: <ImageIcon className="size-3.5" />, label: "生图" },
+                                { value: "video", icon: <Video className="size-3.5" />, label: "视频" },
+                                { value: "audio", icon: <Music2 className="size-3.5" />, label: "音频" },
                             ]}
                         />
                     </div>
@@ -284,7 +267,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 <div className="cursor-default" data-canvas-no-zoom onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {workflowProvider === "model" && isSeedance25Model(modelOptionName(config.model)) ? (
                         <Select
-                            aria-label="视频生成模式"
+                            ariaLabel="视频生成模式"
                             className="w-full"
                             value={resolveVideoOperation(inputSummary, node.metadata?.videoEditOperation)}
                             options={videoOperationOptions
@@ -332,9 +315,10 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         <span className="shrink-0 text-[var(--fs-tiny)] font-medium" style={{ color: theme.node.muted }}>
                             生成来源
                         </span>
-                        <Segmented
+                        <SegmentedControl
                             block
-                            size="small"
+                            size="sm"
+                            ariaLabel="生成来源"
                             className="canvas-config-provider min-w-0 flex-1"
                             value={workflowProvider}
                             options={[{ label: "模型", value: "model" }, ...(workflowProviderPluginEnabled(runtimeStatuses, "runninghub") ? [{ label: "RunningHub", value: "runninghub" }] : [])]}
@@ -352,28 +336,12 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     </div>
                     <div data-canvas-no-zoom className="grid min-w-0 cursor-default items-center gap-3" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                         {workflowProvider === "runninghub" ? (
-                            <Select<string, WorkflowSelectOption>
-                                className="canvas-compact-control !h-9 w-full"
+                            <RunningHubWorkflowSelect
                                 value={selectedRunningHubWorkflow ? runningHubWorkflowEntryKey(selectedRunningHubWorkflow) : undefined}
                                 title={selectedRunningHubWorkflow ? `${selectedRunningHubWorkflow.kind === "app" ? "App" : "工作流"} · ${selectedRunningHubWorkflow.title || selectedRunningHubWorkflow.workflowId}` : undefined}
                                 placeholder={`选择${capabilityLabel(workflowCapability)}工作流或 App`}
-                                showSearch
-                                options={runningHubOptions}
-                                optionFilterProp="label"
-                                optionLabelProp="label"
-                                labelRender={(selected) => {
-                                    const workflow = runningHubEntries.find((item) => item.value === selected.value);
-                                    return <WorkflowSelectedLabel kind={workflow?.kind || "workflow"} label={workflow?.label || String(selected.label || "")} />;
-                                }}
+                                groups={runningHubOptions}
                                 notFoundContent={`暂无${capabilityLabel(workflowCapability)}工作流`}
-                                popupMatchSelectWidth={false}
-                                virtual={false}
-                                listHeight={320}
-                                styles={{ popup: { root: { minWidth: 320, maxWidth: "min(420px, calc(100vw - 32px))" } } }}
-                                optionRender={(option) => {
-                                    if (option.data.options) return option.label;
-                                    return <WorkflowOptionLabel kind={option.data.kind === "app" ? "app" : "workflow"} label={String(option.data.label || "")} title={String(option.data.title || option.data.label || "")} />;
-                                }}
                                 onChange={(value) => {
                                     const workflow = runningHubEntries.find((item) => item.value === value);
                                     onConfigChange(node.id, { runningHubWorkflowId: workflow?.workflowId, runningHubWorkflowKind: workflow?.kind, workflowParameters: {} });
@@ -392,7 +360,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 </div>
             ) : null}
 
-            <Button type="primary" className="mt-auto !h-9 !w-full !cursor-pointer !rounded-lg" disabled={isRunning || !canGenerate} onMouseDown={(event) => event.stopPropagation()} onClick={() => onGenerate(node.id)}>
+            <Button className="mt-auto !h-9 !w-full !cursor-pointer !rounded-lg" disabled={isRunning || !canGenerate} onMouseDown={(event) => event.stopPropagation()} onClick={() => onGenerate(node.id)}>
                 <span className="inline-flex items-center gap-1.5">
                     {isRunning ? (
                         <>
@@ -452,15 +420,16 @@ export function WorkflowParameterControls({
                 </div>
                 <Tooltip title={expanded ? "折叠工作流参数" : "展开工作流参数"}>
                     <Button
-                        type="text"
-                        size="small"
+                        variant="ghost"
+                        size="icon-sm"
                         className="!size-7 !shrink-0 !p-0"
-                        icon={<ChevronDown className={`size-3.5 transition-transform ${expanded ? "" : "-rotate-90"}`} />}
                         aria-expanded={expanded}
                         aria-label={expanded ? "折叠工作流参数" : "展开工作流参数"}
                         onMouseDown={(event) => event.stopPropagation()}
                         onClick={() => setExpanded((current) => !current)}
-                    />
+                    >
+                        <ChevronDown className={`size-3.5 transition-transform ${expanded ? "" : "-rotate-90"}`} />
+                    </Button>
                 </Tooltip>
             </div>
             {expanded
@@ -480,22 +449,21 @@ export function WorkflowParameterControls({
                       const control =
                           fieldType === "SELECT" || selectOptions.length ? (
                               <Select
-                                  status={valueError ? "error" : undefined}
-                                  size="small"
-                                  className="w-full"
-                                  value={value === "" ? undefined : (value as string | number)}
-                                  options={selectOptions.map((option) => ({ label: workflowParameterOptionLabel(option), value: workflowParameterOptionValue(option) }))}
-                                  onChange={(next) => update(field, next)}
+                                  size="sm"
+                                  className={valueError ? "w-full [&_[data-slot=select-trigger]]:border-destructive" : "w-full"}
+                                  value={value === "" ? undefined : selectOptionKey(value as string | number)}
+                                  options={selectOptions.map((option) => ({ label: workflowParameterOptionLabel(option), value: selectOptionKey(workflowParameterOptionValue(option)) }))}
+                                  onChange={(next) => update(field, selectOptions.map(workflowParameterOptionValue).find((option) => selectOptionKey(option) === next))}
                               />
                           ) : fieldType === "BOOLEAN" || typeof value === "boolean" ? (
                               <Switch size="sm" checked={value === true || value === "true"} onChange={(checked) => update(field, checked)} />
                           ) : fieldType === "SLIDER" && bounds.min !== undefined && bounds.max !== undefined ? (
                               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_64px] items-center gap-2">
-                                  <Slider disabled={randomEnabled} className="m-0" min={bounds.min} max={bounds.max} step={bounds.step || 0.01} value={numericValue ?? bounds.min} tooltip={{ open: false }} onChange={(next) => update(field, next)} />
-                                  <InputNumber
+                                  <Slider disabled={randomEnabled} className="m-0" min={bounds.min} max={bounds.max} step={bounds.step || 0.01} value={[numericValue ?? bounds.min]} onValueChange={([next]) => update(field, next)} />
+                                  <NumberInput
                                       disabled={randomEnabled}
                                       status={valueError ? "error" : undefined}
-                                      size="small"
+                                      size="sm"
                                       className="w-full"
                                       value={numericValue}
                                       min={bounds.min}
@@ -505,10 +473,10 @@ export function WorkflowParameterControls({
                                   />
                               </div>
                           ) : numeric ? (
-                              <InputNumber
+                              <NumberInput
                                   disabled={randomEnabled}
                                   status={valueError ? "error" : undefined}
-                                  size="small"
+                                  size="sm"
                                   className="w-full"
                                   value={numericValue}
                                   min={bounds.min}
@@ -517,7 +485,7 @@ export function WorkflowParameterControls({
                                   onChange={(next) => update(field, next)}
                               />
                           ) : (
-                              <Input status={valueError ? "error" : undefined} size="small" value={String(value ?? "")} onChange={(event) => update(field, event.target.value)} />
+                              <Input aria-invalid={valueError ? true : undefined} className="h-7" value={String(value ?? "")} onChange={(event) => update(field, event.target.value)} />
                           );
                       return (
                           <label
@@ -533,17 +501,19 @@ export function WorkflowParameterControls({
                                   {field.randomEnabled ? (
                                       <Tooltip title={randomEnabled ? "每次生成使用随机值，点击改为固定值" : "当前使用固定值，点击恢复随机"}>
                                           <Button
-                                              type="text"
-                                              size="small"
+                                              variant="ghost"
+                                              size="icon-sm"
                                               className="!size-7 !p-0"
                                               style={{ background: randomEnabled ? theme.accent.primarySoft : "transparent", color: randomEnabled ? theme.accent.primary : theme.node.muted }}
-                                              icon={<Dice5 className="size-3.5" />}
                                               aria-pressed={randomEnabled}
+                                              aria-label={randomEnabled ? "改为固定值" : "恢复随机值"}
                                               onClick={(event) => {
                                                   event.preventDefault();
                                                   updateRandom(field, !randomEnabled);
                                               }}
-                                          />
+                                          >
+                                              <Dice5 className="size-3.5" />
+                                          </Button>
                                       </Tooltip>
                                   ) : null}
                               </div>
@@ -578,6 +548,14 @@ function workflowParameterOptionValue(value: unknown): string | number {
     return typeof value === "number" ? value : String(value ?? "");
 }
 
+// Radix Select needs non-empty string keys; typed values are mapped back on change.
+const EMPTY_OPTION_KEY = "__empty__";
+
+function selectOptionKey(value: string | number) {
+    const key = String(value);
+    return key === "" ? EMPTY_OPTION_KEY : key;
+}
+
 function workflowParameterOptionLabel(value: unknown) {
     return String(workflowParameterOptionValue(value));
 }
@@ -607,6 +585,67 @@ function WorkflowOptionLabel({ kind, label, title }: { kind: "app" | "workflow";
             <span>{label}</span>
             <i aria-hidden="true" />
         </div>
+    );
+}
+
+// Searchable grouped picker for RunningHub apps and workflows.
+function RunningHubWorkflowSelect({ value, title, placeholder, groups, notFoundContent, onChange }: { value?: string; title?: string; placeholder: string; groups: WorkflowSelectOption[]; notFoundContent: string; onChange: (value: string) => void }) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const keyword = query.trim().toLocaleLowerCase();
+    const visibleGroups = groups
+        .map((group) => ({ ...group, options: (group.options || []).filter((option) => !keyword || String(option.label || "").toLocaleLowerCase().includes(keyword)) }))
+        .filter((group) => group.options.length);
+    const selected = groups.flatMap((group) => group.options || []).find((option) => option.value === value);
+    const updateOpen = (next: boolean) => {
+        setOpen(next);
+        if (!next) setQuery("");
+    };
+    return (
+        <Popover open={open} onOpenChange={updateOpen}>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    role="combobox"
+                    aria-expanded={open}
+                    aria-label={placeholder}
+                    title={title}
+                    className="canvas-compact-control flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                >
+                    {selected ? <WorkflowSelectedLabel kind={selected.kind || "workflow"} label={String(selected.label || "")} /> : <span className="min-w-0 truncate text-muted-foreground">{value || placeholder}</span>}
+                    <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" data-canvas-no-zoom className="w-auto min-w-[max(320px,var(--radix-popover-trigger-width))] max-w-[min(420px,calc(100vw-32px))] gap-1.5 p-1.5">
+                <Input autoFocus className="h-8" value={query} placeholder="搜索" aria-label="搜索工作流或 App" onChange={(event) => setQuery(event.target.value)} />
+                <div role="listbox" className="thin-scrollbar max-h-80 overflow-y-auto">
+                    {visibleGroups.length ? (
+                        visibleGroups.map((group, index) => (
+                            <div key={index} role="group">
+                                <div className="px-2 pt-2 pb-1">{group.label}</div>
+                                {group.options.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        role="option"
+                                        aria-selected={option.value === value}
+                                        className="w-full rounded-md px-2 text-left transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none aria-selected:bg-muted"
+                                        onClick={() => {
+                                            if (option.value) onChange(option.value);
+                                            updateOpen(false);
+                                        }}
+                                    >
+                                        <WorkflowOptionLabel kind={option.kind === "app" ? "app" : "workflow"} label={String(option.label || "")} title={String(option.title || option.label || "")} />
+                                    </button>
+                                ))}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="px-2 py-6 text-center text-xs text-muted-foreground">{notFoundContent}</div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
     );
 }
 

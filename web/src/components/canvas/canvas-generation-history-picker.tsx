@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Input, Modal, Spin } from "antd";
-import { FileAudio, FileVideo, Image as ImageIcon, Search } from "lucide-react";
+import { FileAudio, FileVideo, Image as ImageIcon, Loader2, Search, X } from "lucide-react";
 
 import { CachedResourceImage } from "@/components/cached-resource-image";
+import { Input } from "@/components/ui/input";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { generationTaskMode } from "@/lib/canvas/canvas-generation-task-sync";
 import { localTaskHistoryFromProjects } from "@/lib/local-task-history";
 import { ownedResourceIdFromMediaRef, resourceIdFromStorageKey, resourceStorageKey } from "@/services/api/resources";
@@ -39,10 +40,18 @@ export function CanvasGenerationHistoryPicker({ open, projectId, onClose, onSele
     }, [keyword, localMode, query.data]);
 
     return (
-        <Modal open={open} title="从生成历史选择" footer={null} onCancel={onClose} width={720} destroyOnHidden>
-            <Input allowClear prefix={<Search className="size-3.5" />} value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索提示词或模型" aria-label="搜索生成历史" />
+        <AppModal open={open} title="从生成历史选择" footer={null} onCancel={onClose} width={720}>
+            <div className="relative">
+                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input className="px-8" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索提示词或模型" aria-label="搜索生成历史" />
+                {keyword ? (
+                    <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setKeyword("")}>
+                        <X className="size-3.5" />
+                    </button>
+                ) : null}
+            </div>
             <div className="mt-3 max-h-[min(560px,65vh)] overflow-y-auto pr-1">
-                {query.isLoading ? <div className="grid min-h-40 place-items-center"><Spin /></div> : tasks.length ? (
+                {query.isLoading ? <div className="grid min-h-40 place-items-center"><Loader2 className="size-5 animate-spin text-muted-foreground" aria-label="加载中" /></div> : tasks.length ? (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {tasks.map((task) => <HistoryTaskCard key={task.id} task={task} onSelect={() => onSelect(task)} />)}
                     </div>
@@ -52,7 +61,7 @@ export function CanvasGenerationHistoryPicker({ open, projectId, onClose, onSele
                     </div>
                 )}
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

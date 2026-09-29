@@ -1,5 +1,6 @@
-import { Popover } from "antd";
 import { SlidersHorizontal } from "lucide-react";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import {
@@ -64,22 +65,26 @@ export function CanvasPortraitTexturePopover({ value, placement = "topLeft", onC
     );
 
     return (
-        <Popover
-            trigger="click"
-            placement={placement}
-            arrow={false}
-            content={content}
-            styles={{ content: { padding: 0, overflow: "hidden", background: theme.spatial.elevated, border: `1px solid ${theme.toolbar.border}`, borderRadius: 8, boxShadow: `0 20px 64px ${theme.spatial.shadow}` } }}
-        >
-            <button
-                type="button"
-                className="flex h-6 min-w-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 motion-reduce:transition-none"
-                style={{ background: theme.accent.primarySoft, color: theme.accent.primary, outlineColor: theme.accent.primary }}
-                aria-label="打开质感调整面板"
+        <Popover>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    className="flex h-6 min-w-0 items-center gap-1 rounded-md px-1.5 transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 motion-reduce:transition-none"
+                    style={{ background: theme.accent.primarySoft, color: theme.accent.primary, outlineColor: theme.accent.primary }}
+                    aria-label="打开质感调整面板"
+                >
+                    <SlidersHorizontal className="size-3 shrink-0" />
+                    <span className="truncate text-[var(--fs-tiny)] font-medium">质感调整</span>
+                </button>
+            </PopoverTrigger>
+            <PopoverContent
+                side="top"
+                align={placement === "topRight" ? "end" : "start"}
+                className="w-auto gap-0 overflow-hidden p-0 ring-0"
+                style={{ background: theme.spatial.elevated, border: `1px solid ${theme.toolbar.border}`, borderRadius: 8, boxShadow: `0 20px 64px ${theme.spatial.shadow}` }}
             >
-                <SlidersHorizontal className="size-3 shrink-0" />
-                <span className="truncate text-[var(--fs-tiny)] font-medium">质感调整</span>
-            </button>
+                {content}
+            </PopoverContent>
         </Popover>
     );
 }

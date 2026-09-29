@@ -1,7 +1,10 @@
-import { App, Button, ColorPicker, Dropdown, Input, Popover } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { Editor, JSONContent } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -34,6 +37,8 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { createCanvasRichTextExtensions, isSafeCanvasRichTextLink } from "@/lib/canvas/canvas-rich-text";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { CanvasNodeData } from "@/types/canvas";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 type CanvasTextEditorModalProps = {
     node: CanvasNodeData | null;
@@ -43,7 +48,6 @@ type CanvasTextEditorModalProps = {
 };
 
 export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTextEditorModalProps) {
-    const { message, modal } = App.useApp();
     const theme = canvasThemes[useActiveTheme()];
     const [title, setTitle] = useState("");
     const [dirty, setDirty] = useState(false);
@@ -79,9 +83,9 @@ export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTex
         try {
             await onSave(node.id, title.trim() || "文本", editor.getText({ blockSeparator: "\n" }).trimEnd(), editor.getJSON() as Record<string, unknown>);
             setDirty(false);
-            message.success("文本节点已保存");
+            toast.success("文本节点已保存");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "文本保存失败");
+            toast.error(error instanceof Error ? error.message : "文本保存失败");
         } finally {
             setSaving(false);
         }
@@ -89,7 +93,7 @@ export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTex
 
     const close = () => {
         if (!dirty || saving) return onClose();
-        modal.confirm({
+        confirmDialog({
             title: "放弃未保存的修改？",
             content: "关闭后，本次富文本编辑不会写回画布节点。",
             okText: "放弃修改",
@@ -116,8 +120,6 @@ export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTex
             title={null}
             footer={null}
             closable={false}
-            centered
-            destroyOnHidden
             width="min(1180px, calc(100vw - 24px))"
             onCancel={close}
             flush styles={{ container: { borderRadius: 8 } }}
@@ -125,18 +127,17 @@ export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTex
             <section className="flex h-[min(88dvh,840px)] flex-col overflow-hidden" style={{ background: theme.node.panel, color: theme.node.text }}>
                 <header className="flex h-13 shrink-0 items-center gap-3 border-b px-3" style={{ borderColor: theme.node.stroke }}>
                     <Input
-                        variant="borderless"
                         value={title}
                         onChange={(event) => { setTitle(event.target.value); setDirty(true); }}
-                        className="!h-9 min-w-0 max-w-[360px] flex-1 !px-1 text-sm font-semibold"
+                        className="!h-9 min-w-0 max-w-[360px] flex-1 border-0 bg-transparent !px-1 text-sm font-semibold shadow-none focus-visible:ring-0 dark:bg-transparent"
                         placeholder="文本节点标题"
                         aria-label="文本节点标题"
                     />
                     <span className="hidden shrink-0 text-[var(--fs-label)] sm:inline" style={{ color: theme.node.muted }}>{characterCount.toLocaleString("zh-CN")} 字 · {wordCount.toLocaleString("zh-CN")} 词</span>
                     <span className="ml-auto hidden text-[var(--fs-label)] sm:inline" style={{ color: dirty ? theme.accent.primary : theme.node.muted }}>{dirty ? "有未保存修改" : "已保存"}</span>
-                    <Button size="small" type="primary" icon={<Save className="size-3.5" />} loading={saving} disabled={!dirty} onClick={() => void save()}>保存</Button>
+                    <Button size="sm" loading={saving} disabled={!dirty} onClick={() => void save()}><Save className="size-3.5" />保存</Button>
                     <Tooltip title="关闭">
-                        <Button size="small" type="text" icon={<X className="size-4" />} aria-label="关闭文本编辑器" onClick={close} />
+                        <Button size="icon-sm" variant="ghost" aria-label="关闭文本编辑器" onClick={close}><X className="size-4" /></Button>
                     </Tooltip>
                 </header>
 
@@ -160,7 +161,6 @@ export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTex
 }
 
 function TextEditorToolbar({ editor }: { editor: Editor | null }) {
-    const { message } = App.useApp();
     const theme = canvasThemes[useActiveTheme()];
     const [, setToolbarVersion] = useState(0);
     const [linkOpen, setLinkOpen] = useState(false);
@@ -184,7 +184,7 @@ function TextEditorToolbar({ editor }: { editor: Editor | null }) {
         const href = linkValue.trim();
         if (!editor) return;
         if (href && !isSafeCanvasRichTextLink(href)) {
-            message.error("链接仅支持 http、https、mailto 或 tel 协议");
+            toast.error("链接仅支持 http、https、mailto 或 tel 协议");
             return;
         }
         if (href) editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
@@ -197,80 +197,76 @@ function TextEditorToolbar({ editor }: { editor: Editor | null }) {
             <EditorToolButton label="撤销" onClick={() => editor?.chain().focus().undo().run()}><Undo2 /></EditorToolButton>
             <EditorToolButton label="重做" onClick={() => editor?.chain().focus().redo().run()}><Redo2 /></EditorToolButton>
             <ToolbarDivider />
-            <Dropdown
-                trigger={["click"]}
-                menu={{
-                    selectedKeys: [blockLabel],
-                    items: ["正文", "标题 1", "标题 2", "标题 3"].map((label) => ({ key: label, label })),
-                    onClick: ({ key }) => key === "正文" ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().toggleHeading({ level: Number(key.slice(-1)) as 1 | 2 | 3 }).run(),
-                }}
+            <MenuDropdown
+                selectedKeys={[blockLabel]}
+                items={["正文", "标题 1", "标题 2", "标题 3"].map((label) => ({ key: label, label }))}
+                onClick={({ key }) => key === "正文" ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().toggleHeading({ level: Number(key.slice(-1)) as 1 | 2 | 3 }).run()}
             >
                 <button type="button" className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium outline-none hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/8" aria-label="段落格式"><span>{blockLabel}</span><ChevronDown className="size-3" /></button>
-            </Dropdown>
+            </MenuDropdown>
             <EditorToolButton label="粗体" active={Boolean(editor?.isActive("bold"))} onClick={() => editor?.chain().focus().toggleBold().run()}><Bold /></EditorToolButton>
             <EditorToolButton label="斜体" active={Boolean(editor?.isActive("italic"))} onClick={() => editor?.chain().focus().toggleItalic().run()}><Italic /></EditorToolButton>
             <EditorToolButton label="下划线" active={Boolean(editor?.isActive("underline"))} onClick={() => editor?.chain().focus().toggleUnderline().run()}><Underline /></EditorToolButton>
             <EditorToolButton label="删除线" active={Boolean(editor?.isActive("strike"))} onClick={() => editor?.chain().focus().toggleStrike().run()}><Strikethrough /></EditorToolButton>
             <ToolbarDivider />
-            <Dropdown
-                trigger={["click"]}
-                menu={{
-                    selectedKeys: [alignment],
-                    items: [
-                        { key: "left", icon: <AlignLeft className="size-3.5" />, label: "左对齐" },
-                        { key: "center", icon: <AlignCenter className="size-3.5" />, label: "居中" },
-                        { key: "right", icon: <AlignRight className="size-3.5" />, label: "右对齐" },
-                        { key: "justify", icon: <AlignJustify className="size-3.5" />, label: "两端对齐" },
-                    ],
-                    onClick: ({ key }) => editor?.chain().focus().setTextAlign(key).run(),
-                }}
+            <MenuDropdown
+                selectedKeys={[alignment]}
+                items={[
+                    { key: "left", icon: <AlignLeft className="size-3.5" />, label: "左对齐" },
+                    { key: "center", icon: <AlignCenter className="size-3.5" />, label: "居中" },
+                    { key: "right", icon: <AlignRight className="size-3.5" />, label: "右对齐" },
+                    { key: "justify", icon: <AlignJustify className="size-3.5" />, label: "两端对齐" },
+                ]}
+                onClick={({ key }) => editor?.chain().focus().setTextAlign(key).run()}
             >
                 <button type="button" className="inline-flex size-8 shrink-0 items-center justify-center gap-0.5 rounded-md outline-none hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/8" aria-label="文字对齐"><span className="[&_svg]:size-3.5">{alignmentIcon}</span><ChevronDown className="size-2.5" /></button>
-            </Dropdown>
+            </MenuDropdown>
             <EditorToolButton label="无序列表" active={Boolean(editor?.isActive("bulletList"))} onClick={() => editor?.chain().focus().toggleBulletList().run()}><List /></EditorToolButton>
             <EditorToolButton label="有序列表" active={Boolean(editor?.isActive("orderedList"))} onClick={() => editor?.chain().focus().toggleOrderedList().run()}><ListOrdered /></EditorToolButton>
             <EditorToolButton label="引用" active={Boolean(editor?.isActive("blockquote"))} onClick={() => editor?.chain().focus().toggleBlockquote().run()}><Quote /></EditorToolButton>
             <Popover
                 open={linkOpen}
                 onOpenChange={(next) => { setLinkOpen(next); if (next) setLinkValue(String(editor?.getAttributes("link").href || "")); }}
-                trigger="click"
-                placement="bottom"
-                content={<div className="flex w-72 gap-2"><Input size="small" value={linkValue} placeholder="https://example.com" onChange={(event) => setLinkValue(event.target.value)} onPressEnter={applyLink} /><Button size="small" type="primary" onClick={applyLink}>应用</Button></div>}
             >
-                <span><EditorToolButton label="插入链接" active={Boolean(editor?.isActive("link"))} onClick={() => setLinkOpen(true)}><Link2 /></EditorToolButton></span>
+                <PopoverTrigger asChild>
+                    <span><EditorToolButton label="插入链接" active={Boolean(editor?.isActive("link"))} onClick={() => setLinkOpen(true)}><Link2 /></EditorToolButton></span>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" className="w-auto">
+                    <div className="flex w-72 gap-2">
+                        <Input className="h-7" value={linkValue} placeholder="https://example.com" onChange={(event) => setLinkValue(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) applyLink(); }} />
+                        <Button size="sm" onClick={applyLink}>应用</Button>
+                    </div>
+                </PopoverContent>
             </Popover>
             <ToolbarDivider />
             <Tooltip title="文字颜色">
-                <ColorPicker value={String(editor?.getAttributes("textStyle").color || theme.node.text)} onChangeComplete={(color) => editor?.chain().focus().setColor(color.toHexString()).run()}>
-                    <button type="button" className="grid size-8 shrink-0 place-items-center rounded-md text-xs font-bold outline-none hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/8" aria-label="文字颜色"><span className="border-b-2 px-0.5" style={{ borderColor: String(editor?.getAttributes("textStyle").color || theme.node.text) }}>A</span></button>
-                </ColorPicker>
+                <NativeColorButton value={String(editor?.getAttributes("textStyle").color || theme.node.text)} onChangeComplete={(color) => editor?.chain().focus().setColor(color).run()} className="grid size-8 shrink-0 place-items-center rounded-md text-xs font-bold outline-none hover:bg-black/5 focus-within:ring-2 dark:hover:bg-white/8" ariaLabel="文字颜色">
+                    <span className="border-b-2 px-0.5" style={{ borderColor: String(editor?.getAttributes("textStyle").color || theme.node.text) }}>A</span>
+                </NativeColorButton>
             </Tooltip>
             <Tooltip title="高亮颜色">
-                <ColorPicker value={String(editor?.getAttributes("highlight").color || "#fde68a")} onChangeComplete={(color) => editor?.chain().focus().toggleHighlight({ color: color.toHexString() }).run()}>
-                    <button type="button" className="grid size-8 shrink-0 place-items-center rounded-md outline-none hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/8" aria-label="高亮颜色"><Highlighter className="size-3.5" /></button>
-                </ColorPicker>
+                <NativeColorButton value={String(editor?.getAttributes("highlight").color || "#fde68a")} onChangeComplete={(color) => editor?.chain().focus().toggleHighlight({ color }).run()} className="grid size-8 shrink-0 place-items-center rounded-md outline-none hover:bg-black/5 focus-within:ring-2 dark:hover:bg-white/8" ariaLabel="高亮颜色">
+                    <Highlighter className="size-3.5" />
+                </NativeColorButton>
             </Tooltip>
-            <Dropdown
-                trigger={["click"]}
+            <MenuDropdown
                 placement="bottomRight"
-                menu={{
-                    items: [
-                        { key: "code", icon: <Code2 className="size-3.5" />, label: "行内代码" },
-                        { key: "codeBlock", icon: <span className="text-[var(--fs-tiny)] font-bold">{"<>"}</span>, label: "代码块" },
-                        { key: "rule", icon: <Minus className="size-3.5" />, label: "插入分隔线" },
-                        { type: "divider" },
-                        { key: "clear", icon: <Eraser className="size-3.5" />, label: "清除格式" },
-                    ],
-                    onClick: ({ key }) => {
-                        if (key === "code") editor?.chain().focus().toggleCode().run();
-                        else if (key === "codeBlock") editor?.chain().focus().toggleCodeBlock().run();
-                        else if (key === "rule") editor?.chain().focus().setHorizontalRule().run();
-                        else if (key === "clear") editor?.chain().focus().clearNodes().unsetAllMarks().run();
-                    },
+                items={[
+                    { key: "code", icon: <Code2 className="size-3.5" />, label: "行内代码" },
+                    { key: "codeBlock", icon: <span className="text-[var(--fs-tiny)] font-bold">{"<>"}</span>, label: "代码块" },
+                    { key: "rule", icon: <Minus className="size-3.5" />, label: "插入分隔线" },
+                    { type: "divider" },
+                    { key: "clear", icon: <Eraser className="size-3.5" />, label: "清除格式" },
+                ]}
+                onClick={({ key }) => {
+                    if (key === "code") editor?.chain().focus().toggleCode().run();
+                    else if (key === "codeBlock") editor?.chain().focus().toggleCodeBlock().run();
+                    else if (key === "rule") editor?.chain().focus().setHorizontalRule().run();
+                    else if (key === "clear") editor?.chain().focus().clearNodes().unsetAllMarks().run();
                 }}
             >
                 <button type="button" className="grid size-8 shrink-0 place-items-center rounded-md outline-none hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/8" aria-label="更多格式"><MoreHorizontal className="size-4" /></button>
-            </Dropdown>
+            </MenuDropdown>
         </div>
     );
 }
@@ -282,6 +278,35 @@ function EditorToolButton({ label, active = false, children, onClick }: { label:
             <button type="button" aria-label={label} aria-pressed={active} className="grid size-8 shrink-0 place-items-center rounded-md outline-none transition hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/8 [&_svg]:size-3.5" style={{ background: active ? theme.toolbar.activeBg : undefined, color: active ? theme.accent.primary : undefined }} onClick={onClick}>{children}</button>
         </Tooltip>
     );
+}
+
+// Native color input styled as a toolbar button; commits on the picker's change event like AntD onChangeComplete.
+function NativeColorButton({ value, onChangeComplete, className, ariaLabel, children }: { value: string; onChangeComplete: (hex: string) => void; className: string; ariaLabel: string; children: ReactNode }) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const commitRef = useRef(onChangeComplete);
+    commitRef.current = onChangeComplete;
+    const [draft, setDraft] = useState(() => toHexColor(value));
+    useEffect(() => setDraft(toHexColor(value)), [value]);
+    useEffect(() => {
+        const input = inputRef.current;
+        if (!input) return;
+        const handleChange = () => commitRef.current(input.value);
+        input.addEventListener("change", handleChange);
+        return () => input.removeEventListener("change", handleChange);
+    }, []);
+    return (
+        <label className={`relative cursor-pointer ${className}`}>
+            {children}
+            <input ref={inputRef} type="color" aria-label={ariaLabel} value={draft} onChange={(event) => setDraft(event.target.value)} className="absolute inset-0 size-full cursor-pointer opacity-0" />
+        </label>
+    );
+}
+
+// input[type=color] only accepts #rrggbb; other CSS color formats start the picker at black.
+function toHexColor(value: string) {
+    if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
+    if (/^#[0-9a-f]{3}$/i.test(value)) return `#${value.slice(1).split("").map((char) => char + char).join("")}`.toLowerCase();
+    return "#000000";
 }
 
 function ToolbarDivider() {

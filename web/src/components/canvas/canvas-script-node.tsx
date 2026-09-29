@@ -1,11 +1,18 @@
-import { Button, Dropdown, Input, InputNumber, Modal, Segmented, Select, Table } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MenuDropdown, type MenuItem } from "@/components/ui/menu-dropdown";
+import { NumberInput } from "@/components/ui/number-input";
+import { Textarea } from "@/components/ui/textarea";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { Checkbox } from "@/components/ui/base/checkbox";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { Select } from "@/components/ui/base/select";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { CheckboxGroup } from "@/components/ui/base/checkbox";
-import type { MenuProps } from "antd";
-import type { ColumnsType } from "antd/es/table";
-import { ChevronDown, ChevronUp, Clapperboard, Copy, Expand, Film, Grid3X3, Image as ImageIcon, ListTree, Merge, MoreHorizontal, Plus, RefreshCw, Send, Square, Trash2, Video } from "lucide-react";
+import { ChevronDown, ChevronUp, Clapperboard, Copy, Expand, Film, Grid3X3, Image as ImageIcon, ListTree, Merge, MoreHorizontal, Plus, RefreshCw, Search, Send, Square, Trash2, Video, X } from "lucide-react";
 
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { StoryboardAssetsCell } from "@/components/canvas/storyboard-assets-cell";
@@ -182,7 +189,7 @@ export function CanvasScriptNodeContent({
     const missingVideos = Math.max(0, pipeline.videos.total - pipeline.videos.created);
     const canMerge = pipeline.successfulVideoNodeIds.length >= 2 && pipeline.final.success === 0;
     const allRowIds = pipeline.rows.map((item) => item.row.id);
-    const moreMenuItems: MenuProps["items"] = [
+    const moreMenuItems: MenuItem[] = [
         { key: "generate-images", icon: <ImageIcon className="size-3.5" />, label: "生成未完成分镜图", disabled: pipelineDisabled || pipeline.images.incomplete === 0, onClick: () => onGenerateImages(allRowIds) },
         { key: "generate-videos", icon: <Video className="size-3.5" />, label: "生成未完成视频", disabled: pipelineDisabled || pipeline.videos.incomplete === 0, onClick: () => onGenerateVideos(allRowIds) },
         {
@@ -269,7 +276,7 @@ export function CanvasScriptNodeContent({
                         <Expand className="size-3.5" />
                     </button>
                 </Tooltip>
-                <Dropdown open={moreMenuOpen} onOpenChange={setMoreMenuOpen} menu={{ items: moreMenuItems, onClick: () => setMoreMenuOpen(false) }} trigger={["click"]} placement="bottomRight">
+                <MenuDropdown open={moreMenuOpen} onOpenChange={setMoreMenuOpen} items={moreMenuItems} onClick={() => setMoreMenuOpen(false)} placement="bottomRight">
                     <button
                         type="button"
                         className="grid size-7 place-items-center rounded outline-none transition hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/10"
@@ -284,12 +291,12 @@ export function CanvasScriptNodeContent({
                     >
                         <MoreHorizontal className="size-3.5" />
                     </button>
-                </Dropdown>
+                </MenuDropdown>
             </div>
             {batch ? (
-                <Modal title="批次详情" open={batchDetailsOpen} onCancel={() => setBatchDetailsOpen(false)} footer={null} width={560} centered destroyOnHidden>
+                <AppModal title="批次详情" open={batchDetailsOpen} onCancel={() => setBatchDetailsOpen(false)} footer={null} width={560}>
                     <GenerationBatchDetails batch={batch} rows={rows} onRetryItem={(itemId) => onRetryBatchItem(batch.id, itemId)} />
-                </Modal>
+                </AppModal>
             ) : null}
             <StoryboardMiniPipeline pipeline={pipeline} theme={theme} rows={rows} />
             <div className="storyboard-header-gutter grid h-9 shrink-0 items-center border-b text-xs font-semibold" style={{ borderColor: theme.node.stroke, color: theme.node.muted, gridTemplateColumns: SCRIPT_GRID_TEMPLATE }}>
@@ -321,10 +328,7 @@ export function CanvasScriptNodeContent({
                             <div className="flex flex-col items-center justify-center gap-0.5 border-r tabular-nums" style={{ color: theme.node.muted, borderColor: theme.node.stroke }}>
                                 <div className="flex items-center gap-0.5">
                                     <span className="text-sm">{row.shotNumber}</span>
-                                    <Dropdown
-                                        trigger={["click"]}
-                                        menu={{ items: [{ key: "delete", label: "删除镜头", icon: <Trash2 className="size-3.5" />, danger: true, disabled: rows.length <= 1, onClick: () => onRemoveRow(row.id) }] }}
-                                    >
+                                    <MenuDropdown items={[{ key: "delete", label: "删除镜头", icon: <Trash2 className="size-3.5" />, danger: true, disabled: rows.length <= 1, onClick: () => onRemoveRow(row.id) }]}>
                                         <button
                                             type="button"
                                             className="grid size-5 place-items-center rounded outline-none opacity-45 transition hover:bg-black/5 hover:opacity-100 focus-visible:ring-2 dark:hover:bg-white/10"
@@ -335,7 +339,7 @@ export function CanvasScriptNodeContent({
                                         >
                                             <MoreHorizontal className="size-3" />
                                         </button>
-                                    </Dropdown>
+                                    </MenuDropdown>
                                 </div>
                                 {batchItemByRowId.get(row.id) ? (
                                     <span className="max-w-14 truncate text-[var(--fs-micro)] leading-3" title={generationBatchItemLabel(batchItemByRowId.get(row.id)!)}>
@@ -432,19 +436,20 @@ export function CanvasScriptNodeContent({
                         </span>
                     ) : (
                         <Select<StoryboardShotCount>
-                            className="min-w-24"
-                            size="small"
+                            className="w-auto min-w-24"
+                            size="sm"
+                            ariaLabel="镜头数量"
                             value={shotCount}
                             disabled={node.metadata?.status === "loading"}
                             options={[{ value: "auto", label: "自动拆分" }, ...Array.from({ length: 10 }, (_, index) => ({ value: String(index + 1) as StoryboardShotCount, label: `${index + 1} 镜` }))]}
-                            popupMatchSelectWidth={false}
                             onChange={onShotCountChange}
                         />
                     )}
                     {simpleMode ? null : (
                         <Select<StoryboardShotDuration>
-                            className="min-w-24"
-                            size="small"
+                            className="w-auto min-w-24"
+                            size="sm"
+                            ariaLabel="单镜时长"
                             value={shotDuration}
                             disabled={node.metadata?.status === "loading"}
                             options={[
@@ -454,19 +459,22 @@ export function CanvasScriptNodeContent({
                                 { value: "15", label: "每镜 15 秒" },
                                 { value: "30", label: "每镜 30 秒" },
                             ]}
-                            popupMatchSelectWidth={false}
                             onChange={onShotDurationChange}
                         />
                     )}
                     <Button
-                        shape="circle"
-                        icon={<Send className="size-4" />}
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full"
+                        aria-label="生成分镜脚本"
                         disabled={!prompt.trim() || node.metadata?.status === "loading"}
                         loading={node.metadata?.status === "loading"}
                         style={{ background: theme.toolbar.itemHover, borderColor: theme.node.stroke, color: theme.node.text }}
                         onMouseDown={(event) => event.stopPropagation()}
                         onClick={submitPrompt}
-                    />
+                    >
+                        {node.metadata?.status === "loading" ? null : <Send className="size-4" />}
+                    </Button>
                 </div>
                 <RowHandle side="left" top={composerHeight / 2} scale={scale} tone="idle" theme={theme} title="连接文本节点作为项目设定" onPointerDown={(event) => onConnectStart(event, "context", "target")} />
             </div>
@@ -662,11 +670,10 @@ export function CanvasScriptEditor({
     };
     const removeRow = (rowId: string) => onUpdateRows(rows.filter((row) => row.id !== rowId).map((row, index) => ({ ...row, shotNumber: index + 1 })));
 
-    const columns: ColumnsType<StoryboardRow> = columnOptions
+    const columns: ScriptEditorColumn[] = columnOptions
         .filter((option) => visibleColumns.includes(option.value))
         .map((option) => ({
             title: option.label,
-            dataIndex: option.value,
             key: option.value,
             width: option.value === "shotNumber" ? 72 : option.value === "durationSeconds" ? 100 : option.value === "assets" ? 220 : option.value === "plotDescription" || option.value === "dialogue" || option.value === "timeBeats" || option.value.endsWith("Prompt") ? 260 : 170,
             fixed: option.value === "shotNumber" ? ("left" as const) : undefined,
@@ -674,20 +681,22 @@ export function CanvasScriptEditor({
                 option.value === "shotNumber" ? (
                     <span className="font-semibold">{row.shotNumber}</span>
                 ) : option.value === "durationSeconds" ? (
-                    <InputNumber min={1} max={60} value={row.durationSeconds} addonAfter="s" onChange={(value) => updateRow(row.id, { durationSeconds: Number(value) || 1 })} />
+                    <NumberInput size="sm" min={1} max={60} value={row.durationSeconds} addonAfter="s" onChange={(value) => updateRow(row.id, { durationSeconds: Number(value) || 1 })} />
                 ) : option.value === "assets" ? (
                     <StoryboardAssetsCell bindings={row.assetBindings || []} nodes={nodes} />
                 ) : option.value === "shotSize" ? (
                     <Select
                         className="w-full"
+                        size="sm"
                         value={row.shotSize || undefined}
                         placeholder="选择景别"
                         options={["特写", "近景", "中景", "全景", "远景"].map((value) => ({ value, label: value }))}
                         onChange={(shotSize) => updateRow(row.id, { shotSize })}
                     />
                 ) : (
-                    <Input.TextArea
-                        autoSize={{ minRows: 1, maxRows: 4 }}
+                    <Textarea
+                        rows={1}
+                        className="max-h-24 min-h-8 py-1.5"
                         value={String(row[option.value] || "")}
                         placeholder={`填写${option.label}`}
                         onChange={(event) => updateRow(row.id, { [option.value]: event.target.value } as Partial<StoryboardRow>)}
@@ -697,7 +706,6 @@ export function CanvasScriptEditor({
     columns.push({
         title: "操作",
         key: "actions",
-        dataIndex: "shotNumber",
         width: 150,
         fixed: "right" as const,
         render: (_: unknown, row: StoryboardRow) => (
@@ -719,18 +727,29 @@ export function CanvasScriptEditor({
     });
 
     return (
-        <Modal title={node?.title || "分镜脚本"} open={open} onCancel={onClose} footer={null} width="min(1480px, calc(100vw - 40px))" centered destroyOnHidden>
+        <AppModal title={node?.title || "分镜脚本"} open={open} onCancel={onClose} footer={null} width="min(1480px, calc(100vw - 40px))">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Input.Search className="w-72" allowClear placeholder="筛选画面、台词或提示词" value={query} onChange={(event) => setQuery(event.target.value)} />
+                <div className="relative w-72">
+                    <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="px-8" placeholder="筛选画面、台词或提示词" value={query} onChange={(event) => setQuery(event.target.value)} />
+                    {query ? (
+                        <button type="button" aria-label="清空筛选" className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setQuery("")}>
+                            <X className="size-3.5" />
+                        </button>
+                    ) : null}
+                </div>
                     <CheckboxGroup className="script-column-picker" options={columnOptions} value={visibleColumns} onChange={(values) => onVisibleColumnsChange(values)} />
                 <span className="min-w-0 flex-1" />
-                <Button icon={<Plus className="size-4" />} onClick={() => onUpdateRows([...rows, editorRow(rows.length + 1)])}>
+                <Button variant="outline" onClick={() => onUpdateRows([...rows, editorRow(rows.length + 1)])}>
+                    <Plus className="size-4" />
                     新增镜头
                 </Button>
-                <Button icon={<ImageIcon className="size-4" />} disabled={!selectedIds.length} onClick={() => onGenerateImages(selectedIds)}>
+                <Button variant="outline" disabled={!selectedIds.length} onClick={() => onGenerateImages(selectedIds)}>
+                    <ImageIcon className="size-4" />
                     生成{videoInputMode === "keyframe" ? "首帧" : "分镜图"}
                 </Button>
-                <Segmented<StoryboardVideoInputMode>
+                <SegmentedControl<StoryboardVideoInputMode>
+                    ariaLabel="视频输入模式"
                     value={videoInputMode}
                     options={[
                         { value: "direct", label: "直接生成" },
@@ -738,22 +757,80 @@ export function CanvasScriptEditor({
                     ]}
                     onChange={onVideoInputModeChange}
                 />
-                <Button type="primary" icon={<Film className="size-4" />} disabled={!selectedIds.length} onClick={() => onGenerateVideos(selectedIds)}>
+                <Button disabled={!selectedIds.length} onClick={() => onGenerateVideos(selectedIds)}>
+                    <Film className="size-4" />
                     {videoInputMode === "keyframe" ? "确认首帧并生成" : "生成视频"}
                 </Button>
             </div>
-            <Table<StoryboardRow>
-                rowKey="id"
-                size="small"
-                bordered
-                sticky
-                pagination={false}
-                scroll={{ x: Math.max(900, columns.length * 180), y: "calc(78vh - 170px)" }}
-                dataSource={filteredRows}
-                columns={columns}
-                rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys.map(String)) }}
-            />
-        </Modal>
+            <ScriptEditorTable columns={columns} rows={filteredRows} selectedIds={selectedIds} onSelectedIdsChange={setSelectedIds} />
+        </AppModal>
+    );
+}
+
+type ScriptEditorColumn = { key: string; title: ReactNode; width: number; fixed?: "left" | "right"; render: (value: unknown, row: StoryboardRow) => ReactNode };
+
+const SCRIPT_SELECTION_COLUMN_WIDTH = 40;
+
+// Bordered, sticky-header table with row selection and pinned edge columns, replacing AntD Table.
+function ScriptEditorTable({ columns, rows, selectedIds, onSelectedIdsChange }: { columns: ScriptEditorColumn[]; rows: StoryboardRow[]; selectedIds: string[]; onSelectedIdsChange: (ids: string[]) => void }) {
+    const rowIds = rows.map((row) => row.id);
+    const selectedCount = rowIds.filter((id) => selectedIds.includes(id)).length;
+    const allSelected = rowIds.length > 0 && selectedCount === rowIds.length;
+    const pinnedStyle = (column: ScriptEditorColumn): CSSProperties | undefined => (column.fixed === "left" ? { left: SCRIPT_SELECTION_COLUMN_WIDTH } : column.fixed === "right" ? { right: 0 } : undefined);
+    const pinnedClass = (column: ScriptEditorColumn) => (column.fixed ? "sticky z-[1] bg-background" : "");
+    return (
+        <div className="thin-scrollbar max-h-[calc(78vh-170px)] overflow-auto rounded-lg border border-border">
+            <table className="w-full caption-bottom border-collapse text-xs" style={{ minWidth: Math.max(900, columns.length * 180) }}>
+                <TableHeader className="sticky top-0 z-[2] bg-muted">
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead className="sticky left-0 z-[1] border-r border-border bg-muted px-2" style={{ width: SCRIPT_SELECTION_COLUMN_WIDTH }}>
+                            <Checkbox
+                                size="sm"
+                                aria-label="全选镜头"
+                                checked={allSelected}
+                                indeterminate={selectedCount > 0 && !allSelected}
+                                onChange={(event) => onSelectedIdsChange(event.target.checked ? rowIds : [])}
+                            />
+                        </TableHead>
+                        {columns.map((column) => (
+                            <TableHead key={column.key} className={`border-r border-border px-2 text-xs last:border-r-0 ${column.fixed ? "sticky z-[1] bg-muted" : ""}`} style={{ width: column.width, minWidth: column.width, ...pinnedStyle(column) }}>
+                                {column.title}
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {rows.length ? (
+                        rows.map((row) => {
+                            const checked = selectedIds.includes(row.id);
+                            return (
+                                <TableRow key={row.id} data-state={checked ? "selected" : undefined}>
+                                    <TableCell className="sticky left-0 z-[1] border-r border-border bg-background px-2 align-top" style={{ width: SCRIPT_SELECTION_COLUMN_WIDTH }}>
+                                        <Checkbox
+                                            size="sm"
+                                            aria-label={`选择镜头 ${row.shotNumber}`}
+                                            checked={checked}
+                                            onChange={(event) => onSelectedIdsChange(event.target.checked ? [...selectedIds, row.id] : selectedIds.filter((id) => id !== row.id))}
+                                        />
+                                    </TableCell>
+                                    {columns.map((column) => (
+                                        <TableCell key={column.key} className={`border-r border-border px-2 py-1.5 align-top whitespace-normal last:border-r-0 ${pinnedClass(column)}`} style={{ width: column.width, minWidth: column.width, ...pinnedStyle(column) }}>
+                                            {column.render(undefined, row)}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            );
+                        })
+                    ) : (
+                        <TableRow className="hover:bg-transparent">
+                            <TableCell colSpan={columns.length + 1} className="py-10 text-center text-muted-foreground">
+                                暂无数据
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </table>
+        </div>
     );
 }
 

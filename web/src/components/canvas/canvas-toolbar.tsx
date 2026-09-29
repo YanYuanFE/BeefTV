@@ -16,6 +16,7 @@ import { canvasThemes, type CanvasBackgroundMode, type CanvasTheme } from "@/lib
 import { defaultToolbarPrefs, readToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers, type ToolbarPrefs } from "@/lib/canvas/tool-registry";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { CanvasNodeTypeId, CanvasToolMode, CanvasWorkspaceMode } from "@/types/canvas";
+import { POPOVER_SELECTOR } from "@/lib/overlay-selectors";
 
 export function CanvasToolbar({
     selectedCount,
@@ -140,7 +141,7 @@ export function CanvasToolbar({
             const target = event.target instanceof Node ? event.target : null;
             if (target && rootRef.current?.contains(target)) return;
             const element = event.target instanceof Element ? event.target : null;
-            if (element?.closest(".ant-color-picker,.ant-popover")) return;
+            if (element?.closest(POPOVER_SELECTOR)) return;
             setAddOpen(false);
             setModeMenuOpen(false);
             setAppearanceOpen(false);

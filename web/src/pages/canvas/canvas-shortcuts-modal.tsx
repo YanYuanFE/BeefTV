@@ -37,7 +37,6 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
             onCancel={onClose}
             footer={null}
             title={null}
-            centered
             keyboard
             width="min(860px, calc(100vw - 24px))"
             flush

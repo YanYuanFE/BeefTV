@@ -1,5 +1,6 @@
 import { canvasThemes } from "@/lib/canvas-theme";
-import { Button, Tag } from "antd";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Copy, FileText, Image as ImageIcon, LoaderCircle, RefreshCw, Sparkles, Target, X } from "lucide-react";
@@ -287,8 +288,6 @@ export function AiArtCritiqueModal({ node, upstreamNodes, open, onClose, onUpdat
             title={null}
             closable={false}
             width="min(1240px, calc(100vw - 32px))"
-            centered
-            destroyOnClose={false}
             onCancel={close}
             footer={null}
             className="art-critique-modal"
@@ -470,20 +469,19 @@ export function AiArtCritiqueModal({ node, upstreamNodes, open, onClose, onUpdat
                                 </div>
                                 <div className="ml-auto flex shrink-0 items-center gap-2">
                                     {running ? (
-                                        <Button type="text" size="small" onClick={() => abortRef.current?.abort()}>
+                                        <Button variant="ghost" size="sm" onClick={() => abortRef.current?.abort()}>
                                             取消分析
                                         </Button>
                                     ) : null}
-                                    {!running && state.executionRunId && state.status !== "completed" && !stale && state.lastRunModel === selectedCritiqueModel ? <Button size="small" disabled={!input || !enabled} onClick={() => void runReview(true)}>继续上次分析</Button> : null}
+                                    {!running && state.executionRunId && state.status !== "completed" && !stale && state.lastRunModel === selectedCritiqueModel ? <Button variant="outline" size="sm" disabled={!input || !enabled} onClick={() => void runReview(true)}>继续上次分析</Button> : null}
                                     <Button
-                                        type="primary"
-                                        size="small"
+                                        size="sm"
                                         className="shrink-0"
-                                        icon={running ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
                                         loading={running}
                                         disabled={running || !input || !enabled || !selectedCritiqueModel}
                                         onClick={() => void runReview()}
                                     >
+                                        {running ? null : <RefreshCw className="size-4" />}
                                         {visibleState.report ? "重新批改" : "开始批改"}
                                     </Button>
                                 </div>
@@ -660,7 +658,8 @@ function IssueDetailView({
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
-                <Button type="text" size="small" icon={<ArrowLeft className="size-4" />} onClick={onBack}>
+                <Button variant="ghost" size="sm" onClick={onBack}>
+                    <ArrowLeft className="size-4" />
                     问题列表
                 </Button>
                 <span className="text-xs tabular-nums" style={{ color: theme.node.muted }}>
@@ -672,9 +671,9 @@ function IssueDetailView({
                 <div className="flex items-center gap-2 text-sm font-semibold">
                     <span className="size-2 rounded-full" style={{ background: severityColor }} aria-hidden="true" />
                     <span>具体问题</span>
-                    <Tag bordered={false} className="ml-auto text-[11px]" style={{ color: severityColor }}>
+                    <Badge variant="secondary" className="ml-auto text-[11px]" style={{ color: severityColor }}>
                         {artCritiqueSeverityLabel(issue.severity)}
-                    </Tag>
+                    </Badge>
                 </div>
                 <h3 className="m-0 text-lg font-semibold leading-7">{issue.title}</h3>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" style={{ color: theme.node.muted }}>
@@ -711,11 +710,13 @@ function IssueDetailView({
                         <span>改进</span>
                     </div>
                     {promptStatus === "ready" ? (
-                        <Button type="default" size="small" className="shrink-0" icon={<Copy className="size-3.5" />} aria-label="复制 AI 生成的修改提示词" onClick={() => copyText(issue.editPrompt || "", "AI 修改提示词已复制")}>
+                        <Button variant="outline" size="sm" className="shrink-0" aria-label="复制 AI 生成的修改提示词" onClick={() => copyText(issue.editPrompt || "", "AI 修改提示词已复制")}>
+                            <Copy className="size-3.5" />
                             复制提示词
                         </Button>
                     ) : (
-                        <Button type="default" size="small" className="shrink-0" disabled icon={promptStatus === "pending" ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : <Copy className="size-3.5" />}>
+                        <Button variant="outline" size="sm" className="shrink-0" disabled>
+                            {promptStatus === "pending" ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : <Copy className="size-3.5" />}
                             {promptStatus === "pending" ? "AI 生成中" : "提示词未生成"}
                         </Button>
                     )}
@@ -773,10 +774,12 @@ function IssueDetailView({
             </section>
 
             <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: theme.node.edge }}>
-                <Button type="text" size="small" icon={<ArrowLeft className="size-4" />} disabled={issueIndex <= 0} onClick={onPrevious}>
+                <Button variant="ghost" size="sm" disabled={issueIndex <= 0} onClick={onPrevious}>
+                    <ArrowLeft className="size-4" />
                     上一项
                 </Button>
-                <Button type="text" size="small" icon={<ArrowRight className="size-4" />} disabled={issueIndex < 0 || issueIndex >= total - 1} onClick={onNext}>
+                <Button variant="ghost" size="sm" disabled={issueIndex < 0 || issueIndex >= total - 1} onClick={onNext}>
+                    <ArrowRight className="size-4" />
                     下一项
                 </Button>
             </div>

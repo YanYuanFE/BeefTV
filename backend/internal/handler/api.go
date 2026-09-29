@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterCanvasAPI is kept as the standalone-development entrypoint. BeefTV
+// RegisterCanvasAPI is kept as the standalone-development entrypoint. Framely
 // has one local-only HTTP surface, so development and Wails use the same route
 // graph instead of selecting between desktop and SaaS profiles at runtime.
 func RegisterCanvasAPI(api *gin.RouterGroup, svc *app.Service) {
@@ -32,12 +32,12 @@ func RegisterDesktopCanvasAPIWithDependencies(api *gin.RouterGroup, svc *app.Ser
 
 // registerDesktopCanvasAPI is deliberately a separate call graph. Keeping the
 // local composition root free of runtime profile branches lets the Go linker
-// discard hosted handlers and their SaaS-only service methods from BeefTV.
+// discard hosted handlers and their SaaS-only service methods from Framely.
 func registerDesktopCanvasAPI(api *gin.RouterGroup, svc *app.Service, dependencies RuntimeDependencies) {
 	api.Use(RuntimeDependenciesMiddleware(dependencies))
 	RegisterOpenAPIRoutes(api)
 	RegisterWorkspaceRoutes(api, svc)
-	RegisterBeefAPIConnectionRoutes(api, svc)
+	RegisterGatewayRoutes(api, svc)
 	RegisterDesktopAppearanceRoutes(api, svc)
 	RegisterDesktopFeatureAvailabilityRoutes(api, svc)
 	// 旧内置 Agent 已从产品运行面退场：这里不再注册 /agent/*，运行、审批和记忆入口

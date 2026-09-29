@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Button, Input, InputNumber, Select } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
+import { Textarea } from "@/components/ui/textarea";
+import { TagsInput } from "@/components/ui/tags-input";
+import { Select } from "@/components/ui/base/select";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Switch } from "@/components/ui/base/switch";
 import { AlertTriangle, Box, Check, FileImage, Link2, Plus, Save, SlidersHorizontal, Trash2 } from "lucide-react";
@@ -79,11 +84,10 @@ export function StyleAssetBindingModal({ open, profile, onClose, onApply }: Styl
 
     return (
         <AppModal
-            rootClassName="style-asset-binding-modal"
+            rootClassName="style-asset-binding-modal rounded-[var(--r-2xl)] bg-transparent"
             open={open}
             title={null}
             footer={null}
-            centered
             width="min(980px, calc(100vw - 24px))"
             onCancel={onClose}
             flush
@@ -94,7 +98,7 @@ export function StyleAssetBindingModal({ open, profile, onClose, onApply }: Styl
                         <h2 className="text-sm font-semibold">风格执行资产</h2>
                         <p className="mt-0.5 text-[var(--fs-label)] text-foreground/45">绑定模型资产、兼容范围、执行参数和许可快照</p>
                     </div>
-                    <Button className="shrink-0" icon={<Plus className="size-3.5" />} disabled={draft.assets.length >= MAX_STYLE_ASSETS} title={draft.assets.length >= MAX_STYLE_ASSETS ? `最多绑定 ${MAX_STYLE_ASSETS} 个资产` : undefined} onClick={addAsset}>添加资产</Button>
+                    <Button variant="outline" className="shrink-0" disabled={draft.assets.length >= MAX_STYLE_ASSETS} title={draft.assets.length >= MAX_STYLE_ASSETS ? `最多绑定 ${MAX_STYLE_ASSETS} 个资产` : undefined} onClick={addAsset}><Plus className="size-3.5" />添加资产</Button>
                 </header>
 
                 <div className="grid min-h-0 flex-1 md:grid-cols-3">
@@ -106,8 +110,9 @@ export function StyleAssetBindingModal({ open, profile, onClose, onApply }: Styl
                                     <span className="mt-0.5 block text-[var(--fs-tiny)] text-foreground/42">不兼容、未验证资产如何处理</span>
                                 </span>
                                 <Select<NonNullable<StyleProfileSnapshot["executionPolicy"]>>
-                                    className="shrink-0"
-                                    size="small"
+                                    className="w-28 shrink-0"
+                                    size="sm"
+                                    ariaLabel="执行策略"
                                     value={draft.executionPolicy || "compatible-fallback"}
                                     options={policyOptions}
                                     onChange={(executionPolicy) => setDraft({ ...draft, executionPolicy })}
@@ -158,13 +163,12 @@ export function StyleAssetBindingModal({ open, profile, onClose, onApply }: Styl
                         <span className="min-w-0 leading-5">{issues.length ? `${issues.length} 个资产需要处理：${issues[0].message}` : `${draft.assets.length} 个资产，${draft.assets.filter((asset) => asset.enabled).length} 个已启用`}</span>
                     </div>
                     <div className="flex shrink-0 justify-end gap-2">
-                        <Button onClick={onClose}>取消</Button>
+                        <Button variant="outline" onClick={onClose}>取消</Button>
                         <Button
-                            type="primary"
-                            icon={<Save className="size-3.5" />}
                             disabled={issues.length > 0}
                             onClick={() => onApply(createStyleProfileSnapshot({ ...draft, source: "user", revision: draft.revision + 1 }))}
                         >
+                            <Save className="size-3.5" />
                             应用配置
                         </Button>
                     </div>
@@ -183,7 +187,7 @@ function AssetEditor({ asset, onChange, onDelete }: { asset: StyleAssetBinding; 
                     <h3 className="text-sm font-semibold">资产配置</h3>
                     <p className="mt-1 text-[var(--fs-label)] text-foreground/45">已验证且启用的资产才会进入执行计划</p>
                 </div>
-                <Button danger type="text" icon={<Trash2 className="size-3.5" />} onClick={onDelete}>删除</Button>
+                <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={onDelete}><Trash2 className="size-3.5" />删除</Button>
             </div>
 
             {validationMessage ? (
@@ -225,7 +229,7 @@ function AssetEditor({ asset, onChange, onDelete }: { asset: StyleAssetBinding; 
                     <Input value={asset.version} placeholder="版本 UUID 或版本号" onChange={(event) => onChange({ version: event.target.value })} />
                 </Field>
                 <Field label="兼容基础模型" className="sm:col-span-2">
-                    <Select<string[]> mode="tags" value={asset.baseModels || []} tokenSeparators={[","]} placeholder="填写实际生成模型名，输入后回车" onChange={(baseModels) => onChange({ baseModels })} />
+                    <TagsInput value={asset.baseModels || []} tokenSeparators={[","]} placeholder="填写实际生成模型名，输入后回车" onChange={(baseModels) => onChange({ baseModels })} />
                 </Field>
             </div>
 
@@ -250,10 +254,10 @@ function LoraFields({ asset, onChange }: AssetFieldProps) {
     return (
         <section className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
             <Field label="LoRA 权重">
-                <InputNumber className="w-full" min={0} max={2} step={0.05} value={asset.weight} onChange={(weight) => onChange({ weight: weight ?? undefined })} />
+                <NumberInput className="w-full" min={0} max={2} step={0.05} value={asset.weight} onChange={(weight) => onChange({ weight: weight ?? undefined })} />
             </Field>
             <Field label="触发词">
-                <Select<string[]> mode="tags" value={asset.triggerWords || []} tokenSeparators={[","]} placeholder="输入后回车" onChange={(triggerWords) => onChange({ triggerWords })} />
+                <TagsInput value={asset.triggerWords || []} tokenSeparators={[","]} placeholder="输入后回车" onChange={(triggerWords) => onChange({ triggerWords })} />
             </Field>
         </section>
     );
@@ -263,10 +267,10 @@ function ReferenceFields({ asset, onChange }: AssetFieldProps) {
     return (
         <section className="grid gap-4 border-t border-border pt-4">
             <Field label="参考图 URL">
-                <Select<string[]> mode="tags" value={asset.referenceUrls || []} tokenSeparators={[","]} placeholder="输入可访问的参考图地址后回车" onChange={(referenceUrls) => onChange({ referenceUrls })} />
+                <TagsInput value={asset.referenceUrls || []} tokenSeparators={[","]} placeholder="输入可访问的参考图地址后回车" onChange={(referenceUrls) => onChange({ referenceUrls })} />
             </Field>
             <Field label="项目资源 ID">
-                <Select<string[]> mode="tags" value={asset.referenceResourceIds || []} tokenSeparators={[","]} placeholder="输入已上传的 resource ID 后回车" onChange={(referenceResourceIds) => onChange({ referenceResourceIds })} />
+                <TagsInput value={asset.referenceResourceIds || []} tokenSeparators={[","]} placeholder="输入已上传的 resource ID 后回车" onChange={(referenceResourceIds) => onChange({ referenceResourceIds })} />
             </Field>
         </section>
     );
@@ -276,7 +280,7 @@ function PromptFields({ asset, onChange }: AssetFieldProps) {
     return (
         <section className="border-t border-border pt-4">
             <Field label="提示词模块">
-                <Input.TextArea autoSize={{ minRows: 4, maxRows: 8 }} value={asset.promptFragment} placeholder="只填写该资产需要追加的稳定视觉要求" onChange={(event) => onChange({ promptFragment: event.target.value })} />
+                <Textarea rows={4} className="max-h-48 min-h-24" value={asset.promptFragment} placeholder="只填写该资产需要追加的稳定视觉要求" onChange={(event) => onChange({ promptFragment: event.target.value })} />
             </Field>
         </section>
     );
@@ -290,8 +294,8 @@ function GenerationParameterFields({ asset, onChange }: AssetFieldProps) {
             <h4 className="mb-3 text-xs font-semibold">建议生成参数</h4>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Field label="Sampler"><Input value={parameters.sampler} placeholder="可选" onChange={(event) => updateParameters({ sampler: event.target.value })} /></Field>
-                <Field label="Steps"><InputNumber className="w-full" min={1} max={200} value={parameters.steps} onChange={(steps) => updateParameters({ steps: steps ?? undefined })} /></Field>
-                <Field label="CFG"><InputNumber className="w-full" min={0} max={50} step={0.5} value={parameters.cfg} onChange={(cfg) => updateParameters({ cfg: cfg ?? undefined })} /></Field>
+                <Field label="Steps"><NumberInput className="w-full" min={1} max={200} value={parameters.steps} onChange={(steps) => updateParameters({ steps: steps ?? undefined })} /></Field>
+                <Field label="CFG"><NumberInput className="w-full" min={0} max={50} step={0.5} value={parameters.cfg} onChange={(cfg) => updateParameters({ cfg: cfg ?? undefined })} /></Field>
                 <Field label="推荐尺寸"><Input value={parameters.size} placeholder="例如 1024x1536" onChange={(event) => updateParameters({ size: event.target.value })} /></Field>
             </div>
         </section>
@@ -307,7 +311,7 @@ function LicenseFields({ asset, onChange }: AssetFieldProps) {
                     <Select
                         value={asset.license?.commercial === true ? "yes" : asset.license?.commercial === false ? "no" : "unknown"}
                         options={[{ value: "unknown", label: "尚未确认" }, { value: "yes", label: "允许商用" }, { value: "no", label: "不可商用" }]}
-                        onChange={(value: "unknown" | "yes" | "no") => onChange({ license: { ...asset.license, commercial: value === "unknown" ? undefined : value === "yes" } })}
+                        onChange={(value) => onChange({ license: { ...asset.license, commercial: value === "unknown" ? undefined : value === "yes" } })}
                     />
                 </Field>
                 <Field label="许可来源"><Input value={asset.license?.source} placeholder="许可页面或协议版本" onChange={(event) => onChange({ license: { ...asset.license, source: event.target.value } })} /></Field>

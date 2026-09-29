@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
 
 import type { CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
@@ -8,6 +7,7 @@ import { createStyleProfileSnapshot, serializeStyleProfile } from "@/lib/canvas/
 import { updateProject as updateDomainProject } from "@/services/api/projects";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
 import { getActiveUserScope } from "@/lib/user-scope";
+import { toast } from "sonner";
 
 type UseCanvasStyleWorkflowOptions = {
     canvasId: string;
@@ -23,7 +23,6 @@ type UseCanvasStyleWorkflowOptions = {
 };
 
 export function useCanvasStyleWorkflow({ canvasId, domainProjectId, nodesRef, selectedNodeIdsRef, getCanvasCenter, setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId, setStylePickerOpen }: UseCanvasStyleWorkflowOptions) {
-    const { message } = App.useApp();
     const queryClient = useQueryClient();
     const liveContext = useRef({ canvasId, domainProjectId, mounted: true });
     liveContext.current = { canvasId, domainProjectId, mounted: liveContext.current.mounted };
@@ -62,9 +61,9 @@ export function useCanvasStyleWorkflow({ canvasId, domainProjectId, nodesRef, se
             setSelectedConnectionId(null);
             setDialogNodeId(null);
             setStylePickerOpen(false);
-            message.success(`已应用“${preset.title}”画风`);
+            toast.success(`已应用“${preset.title}”画风`);
         },
-        [getCanvasCenter, message, nodesRef, selectedNodeIdsRef, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds, setStylePickerOpen],
+        [getCanvasCenter, nodesRef, selectedNodeIdsRef, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds, setStylePickerOpen],
     );
 
     const persistStyleMutation = useMutation({
@@ -91,9 +90,9 @@ export function useCanvasStyleWorkflow({ canvasId, domainProjectId, nodesRef, se
 
     const selectCanvasStyle = useCallback(
         (preset: CanvasStylePreset) => {
-            void applyCanvasStyleAsync(preset).catch((error) => message.error(error instanceof Error ? error.message : "项目画风保存失败"));
+            void applyCanvasStyleAsync(preset).catch((error) => toast.error(error instanceof Error ? error.message : "项目画风保存失败"));
         },
-        [applyCanvasStyleAsync, message],
+        [applyCanvasStyleAsync],
     );
 
     return { selectCanvasStyle, applyCanvasStyleAsync, styleApplying: persistStyleMutation.isPending };

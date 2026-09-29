@@ -1,5 +1,6 @@
-import { App, Button, Dropdown, Popconfirm } from "antd";
-import type { MenuProps } from "antd";
+import { Button } from "@/components/ui/button";
+import { ConfirmPopover } from "@/components/ui/confirm-popover";
+import { MenuDropdown, type MenuItem } from "@/components/ui/menu-dropdown";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Check, ChevronDown, FileText, FolderOpen, HardDrive, Image as ImageIcon, LoaderCircle, Music2, Puzzle, RotateCcw, Search, Trash2, Upload, UserRound, Video } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -16,6 +17,7 @@ import type { ExternalAssetPickerReference } from "@/lib/plugins/plugin-types";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { loadAssetLibraryPage, localSavedRemotePendingMessage } from "@/services/local-workspace-sync";
 import { deleteWorkspaceAsset, persistWorkspaceAssetChanges } from "@/services/workspace-asset-repository";
+import { toast } from "sonner";
 
 export type AssetPickerMediaKind = "image" | "video" | "audio" | "text";
 
@@ -113,7 +115,6 @@ export function AssetLibraryPickerModal({
     onConfirm,
     onFolderAction,
 }: Props) {
-    const { message } = App.useApp();
     const [category, setCategory] = useState(initialCategory);
     const [mediaKind, setMediaKind] = useState<AssetPickerMediaKind | "all">("all");
     const [folderId, setFolderId] = useState(initialFolderId);
@@ -281,10 +282,10 @@ export function AssetLibraryPickerModal({
             }
             await persistWorkspaceAssetChanges();
             setSelected(new Set());
-            message.success(`已还原 ${archivedSelectedIds.length} 个素材至素材库`);
+            toast.success(`已还原 ${archivedSelectedIds.length} 个素材至素材库`);
             setCategory("all");
         } catch (error) {
-            message.warning(localSavedRemotePendingMessage("已在本地还原", error));
+            toast.warning(localSavedRemotePendingMessage("已在本地还原", error));
         } finally {
             setWorking(false);
             if (remoteEnabled) void remoteQuery.refetch();
@@ -297,9 +298,9 @@ export function AssetLibraryPickerModal({
         try {
             for (const id of archivedSelectedIds) await deleteWorkspaceAsset(id);
             setSelected(new Set());
-            message.success(`已彻底删除 ${archivedSelectedIds.length} 个素材`);
+            toast.success(`已彻底删除 ${archivedSelectedIds.length} 个素材`);
         } catch (err) {
-            message.error(err instanceof Error ? err.message : "删除失败");
+            toast.error(err instanceof Error ? err.message : "删除失败");
         } finally {
             setWorking(false);
             if (remoteEnabled) void remoteQuery.refetch();
@@ -313,10 +314,10 @@ export function AssetLibraryPickerModal({
         try {
             for (const item of toDelete) await deleteWorkspaceAsset(item.id);
             setSelected(new Set());
-            message.success(`已删除${remoteEnabled ? "当前页" : "回收站"} ${toDelete.length} 个素材`);
+            toast.success(`已删除${remoteEnabled ? "当前页" : "回收站"} ${toDelete.length} 个素材`);
             setCategory("all");
         } catch (err) {
-            message.error(err instanceof Error ? err.message : "清空回收站失败");
+            toast.error(err instanceof Error ? err.message : "清空回收站失败");
         } finally {
             setWorking(false);
             if (remoteEnabled) void remoteQuery.refetch();
@@ -362,7 +363,7 @@ export function AssetLibraryPickerModal({
 
     const countFor = (value: string) => (value === "all" ? activeSourceItems.length : activeSourceItems.filter((item) => item.category === value).length);
     const sourceLabel = source === "plugin" ? "插件来源" : "本地素材";
-    const sourceMenuItems: MenuProps["items"] = [
+    const sourceMenuItems: MenuItem[] = [
         {
             key: "local",
             icon: <HardDrive aria-hidden="true" />,
@@ -393,13 +394,11 @@ export function AssetLibraryPickerModal({
 
     return (
         <AppModal
-            centered
             open={open}
             footer={null}
             title={null}
-            destroyOnHidden
             closable={!working}
-            mask={{ closable: !working }}
+            maskClosable={!working}
             keyboard={!working}
             onCancel={() => {
                 if (!working) onClose();
@@ -412,24 +411,21 @@ export function AssetLibraryPickerModal({
                     <div className="asset-picker-heading">
                         <div className="asset-picker-heading-copy">
                             <span>{eyebrow}</span>
-                            <Dropdown
-                                trigger={["click"]}
+                            <MenuDropdown
                                 placement="bottomLeft"
-                                rootClassName="asset-picker-source-dropdown"
+                                contentClassName="asset-picker-source-dropdown w-[148px] min-w-0 p-[3px] [&_[role=menuitem]]:min-h-[30px] [&_[role=menuitem]]:px-2 [&_[role=menuitem]]:py-1 [&_[role=menuitem]]:text-[length:var(--fs-micro)] [&_[role=menuitem]_svg]:size-[15px]"
                                 onOpenChange={setSourceMenuOpen}
-                                menu={{
-                                    selectedKeys: [source],
-                                    items: sourceMenuItems,
-                                    onClick: ({ key }) => {
-                                        if (key === "local" || key === "plugin") selectSource(key);
-                                    },
+                                selectedKeys={[source]}
+                                items={sourceMenuItems}
+                                onClick={({ key }) => {
+                                    if (key === "local" || key === "plugin") selectSource(key);
                                 }}
                             >
                                 <button type="button" className="asset-picker-title-trigger" aria-haspopup="menu" aria-expanded={sourceMenuOpen} aria-label={"素材库来源：" + sourceLabel}>
                                     <strong>{isRecycleBin ? "回收站" : title}</strong>
                                     <ChevronDown aria-hidden="true" />
                                 </button>
-                            </Dropdown>
+                            </MenuDropdown>
                         </div>
                     </div>
                     <label className="asset-picker-search">
@@ -492,7 +488,7 @@ export function AssetLibraryPickerModal({
                     </nav>
                     <div className="asset-picker-grid-wrap">
                         <div className="asset-picker-grid">
-                            {remoteEnabled && remoteQuery.isError ? <div role="alert">素材读取失败<Button onClick={() => void remoteQuery.refetch()}>重试</Button></div> : loading || (useRemoteItems && remoteQuery.isFetching) ? (
+                            {remoteEnabled && remoteQuery.isError ? <div role="alert">素材读取失败<Button variant="outline" onClick={() => void remoteQuery.refetch()}>重试</Button></div> : loading || (useRemoteItems && remoteQuery.isFetching) ? (
                                 <div className="asset-picker-empty">
                                     <LoaderCircle className="animate-spin" />
                                     <strong>正在读取素材</strong>
@@ -536,34 +532,37 @@ export function AssetLibraryPickerModal({
                     <div className="asset-picker-actions">
                         {isRecycleBin ? (
                             <>
-                                <Popconfirm title={remoteEnabled ? "确认删除当前页回收站素材？" : "确认清空回收站？"} description="仅删除当前列表中的素材；仍被引用的素材由服务端拒绝删除。删除不可恢复。" onConfirm={handleEmptyRecycleBin} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
-                                    <Button type="text" danger disabled={working || !archivedCount}>
+                                <ConfirmPopover title={remoteEnabled ? "确认删除当前页回收站素材？" : "确认清空回收站？"} description="仅删除当前列表中的素材；仍被引用的素材由服务端拒绝删除。删除不可恢复。" onConfirm={handleEmptyRecycleBin} okText="删除" danger cancelText="取消">
+                                    <Button variant="ghost" className="text-destructive hover:text-destructive" disabled={working || !archivedCount}>
                                         {remoteEnabled ? "删除当前页" : "清空回收站"}
                                     </Button>
-                                </Popconfirm>
-                                <Popconfirm title="确认彻底删除已选素材？" onConfirm={handleDeleteSelected} okText="删除" okButtonProps={{ danger: true }} cancelText="取消">
-                                    <Button type="text" danger disabled={working || !archivedSelectedIds.length}>
+                                </ConfirmPopover>
+                                <ConfirmPopover title="确认彻底删除已选素材？" onConfirm={handleDeleteSelected} okText="删除" danger cancelText="取消">
+                                    <Button variant="ghost" className="text-destructive hover:text-destructive" disabled={working || !archivedSelectedIds.length}>
                                         彻底删除
                                     </Button>
-                                </Popconfirm>
-                                <Button type="text" onClick={onClose} disabled={working}>
+                                </ConfirmPopover>
+                                <Button variant="ghost" onClick={onClose} disabled={working}>
                                     关闭
                                 </Button>
-                                <Button type="primary" icon={<RotateCcw className="size-3.5" />} disabled={working || !archivedSelectedIds.length} loading={working} onClick={handleRestoreSelected}>
+                                <Button disabled={working || !archivedSelectedIds.length} loading={working} onClick={handleRestoreSelected}>
+                                    {working ? null : <RotateCcw className="size-3.5" />}
                                     还原已选素材{archivedSelectedIds.length ? `（${archivedSelectedIds.length}）` : ""}
                                 </Button>
                             </>
                         ) : (
                             <>
                                 {onFolderAction && folderId !== "all" && (folderActionSource !== "local" || source === "local") ? (
-                                    <Button type="text" icon={<FolderOpen />} disabled={working} onClick={() => void runFolderAction()}>
+                                    <Button variant="ghost" disabled={working} onClick={() => void runFolderAction()}>
+                                        <FolderOpen />
                                         {folderActionLabel}
                                     </Button>
                                 ) : null}
-                                <Button type="text" onClick={onClose} disabled={working}>
+                                <Button variant="ghost" onClick={onClose} disabled={working}>
                                     取消
                                 </Button>
-                                <Button type="primary" icon={<Check />} disabled={working || !selectedIds.length} loading={working && !uploading} onClick={() => void confirm()}>
+                                <Button disabled={working || !selectedIds.length} loading={working && !uploading} onClick={() => void confirm()}>
+                                    {working && !uploading ? null : <Check />}
                                     {confirmLabel(selectedIds.length)}
                                 </Button>
                             </>

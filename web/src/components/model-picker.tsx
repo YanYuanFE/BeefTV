@@ -1,9 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Check, ChevronDown, ChevronLeft } from "lucide-react";
-import { Popover } from "antd";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { compatibleModelInGroup, configuredModelDisplayName, groupModelsByDisplayName, modelCompatibilityError, resolveCompatibleModel, type ModelRequirements } from "@/lib/model-selection";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { modelDisplayName, modelIcon, PUBLIC_MODEL_CATALOG_ID, resolveModelChannel, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -241,19 +241,8 @@ export function ModelPicker({
 
     return (
         <div className={cn(fullWidth ? "w-full min-w-0" : "w-fit max-w-full")} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-            <Popover
-                open={open}
-                onOpenChange={setPickerOpen}
-                trigger="click"
-                placement="bottomLeft"
-                arrow={false}
-                content={content}
-                classNames={{
-                    root: cn("canvas-model-picker-popover", "creation-model-picker-popover", popoverClassName),
-                    container: cn("canvas-composer-popover-surface", "creation-model-picker-surface"),
-                    content: "canvas-composer-popover-content",
-                }}
-            >
+            <Popover open={open} onOpenChange={setPickerOpen}>
+                <PopoverTrigger asChild>
                 <button
                     ref={triggerRef}
                     type="button"
@@ -269,6 +258,15 @@ export function ModelPicker({
                     </span>
                     <ChevronDown className={cn("canvas-model-picker-chevron", open && "is-open")} aria-hidden="true" />
                 </button>
+                </PopoverTrigger>
+                <PopoverContent
+                    side="bottom"
+                    align="start"
+                    className={cn("w-auto gap-0 p-0", "canvas-model-picker-popover", "creation-model-picker-popover", popoverClassName, "canvas-composer-popover-surface", "creation-model-picker-surface")}
+                    onOpenAutoFocus={(event) => event.preventDefault()}
+                >
+                    <div className="canvas-composer-popover-content">{content}</div>
+                </PopoverContent>
             </Popover>
         </div>
     );

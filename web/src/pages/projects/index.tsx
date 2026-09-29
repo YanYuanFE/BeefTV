@@ -3,8 +3,16 @@ import { CachedResourceImage } from "@/components/cached-resource-image";
 import { MediaPlaceholder } from "@/components/ui/product/media-placeholder";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Dropdown, Form, Input, Modal, Select } from "antd";
-import { ArrowRight, Archive, BookOpenText, FileText, FolderKanban, Images, LayoutGrid, MoreHorizontal, Palette, Pencil, Plus, Search, Sparkles } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
+import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/base/select";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { ArrowRight, Archive, BookOpenText, FileText, FolderKanban, Images, LayoutGrid, MoreHorizontal, Palette, Pencil, Plus, Search, Sparkles, X } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
@@ -21,15 +29,16 @@ import { createProject, deleteProject, duplicateProject, importProjectUnits, lis
 import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store";
 
 import { sourceTypeLabel } from "./detail/shared";
+import { toast } from "sonner";
+import { confirmDialog, warningDialog } from "@/components/ui/confirm-dialog";
 
 type ProjectForm = { name: string; aspectRatio: string; sourceType: string };
 
 export default function ProjectsPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { message, modal } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
-    const [createForm] = Form.useForm<ProjectForm>();
+    const createForm = useForm<ProjectForm>({ defaultValues: { name: "", aspectRatio: "9:16", sourceType: "blank" } });
     const [searchParams, setSearchParams] = useSearchParams();
     const [keyword, setKeyword] = useState("");
     const [status, setStatus] = useState<"all" | "active" | "archived">("all");
@@ -65,7 +74,7 @@ export default function ProjectsPage() {
     };
     useEffect(() => {
         if (!createOpen) return;
-        createForm.setFieldsValue({
+        createForm.reset({
             name: storyDraft.trim().slice(0, 24) || "",
             sourceType: createSource,
             aspectRatio: "9:16",
@@ -78,7 +87,7 @@ export default function ProjectsPage() {
         const textModel = generateModel || effectiveConfig.textModel;
         if (!textModel || !effectiveConfig.textModels.includes(textModel)) {
             if (!textModel) {
-                modal.warning({
+                warningDialog({
                     title: "需要先选择文本模型",
                     content: "请在上方“AI 模型”中选择一个已配置的文本模型，或先到设置中完成模型渠道配置。",
                     okText: "去设置",
@@ -86,7 +95,7 @@ export default function ProjectsPage() {
                     onOk: () => navigate(settingsPath("models")),
                 });
             } else {
-                message.error(`模型 ${textModel} 未在文本模型列表中，请重新选择`);
+                toast.error(`模型 ${textModel} 未在文本模型列表中，请重新选择`);
             }
             return;
         }
@@ -126,7 +135,7 @@ export default function ProjectsPage() {
             await queryClient.invalidateQueries({ queryKey: ["projects"] });
             navigate(`/projects/${project.project.id}/overview`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "AI 生成失败，请重试");
+            toast.error(error instanceof Error ? error.message : "AI 生成失败，请重试");
         } finally {
             setGenerating(false);
             setGenerationStatus("");
@@ -148,32 +157,32 @@ export default function ProjectsPage() {
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
             navigate(`/projects/${project.id}/overview`);
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "项目创建失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "项目创建失败"),
     });
     const deleteMutation = useMutation({
         mutationFn: deleteProject,
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
-            message.success("项目已删除");
+            toast.success("项目已删除");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "项目删除失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "项目删除失败"),
     });
     const archiveMutation = useMutation({
         mutationFn: ({ id, status }: { id: string; status: string }) => updateProject(id, { status }),
         onSuccess: (_, variables) => {
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
-            message.success(variables.status === "archived" ? "项目已归档" : "项目已恢复");
+            toast.success(variables.status === "archived" ? "项目已归档" : "项目已恢复");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "项目状态更新失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "项目状态更新失败"),
     });
     const renameMutation = useMutation({
         mutationFn: ({ id, name }: { id: string; name: string }) => updateProject(id, { name }),
         onSuccess: () => {
             setRenamingProject(null);
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
-            message.success("项目已重命名");
+            toast.success("项目已重命名");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "项目重命名失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "项目重命名失败"),
     });
     const allProjects = useMemo(() => query.data?.pages.flatMap((page) => page.projects) || [], [query.data]);
     const rows = useMemo(() => {
@@ -216,12 +225,11 @@ export default function ProjectsPage() {
                     <span className="story-launcher-expand"><Plus className="size-4" /><span>展开创作</span></span>
                 </summary>
                 <div className="story-launcher-main">
-                    <Input.TextArea
-                        className="story-launcher-input"
+                    <Textarea
+                        className="story-launcher-input min-h-16 max-h-[calc(5lh+28px)] min-w-0 flex-1 rounded-[var(--user-radius-control)] border-0 bg-[var(--user-surface-muted)] px-4 py-3.5 text-sm leading-[1.8] text-[var(--user-ink)] transition-[background,box-shadow] duration-[var(--product-state)] ease-[var(--product-ease)] placeholder:text-[var(--user-ink-soft)] focus-visible:bg-[var(--user-surface)] focus-visible:ring-[3px] focus-visible:ring-[var(--product-focus-ring)] md:text-sm dark:bg-[var(--user-surface-muted)]"
                         value={storyDraft}
                         onChange={(event) => setStoryDraft(event.target.value)}
                         placeholder="例如：一个失忆的快递员，每天收到十年前寄出的信件……"
-                        autoSize={{ minRows: 2, maxRows: 5 }}
                         aria-label="一句话故事"
                     />
                     {selectedStyle ? <button type="button" className="story-launcher-style-chip" onClick={() => setStylePickerOpen(true)} title={selectedStyle.title}>
@@ -230,9 +238,9 @@ export default function ProjectsPage() {
                     </button> : null}
                 </div>
                     <div className="story-launcher-actions">
-                        <Button icon={<FolderKanban />} onClick={() => openCreate("blank")}>空白项目</Button>
-                        <Button icon={<FileText />} onClick={() => openCreate("novel")}>导入小说</Button>
-                        <Button icon={<Palette />} onClick={() => setStylePickerOpen(true)}>{selectedStyle ? "更换画风" : "选画风"}</Button>
+                        <Button variant="outline" onClick={() => openCreate("blank")}><FolderKanban />空白项目</Button>
+                        <Button variant="outline" onClick={() => openCreate("novel")}><FileText />导入小说</Button>
+                        <Button variant="outline" onClick={() => setStylePickerOpen(true)}><Palette />{selectedStyle ? "更换画风" : "选画风"}</Button>
                         <ModelPicker
                             config={effectiveConfig}
                             value={generateModel || effectiveConfig.textModel}
@@ -244,24 +252,24 @@ export default function ProjectsPage() {
 
                             popoverClassName="agent-model-picker-popover"
                         />
-                        <Button type="default" icon={<Sparkles className="size-3.5" />} disabled={!storyDraft.trim() || generating} loading={generating} onClick={() => void generateStory()}>AI 生成章节</Button>
-                        <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => openCreate(createSource)}>开始创作</Button>
+                        <Button variant="outline" disabled={!storyDraft.trim() || generating} loading={generating} onClick={() => void generateStory()}>{generating ? null : <Sparkles className="size-3.5" />}AI 生成章节</Button>
+                        <Button className="ml-auto" onClick={() => openCreate(createSource)}><Plus className="size-3.5" />开始创作</Button>
                     </div>
                 <details className="story-launcher-options">
                     <summary>故事设置 · {generateChapterCount} 章 · {generatePerspective} · {generateTone}</summary>
                 <div className="story-launcher-controls">
-                    <label><span>章节数量</span><Select size="small" className="min-w-28" value={generateChapterCount} onChange={setGenerateChapterCount} options={[{ label: "3 章", value: "3" }, { label: "5 章", value: "5" }, { label: "8 章", value: "8" }, { label: "10 章", value: "10" }]} /></label>
-                    <label><span>叙事结构</span><Select size="small" className="min-w-32" value={generateStructure} onChange={setGenerateStructure} options={[{ label: "单线推进", value: "单线推进" }, { label: "双线并行", value: "双线并行" }, { label: "群像多线", value: "群像多线" }, { label: "反转嵌套", value: "反转嵌套" }]} /></label>
-                    <label><span>章节篇幅</span><Select size="small" className="min-w-28" value={generateChapterLength} onChange={setGenerateChapterLength} options={[{ label: "精炼", value: "短" }, { label: "均衡", value: "中" }, { label: "丰满", value: "长" }]} /></label>
-                    <label><span>单章字数</span><Select size="small" className="min-w-28" value={generateWordCount} onChange={setGenerateWordCount} options={[{ label: "500 字", value: "500" }, { label: "800 字", value: "800" }, { label: "1200 字", value: "1200" }, { label: "2000 字", value: "2000" }]} /></label>
-                    <label><span>叙述视角</span><Select size="small" className="min-w-28" value={generatePerspective} onChange={setGeneratePerspective} options={[{ label: "第三人称", value: "第三人称" }, { label: "第一人称", value: "第一人称" }, { label: "多视角", value: "多视角" }]} /></label>
-                    <label><span>故事基调</span><Select size="small" className="min-w-32" value={generateTone} onChange={setGenerateTone} options={[{ label: "平稳叙事", value: "平稳叙事" }, { label: "轻松喜剧", value: "轻松喜剧" }, { label: "紧张悬疑", value: "紧张悬疑" }, { label: "热血成长", value: "热血成长" }, { label: "甜宠治愈", value: "甜宠治愈" }]} /></label>
-                    <label><span>角色规模</span><Select size="small" className="min-w-28" value={generateCharacterScale} onChange={setGenerateCharacterScale} options={[{ label: "2 个", value: "2 个" }, { label: "3-4 个", value: "3-4 个" }, { label: "5-6 个", value: "5-6 个" }]} /></label>
+                    <label><span>章节数量</span><Select size="sm" className="min-w-28 w-full" value={generateChapterCount} onChange={setGenerateChapterCount} options={[{ label: "3 章", value: "3" }, { label: "5 章", value: "5" }, { label: "8 章", value: "8" }, { label: "10 章", value: "10" }]} /></label>
+                    <label><span>叙事结构</span><Select size="sm" className="min-w-32 w-full" value={generateStructure} onChange={setGenerateStructure} options={[{ label: "单线推进", value: "单线推进" }, { label: "双线并行", value: "双线并行" }, { label: "群像多线", value: "群像多线" }, { label: "反转嵌套", value: "反转嵌套" }]} /></label>
+                    <label><span>章节篇幅</span><Select size="sm" className="min-w-28 w-full" value={generateChapterLength} onChange={setGenerateChapterLength} options={[{ label: "精炼", value: "短" }, { label: "均衡", value: "中" }, { label: "丰满", value: "长" }]} /></label>
+                    <label><span>单章字数</span><Select size="sm" className="min-w-28 w-full" value={generateWordCount} onChange={setGenerateWordCount} options={[{ label: "500 字", value: "500" }, { label: "800 字", value: "800" }, { label: "1200 字", value: "1200" }, { label: "2000 字", value: "2000" }]} /></label>
+                    <label><span>叙述视角</span><Select size="sm" className="min-w-28 w-full" value={generatePerspective} onChange={setGeneratePerspective} options={[{ label: "第三人称", value: "第三人称" }, { label: "第一人称", value: "第一人称" }, { label: "多视角", value: "多视角" }]} /></label>
+                    <label><span>故事基调</span><Select size="sm" className="min-w-32 w-full" value={generateTone} onChange={setGenerateTone} options={[{ label: "平稳叙事", value: "平稳叙事" }, { label: "轻松喜剧", value: "轻松喜剧" }, { label: "紧张悬疑", value: "紧张悬疑" }, { label: "热血成长", value: "热血成长" }, { label: "甜宠治愈", value: "甜宠治愈" }]} /></label>
+                    <label><span>角色规模</span><Select size="sm" className="min-w-28 w-full" value={generateCharacterScale} onChange={setGenerateCharacterScale} options={[{ label: "2 个", value: "2 个" }, { label: "3-4 个", value: "3-4 个" }, { label: "5-6 个", value: "5-6 个" }]} /></label>
                 </div>
                 </details>
             </details>
             <CollectionToolbar active={Boolean(keyword || status !== "all" || sort !== "updated")} onReset={() => { setKeyword(""); setStatus("all"); setSort("updated"); }}>
-                <Input allowClear className="app-list-search" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} />
+                <div className="app-list-search relative flex items-center"><Search className="pointer-events-none absolute left-2.5 size-4 text-foreground/40" /><Input className="pr-8 pl-8" value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} />{keyword ? <button type="button" aria-label="清空搜索" className="absolute right-2 grid size-5 place-items-center rounded text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onClick={() => setKeyword("")}><X className="size-3.5" /></button> : null}</div>
                 <Select className="w-32" value={status} onChange={setStatus} options={[{ label: "全部状态", value: "all" }, { label: "进行中", value: "active" }, { label: "已归档", value: "archived" }]} />
                 <Select className="w-32" value={sort} onChange={setSort} options={[{ label: "最近更新", value: "updated" }, { label: "章节进度", value: "progress" }, { label: "项目名称", value: "name" }]} />
             </CollectionToolbar>
@@ -270,7 +278,7 @@ export default function ProjectsPage() {
             {query.isLoading ? <WorkspaceLoadingState label="正在整理项目" detail="读取章节、画布与资产进度" /> : null}
             {!query.isLoading && !hasInitialError && rows.length ? (
                 <CollectionGrid className="library-grid project-library-grid">
-                    {rows.map((row) => <ProjectRow key={row.project.id} row={row} folders={foldersQuery.data?.folders || []} onDelete={() => modal.confirm({ title: "删除项目？", content: `项目章节、画布关联和素材归属将一并移除「${row.project.name}」，独立画布与素材库原始素材会保留。此操作不可撤销。`, okText: "删除项目", cancelText: "取消", okButtonProps: { danger: true }, onOk: () => deleteMutation.mutateAsync(row.project.id) })} onRename={() => { setRenameValue(row.project.name); setRenamingProject(row.project); }} onArchive={() => archiveMutation.mutate({ id: row.project.id, status: row.project.status === "archived" ? "active" : "archived" })} onDuplicate={async () => { await duplicateProject(row.project.id); await queryClient.invalidateQueries({ queryKey: ["projects"] }); message.success("项目副本已创建"); }} onMove={async (folderId) => { await moveProjectToFolder(row.project.id, folderId); await queryClient.invalidateQueries({ queryKey: ["projects"] }); message.success(folderId ? "项目已移动" : "项目已移出文件夹"); }} />)}
+                    {rows.map((row) => <ProjectRow key={row.project.id} row={row} folders={foldersQuery.data?.folders || []} onDelete={() => confirmDialog({ title: "删除项目？", content: `项目章节、画布关联和素材归属将一并移除「${row.project.name}」，独立画布与素材库原始素材会保留。此操作不可撤销。`, okText: "删除项目", cancelText: "取消", okButtonProps: { danger: true }, onOk: () => deleteMutation.mutateAsync(row.project.id) })} onRename={() => { setRenameValue(row.project.name); setRenamingProject(row.project); }} onArchive={() => archiveMutation.mutate({ id: row.project.id, status: row.project.status === "archived" ? "active" : "archived" })} onDuplicate={async () => { await duplicateProject(row.project.id); await queryClient.invalidateQueries({ queryKey: ["projects"] }); toast.success("项目副本已创建"); }} onMove={async (folderId) => { await moveProjectToFolder(row.project.id, folderId); await queryClient.invalidateQueries({ queryKey: ["projects"] }); toast.success(folderId ? "项目已移动" : "项目已移出文件夹"); }} />)}
                 </CollectionGrid>
             ) : null}
             {!query.isLoading && !hasInitialError ? <div ref={loadMoreRef} className="library-load-more" aria-live="polite">
@@ -281,37 +289,39 @@ export default function ProjectsPage() {
                     icon="projects"
                     title={keyword || status !== "all" ? "没有匹配的项目" : "创建第一个故事项目"}
                     description={keyword || status !== "all" ? "调整搜索词或状态筛选后再试。" : "项目会集中保存章节、项目画布、角色场景和制作进度。自由试图可从画布开始。"}
-                    action={!keyword && status === "all" ? <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>创建项目</Button> : undefined}
+                    action={!keyword && status === "all" ? <Button onClick={() => setCreateOpen(true)}><Plus className="size-3.5" />创建项目</Button> : undefined}
                 />
             ) : null}
 
-            <Modal className="library-modal" title="创建短剧项目" open={createOpen} footer={null} destroyOnHidden onCancel={() => setCreateOpen(false)} width={560} styles={{ body: { paddingTop: 12 } }}>
-                <Form<ProjectForm> form={createForm} layout="vertical" initialValues={{ aspectRatio: "9:16", sourceType: "blank" }} onFinish={(values) => mutation.mutate({ ...values, type: "short-drama", ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}) })}>
+            <AppModal className="library-modal" title="创建短剧项目" open={createOpen} footer={null} onCancel={() => setCreateOpen(false)} width={560} styles={{ body: { paddingTop: 12 } }}>
+                <Form {...createForm}>
+                <form noValidate onSubmit={createForm.handleSubmit((values) => mutation.mutate({ ...values, type: "short-drama", ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}) }))}>
                     <div className="mb-4 grid grid-cols-3 gap-2">
-                        <button type="button" className={createSource === "blank" ? "app-story-source is-active" : "app-story-source"} onClick={() => { setCreateSource("blank"); createForm.setFieldValue("sourceType", "blank"); }}><FolderKanban className="size-4" /><span>空白开始</span></button>
-                        <button type="button" className={createSource === "novel" ? "app-story-source is-active" : "app-story-source"} onClick={() => { setCreateSource("novel"); createForm.setFieldValue("sourceType", "novel"); }}><FileText className="size-4" /><span>导入小说</span></button>
-                        <button type="button" className={createSource === "text" ? "app-story-source is-active" : "app-story-source"} onClick={() => { setCreateSource("text"); createForm.setFieldValue("sourceType", "text"); }}><BookOpenText className="size-4" /><span>粘贴文本</span></button>
+                        <button type="button" className={createSource === "blank" ? "app-story-source is-active" : "app-story-source"} onClick={() => { setCreateSource("blank"); createForm.setValue("sourceType", "blank"); }}><FolderKanban className="size-4" /><span>空白开始</span></button>
+                        <button type="button" className={createSource === "novel" ? "app-story-source is-active" : "app-story-source"} onClick={() => { setCreateSource("novel"); createForm.setValue("sourceType", "novel"); }}><FileText className="size-4" /><span>导入小说</span></button>
+                        <button type="button" className={createSource === "text" ? "app-story-source is-active" : "app-story-source"} onClick={() => { setCreateSource("text"); createForm.setValue("sourceType", "text"); }}><BookOpenText className="size-4" /><span>粘贴文本</span></button>
                     </div>
-                    <Form.Item name="name" label="项目名称" rules={[{ required: true, whitespace: true, message: "请输入项目名称" }]}><Input autoFocus placeholder="例如：长安夜行" /></Form.Item>
+                    <FormField control={createForm.control} name="name" rules={{ validate: (value) => value.trim() ? true : "请输入项目名称" }} render={({ field }) => <FormItem className="mb-6"><FormLabel>项目名称</FormLabel><FormControl><Input {...field} autoFocus placeholder="例如：长安夜行" /></FormControl><FormMessage /></FormItem>} />
                     <div className="grid grid-cols-2 gap-3">
-                        <Form.Item name="aspectRatio" label="默认画幅"><Select options={[{ label: "9:16 竖屏", value: "9:16" }, { label: "16:9 横屏", value: "16:9" }, { label: "1:1 方形", value: "1:1" }]} /></Form.Item>
-                        <Form.Item name="sourceType" label="内容来源"><Select options={[{ label: "空白开始", value: "blank" }, { label: "导入小说", value: "novel" }, { label: "粘贴文本", value: "text" }]} /></Form.Item>
+                        <FormField control={createForm.control} name="aspectRatio" render={({ field }) => <FormItem className="mb-6"><FormLabel>默认画幅</FormLabel><Select id={field.name} value={field.value} onChange={field.onChange} options={[{ label: "9:16 竖屏", value: "9:16" }, { label: "16:9 横屏", value: "16:9" }, { label: "1:1 方形", value: "1:1" }]} /></FormItem>} />
+                        <FormField control={createForm.control} name="sourceType" render={({ field }) => <FormItem className="mb-6"><FormLabel>内容来源</FormLabel><Select id={field.name} value={field.value} onChange={field.onChange} options={[{ label: "空白开始", value: "blank" }, { label: "导入小说", value: "novel" }, { label: "粘贴文本", value: "text" }]} /></FormItem>} />
                     </div>
-                    <Form.Item label="项目画风"><button type="button" className="app-story-modal-style" onClick={() => setStylePickerOpen(true)}>{selectedStyle ? <><img src={selectedStyle.imageUrl} alt="" /><span>{selectedStyle.title}</span><em>更换</em></> : <><Palette className="size-4" /><span>选择项目画风（可选）</span></>}</button></Form.Item>
+                    <div className="mb-6 grid gap-2"><Label>项目画风</Label><button type="button" className="app-story-modal-style" onClick={() => setStylePickerOpen(true)}>{selectedStyle ? <><img src={selectedStyle.imageUrl} alt="" /><span>{selectedStyle.title}</span><em>更换</em></> : <><Palette className="size-4" /><span>选择项目画风（可选）</span></>}</button></div>
                     <p className="-mt-1 mb-5 text-xs leading-5 text-foreground/48">创建后先进入项目概览。章节、画风和参考资产可以逐步补充。</p>
-                    <div className="flex justify-end gap-2"><Button onClick={() => setCreateOpen(false)}>取消</Button><Button type="primary" htmlType="submit" loading={mutation.isPending}>创建项目</Button></div>
+                    <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setCreateOpen(false)}>取消</Button><Button type="submit" loading={mutation.isPending}>创建项目</Button></div>
+                </form>
                 </Form>
-            </Modal>
-            <Modal className="library-modal" title="重命名项目" open={Boolean(renamingProject)} okText="保存" cancelText="取消" confirmLoading={renameMutation.isPending} onCancel={() => setRenamingProject(null)} onOk={() => { const name = renameValue.trim(); if (!renamingProject || !name) return; renameMutation.mutate({ id: renamingProject.id, name }); }}>
-                <Input autoFocus value={renameValue} maxLength={80} placeholder="请输入项目名称" onChange={(event) => setRenameValue(event.target.value)} onPressEnter={() => { const name = renameValue.trim(); if (renamingProject && name) renameMutation.mutate({ id: renamingProject.id, name }); }} />
-            </Modal>
+            </AppModal>
+            <AppModal className="library-modal" title="重命名项目" open={Boolean(renamingProject)} okText="保存" cancelText="取消" confirmLoading={renameMutation.isPending} onCancel={() => setRenamingProject(null)} onOk={() => { const name = renameValue.trim(); if (!renamingProject || !name) return; renameMutation.mutate({ id: renamingProject.id, name }); }}>
+                <Input autoFocus value={renameValue} maxLength={80} placeholder="请输入项目名称" onChange={(event) => setRenameValue(event.target.value)} onKeyDown={(event) => { if (event.key !== "Enter" || event.nativeEvent.isComposing) return; const name = renameValue.trim(); if (renamingProject && name) renameMutation.mutate({ id: renamingProject.id, name }); }} />
+            </AppModal>
             <CanvasStylePickerModal
                 open={stylePickerOpen}
                 value={selectedStyle?.id}
                 onClose={() => setStylePickerOpen(false)}
                 onSelect={(preset) => { setSelectedStyle(preset); setStylePickerOpen(false); }}
             />
-            <Modal className="library-modal" title="AI 生成章节" open={generating} footer={null} closable={false} mask={{ closable: false }} keyboard={false} width={760}>
+            <AppModal className="library-modal" title="AI 生成章节" open={generating} footer={null} closable={false} maskClosable={false} keyboard={false} width={760}>
                 <div className="app-story-generating">
                     <div className="app-story-generating-head">
                         <span className="app-story-generating-mark"><Sparkles className="size-4" /></span>
@@ -341,7 +351,7 @@ export default function ProjectsPage() {
                         <pre>{generationPreview}</pre>
                     </div>
                 </div>
-            </Modal>
+            </AppModal>
         </WorkspacePage>
     );
 }
@@ -395,7 +405,7 @@ function ProjectRow({ row, folders, onDelete, onRename, onArchive, onDuplicate, 
                 <span className="project-library-cover-scrim" />
                 <span className="project-library-cover-ratio">{row.project.aspectRatio}</span>
                 <span className="project-library-cover-stage">{stage.label}</span>
-                <span className="project-collection-delete" onClick={(event) => event.preventDefault()}><Dropdown trigger={["click"]} placement="bottomRight" overlayClassName="project-library-menu" menu={{ items: [{ key: "open", label: "打开", onClick: () => navigate(`/projects/${row.project.id}/overview`) }, { key: "rename", icon: <Pencil className="size-3.5" />, label: "重命名", onClick: onRename }, { key: "cover", label: "修改封面", onClick: () => navigate(`/projects/${row.project.id}/settings`) }, { key: "duplicate", label: "创建副本", onClick: () => void onDuplicate() }, { key: "move", label: "移动至文件夹", children: [{ key: "root", label: "全部项目", onClick: () => void onMove("") }, ...folders.map((folder) => ({ key: folder.id, label: folder.name, onClick: () => void onMove(folder.id) }))] }, { key: "archive", icon: <Archive className="size-3.5" />, label: row.project.status === "archived" ? "恢复项目" : "归档项目", onClick: onArchive }, { type: "divider" }, { key: "delete", danger: true, label: "删除项目", onClick: onDelete }] }}><button type="button" className="project-library-more" aria-label={`${row.project.name} 更多操作`} onClick={(event) => event.preventDefault()}><MoreHorizontal className="size-4" /></button></Dropdown></span>
+                <span className="project-collection-delete" onClick={(event) => event.preventDefault()}><MenuDropdown placement="bottomRight" contentClassName="project-library-menu w-[150px] min-w-[150px] rounded-[10px] p-[6.5px] shadow-xl [&_[role=menuitem]]:min-h-[34.8px] [&_[role=menuitem]]:rounded-md [&_[role=menuitem]]:px-2.5 [&_[role=menuitem]]:text-sm [&_[role=separator]]:my-[3px]" items={[{ key: "open", label: "打开", onClick: () => navigate(`/projects/${row.project.id}/overview`) }, { key: "rename", icon: <Pencil className="size-3.5" />, label: "重命名", onClick: onRename }, { key: "cover", label: "修改封面", onClick: () => navigate(`/projects/${row.project.id}/settings`) }, { key: "duplicate", label: "创建副本", onClick: () => void onDuplicate() }, { key: "move", label: "移动至文件夹", children: [{ key: "root", label: "全部项目", onClick: () => void onMove("") }, ...folders.map((folder) => ({ key: folder.id, label: folder.name, onClick: () => void onMove(folder.id) }))] }, { key: "archive", icon: <Archive className="size-3.5" />, label: row.project.status === "archived" ? "恢复项目" : "归档项目", onClick: onArchive }, { type: "divider" }, { key: "delete", danger: true, label: "删除项目", onClick: onDelete }]}><button type="button" className="project-library-more" aria-label={`${row.project.name} 更多操作`} onClick={(event) => event.preventDefault()}><MoreHorizontal className="size-4" /></button></MenuDropdown></span>
             </span>
             <span className="project-library-body">
                 <span className="project-library-heading"><strong title={row.project.name}>{row.project.name}</strong>{row.project.status === "archived" ? <em>已归档</em> : null}<ArrowRight className="project-library-arrow size-4" /></span>

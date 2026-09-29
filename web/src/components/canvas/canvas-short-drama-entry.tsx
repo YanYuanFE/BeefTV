@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Dropdown } from "antd";
 import { AlignLeft, ArrowRight, AudioLines, Check, ChevronDown, ChevronUp, CircleUserRound, Clapperboard, FolderKanban, ImagePlus, Images, MoreHorizontal, MousePointer2, Palette, Pencil, Plus, PlusCircle, ScanLine, Sparkles, Type, Upload, Video, X } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
 import type { CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
 import type { CanvasShortDramaProgress, CanvasShortDramaStepId } from "@/lib/canvas/canvas-short-drama";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -63,20 +63,17 @@ export function CanvasShortDramaEmptyState({ onCreatePipeline, onStartFreeform, 
                     />
                 </div>
                 <div className="mt-3 flex justify-center">
-                    <Dropdown
-                        trigger={["click"]}
-                        menu={{
-                            items: [
-                                { key: "upload", icon: <Upload className="size-4" />, label: "导入素材", onClick: onUpload },
-                                { key: "text", icon: <Type className="size-4" />, label: "新建文本", onClick: onAddText },
-                                { key: "storyboard", icon: <Clapperboard className="size-4" />, label: "新建空白分镜", onClick: onAddScript },
-                            ],
-                        }}
+                    <MenuDropdown
+                        items={[
+                            { key: "upload", icon: <Upload className="size-4" />, label: "导入素材", onClick: onUpload },
+                            { key: "text", icon: <Type className="size-4" />, label: "新建文本", onClick: onAddText },
+                            { key: "storyboard", icon: <Clapperboard className="size-4" />, label: "新建空白分镜", onClick: onAddScript },
+                        ]}
                     >
                         <button type="button" className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium outline-none transition hover:bg-black/5 focus-visible:ring-2 dark:hover:bg-white/10" style={{ color: theme.node.muted, ...focusStyle }}>
                             <MoreHorizontal className="size-4" />其他起点<ChevronDown className="size-3" />
                         </button>
-                    </Dropdown>
+                    </MenuDropdown>
                 </div>
             </div>
         </div>
@@ -148,7 +145,7 @@ export function CanvasFreeformEmptyState({ commands }: { commands: CanvasCreateC
             {connectionsHintOpen ? (
                 <div
                     className="canvas-connections-hint pointer-events-auto fixed bottom-[52px] left-[176px] z-[var(--z-toolbar)] flex min-w-[218px] items-center gap-2 rounded-lg px-3 py-2.5 text-xs font-medium shadow-lg max-sm:hidden"
-                    style={{ background: "#6fe8e5", color: "#10292a" }}
+                    style={{ background: "#FF8566", color: "#1F0A05" }}
                 >
                     <span>点击可显示/隐藏画布上的连线</span>
                     <button

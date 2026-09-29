@@ -1,9 +1,8 @@
 import babelParser from "@babel/eslint-parser";
 
-// 这不是风格检查。只锁已经退场的 AntD 用法，防止 Empty / 静态 Modal.confirm 再长回来。
+// 这不是风格检查。只锁已经退场的 UI 库，防止 antd / react-aria 再长回来。
 // 用 Babel 解析 TS/TSX：typescript-eslint 8 在 TypeScript 7 上会直接拒绝启动。
-const emptyMessage = "列表和面板空态用 @/components/ui/product/empty-state 的 EmptyState，不要再引入 antd Empty。";
-const confirmMessage = "命令式确认必须走 App.useApp().modal.confirm，静态 Modal.confirm 拿不到主题和 App 上下文。";
+const retiredUiMessage = "UI 组件统一使用 shadcn/ui（Radix）与 @/components/ui/*；antd、@ant-design/* 与 react-aria-components 已退场。";
 
 // 源码里还有 react-hooks/exhaustive-deps 的 disable 注释。本闸门不启用 hooks 规则，
 // 只挂一个空规则，避免 ESLint 把未知规则名当成错误。
@@ -47,17 +46,10 @@ export default [
                 "error",
                 {
                     paths: [
-                        { name: "antd", importNames: ["Empty"], message: emptyMessage },
-                        { name: "antd/es/empty", message: emptyMessage },
-                        { name: "antd/lib/empty", message: emptyMessage },
+                        { name: "antd", message: retiredUiMessage },
+                        { name: "react-aria-components", message: retiredUiMessage },
                     ],
-                },
-            ],
-            "no-restricted-syntax": [
-                "error",
-                {
-                    selector: "CallExpression[callee.object.name='Modal'][callee.property.name='confirm']",
-                    message: confirmMessage,
+                    patterns: [{ group: ["antd/*", "@ant-design/*"], message: retiredUiMessage }],
                 },
             ],
         },

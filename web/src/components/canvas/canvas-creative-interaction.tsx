@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Dropdown } from "antd";
 import localforage from "localforage";
+import { Button } from "@/components/ui/button";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
 import type { CanvasAssistantMessage } from "@/types/canvas";
 import type { AiConfig } from "@/stores/use-config-store";
 import { getActiveUserScope } from "@/lib/user-scope";
@@ -146,7 +147,7 @@ export function CanvasCreativeInteraction(props: Props) {
     return <div className="space-y-3" data-canvas-no-zoom data-canvas-wheel-scroll>
         {question && <CreativeQuestionCard request={props.superseded && question.status === "pending" ? { ...question, status: "superseded" } : question} answers={answers} assets={view.state.references.map((ref) => ({ id: ref.id, label: ref.title }))} busy={view.busy} disabled={!props.active || !view.hasControl} onModify={() => modify(`我想修改之前的回答（${question.questions.map((item) => item.title).join("、")}）：`)} onAnswersChange={(next) => { answersEdited.current = true; setAnswers(next); invoke(localforage.setItem(answerKey, next)); }} onSubmit={submitAnswers} />}
         {view.state.proposal && <CreativeProposalCard proposal={view.state.proposal} archived={!props.active || !awaitingProposal} modifiable={!view.busy} disabled={props.active ? blocked : false} busy={view.busy} onApprove={() => invoke(controller.current?.approveProposal())} onModify={() => modify(`请修改方案《${view.state.proposal!.title}》：`)} onRedirect={() => modify("保留已确认的要求和素材，换一个创意方向。")} />}
-        {view.state.pendingEdits && <div className="creative-agent-card"><p>将调整 {view.state.pendingEdits.length} 个节点的指定字段。</p><Button disabled={blocked} onClick={() => invoke(controller.current?.approveEdits())}>确认节点调整</Button></div>}
+        {view.state.pendingEdits && <div className="creative-agent-card"><p>将调整 {view.state.pendingEdits.length} 个节点的指定字段。</p><Button variant="outline" disabled={blocked} onClick={() => invoke(controller.current?.approveEdits())}>确认节点调整</Button></div>}
         {view.state.media.filter((item) => item.taskId || item.storageKey || item.error).map((item) => {
             const resource = resourceIdFromStorageKey(item.storageKey), url = resource ? resourceFileUrl(resource) : "";
             const video = view.state.proposal?.generationItems.find((entry) => entry.ref === item.ref)?.mode === "video";
@@ -156,19 +157,19 @@ export function CanvasCreativeInteraction(props: Props) {
                 {url && (video ? <video className="w-full max-h-80 object-contain" src={url} controls preload="metadata" /> : <img className="w-full max-h-80 object-contain" src={url} alt={item.ref} />)}
                 {item.error && <p className="creative-agent-muted">这项作品还需要处理，已有结果会保留。</p>}
                 {item.error && <details className="creative-agent-receipt"><summary>查看失败原因</summary><p>{item.error}</p></details>}
-                {props.active && item.status === "failed" && item.failureKind !== "observation" && <Button type="primary" disabled={blocked} onClick={() => invoke(controller.current?.redo(item.ref))}>重新生成此项</Button>}
-                <div className="creative-agent-actions">{url && <a href={url} target="_blank" rel="noreferrer">查看作品</a>}{props.active && <Dropdown trigger={["click"]} disabled={blocked} menu={{ items: [{ key: "adjust", label: "调整作品" }, { key: "redo", label: "重新生成" }], onClick: ({ key }) => key === "redo" ? invoke(controller.current?.redo(item.ref)) : modify(`请调整《${view.state.proposal?.workflow.nodes.find((entry) => entry.ref === item.ref)?.title || item.ref}》，保留其他作品：`) }}><Button type="text" disabled={blocked}>更多</Button></Dropdown>}</div>
+                {props.active && item.status === "failed" && item.failureKind !== "observation" && <Button disabled={blocked} onClick={() => invoke(controller.current?.redo(item.ref))}>重新生成此项</Button>}
+                <div className="creative-agent-actions">{url && <a href={url} target="_blank" rel="noreferrer">查看作品</a>}{props.active && <MenuDropdown disabled={blocked} items={[{ key: "adjust", label: "调整作品" }, { key: "redo", label: "重新生成" }]} onClick={({ key }) => key === "redo" ? invoke(controller.current?.redo(item.ref)) : modify(`请调整《${view.state.proposal?.workflow.nodes.find((entry) => entry.ref === item.ref)?.title || item.ref}》，保留其他作品：`)}><Button variant="ghost" disabled={blocked}>更多</Button></MenuDropdown>}</div>
             </div>;
         })}
         {!props.active && rawError && <details className="creative-agent-receipt"><summary>这一步未完成，后续对话中可继续调整</summary><p>{feedback}</p></details>}
         {props.active && <div className="creative-agent-next" role="status">
             <p>{view.busy ? "正在处理，请稍候…" : !view.hasControl ? rawError ? "暂时无法恢复当前创作，可以重试连接。已有作品会保留。" : "正在恢复当前创作，请稍候…" : view.state.modificationRequested ? "在下方告诉我想改哪里，调整后再确认。" : feedback || (awaitingProposal ? "看看方案是否符合你的想法，确认后继续。" : question?.status === "pending" ? "选择一个答案，也可以在下方直接补充。" : status === "completed" ? "本阶段已完成。可以查看作品，或告诉我想改哪里。" : "准备好了，可以继续。")}</p>
             <div className="creative-agent-actions">
-                {!view.busy && !view.hasControl && <Button onClick={() => invoke(view.run ? controller.current?.takeControl() : controller.current?.load(detail.runId, detail.state))}>重试连接</Button>}
-                {view.busy && ["running", "waiting_task", "waiting_canvas"].includes(status || "") ? <Button onClick={() => invoke(controller.current?.pause())}>停止后续制作</Button>
+                {!view.busy && !view.hasControl && <Button variant="outline" onClick={() => invoke(view.run ? controller.current?.takeControl() : controller.current?.load(detail.runId, detail.state))}>重试连接</Button>}
+                {view.busy && ["running", "waiting_task", "waiting_canvas"].includes(status || "") ? <Button variant="outline" onClick={() => invoke(controller.current?.pause())}>停止后续制作</Button>
                     : !view.busy && view.hasControl && !view.state.modificationRequested && !awaitingProposal && !view.state.pendingEdits && question?.status !== "pending" ? <>
-                        {!onlyFailedRemaining && <Button type="primary" onClick={() => status === "completed" && !feedback ? props.onReview() : invoke(continueWork())}>{status === "completed" && !feedback ? "继续创作" : "继续处理"}</Button>}
-                        <Button onClick={() => modify("我想调整当前创作要求：")}>修改</Button>
+                        {!onlyFailedRemaining && <Button onClick={() => status === "completed" && !feedback ? props.onReview() : invoke(continueWork())}>{status === "completed" && !feedback ? "继续创作" : "继续处理"}</Button>}
+                        <Button variant="outline" onClick={() => modify("我想调整当前创作要求：")}>修改</Button>
                     </> : null}
             </div>
             {status === "paused" && <small className="creative-agent-muted">已停止后续制作。已提交的生成可能仍在处理，已有作品不会删除。</small>}

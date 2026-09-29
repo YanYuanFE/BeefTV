@@ -1,5 +1,8 @@
-import { Button, Image as AntImage, InputNumber, Modal, Popover } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
+import { Button } from "@/components/ui/button";
+import { NumberInput } from "@/components/ui/number-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ArrowLeftRight, ArrowUp, AtSign, Boxes, Camera, ChevronDown, FileText, GripVertical, ImageIcon, ImagePlus, Link2, LoaderCircle, Maximize2, Music2, Pencil, SlidersHorizontal, UserRound, Video, WandSparkles, X } from "lucide-react";
 
@@ -23,6 +26,7 @@ import { seedanceSettingsConstraints } from "@/lib/seedance-task-constraints";
 import { CanvasVideoPromptTools } from "./canvas-video-prompt-tools";
 import { CanvasPresetPicker, type CanvasPromptPreset } from "./canvas-preset-picker";
 import { CanvasPortraitTexturePopover } from "./canvas-portrait-texture-popover";
+import { CanvasImagePreview } from "./canvas-image-preview";
 import { CanvasPromptOptimizerDrawer } from "./canvas-prompt-optimizer-drawer";
 import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData, type CanvasNodeMetadata, type CanvasWorkspaceMode } from "@/types/canvas";
 import { autoMentionCanvasResourceReferences, canvasResourceMentionToken, normalizeCanvasNodeMentionTokens, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
@@ -307,7 +311,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
         const actionLabel = isRunning ? "生成中" : "生成";
         return (
             <Button
-                type="text"
+                variant="ghost"
                 className="canvas-node-composer-submit canvas-node-composer-submit-canvas"
                 disabled={isRunning || isSubmitDisabled}
                 style={
@@ -376,14 +380,14 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                     />
                     {mode === "text" ? (
                         <Tooltip title={`文本生成份数（默认 1，可在生成配置中调整）`}>
-                            <InputNumber
-                                size="small"
+                            <NumberInput
+                                size="sm"
                                 min={1}
                                 max={15}
                                 value={Math.max(1, Math.min(15, Math.floor(Math.abs(Number(node.metadata?.textCount) || 1))))}
                                 onChange={(value) => onConfigChange(node.id, { textCount: Math.max(1, Math.min(15, Math.floor(Math.abs(Number(value)) || 1))) })}
                                 aria-label="文本生成份数"
-                                className="!w-14 !h-7 [&_.ant-input-number-input]:!text-[var(--fs-tiny)]"
+                                className="!w-14 !h-7 [&_input]:!text-[var(--fs-tiny)]"
                             />
                         </Tooltip>
                     ) : mode === "image" ? (
@@ -548,15 +552,14 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
 
             {renderComposerControls(false)}
 
-            <Modal
+            <AppModal
+                flush
                 className="canvas-prompt-editor-modal"
                 open={expandedPromptOpen}
                 title={null}
                 footer={null}
-                centered
                 width={expandedModalSize ? expandedModalSize.width : PROMPT_EDITOR_MODAL_WIDTH}
                 style={{ maxWidth: `calc(100vw - ${PROMPT_EDITOR_VIEWPORT_MARGIN}px)` }}
-                destroyOnHidden
                 onCancel={() => {
                     setExpandedPresetOpen(false);
                     setExpandedPromptOpen(false);
@@ -579,7 +582,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                     </div>
                     <PromptModalResizeHandle size={expandedModalSize} measure={measureExpandedModalSize} onResize={setExpandedModalSize} accent={theme.node.muted} />
                 </div>
-            </Modal>
+            </AppModal>
 
             </div>
         </CanvasPromptOptimizerDrawer>
@@ -588,14 +591,19 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
 
 function ReferenceToolsPopover({ canAutoMention, autoLinkEnabled, onAutoMention, onAutoLinkEnabledChange, accent, compact, label = "引用" }: { canAutoMention: boolean; autoLinkEnabled: boolean; onAutoMention: () => void; onAutoLinkEnabledChange: (enabled: boolean) => void; accent: string; compact: boolean; label?: string }) {
     return (
-        <Popover
-            trigger="click"
-            placement="topRight"
-            rootClassName="canvas-reference-tools-popover"
-            arrow={false}
-            align={{ offset: [0, -8] }}
-            styles={{ root: { width: "min(280px, calc(100vw - 24px))" }, container: { width: "100%" }, content: { width: "100%", padding: 10 } }}
-            content={
+        <Popover>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    className={`canvas-node-composer-settings-trigger canvas-node-composer-reference-tools-trigger inline-flex shrink-0 items-center gap-1 ${compact ? "is-compact" : ""}`}
+                    aria-label={label === "引用" ? "打开智能引用" : label}
+                    title={label === "引用" ? "智能引用" : label}
+                >
+                    <SlidersHorizontal className="size-3.5" />
+                    {!compact ? <span>{label}</span> : null}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" sideOffset={8} className="canvas-reference-tools-popover w-[min(280px,calc(100vw-24px))] gap-0 p-2.5">
                 <div className="space-y-1.5">
                     <div>
                         <div className="text-sm font-medium leading-5">智能引用</div>
@@ -625,17 +633,7 @@ function ReferenceToolsPopover({ canAutoMention, autoLinkEnabled, onAutoMention,
                         <AtSign className="size-3.5" />一键引用全文
                     </button>
                 </div>
-            }
-        >
-            <button
-                type="button"
-                className={`canvas-node-composer-settings-trigger canvas-node-composer-reference-tools-trigger inline-flex shrink-0 items-center gap-1 ${compact ? "is-compact" : ""}`}
-                aria-label={label === "引用" ? "打开智能引用" : label}
-                title={label === "引用" ? "智能引用" : label}
-            >
-                <SlidersHorizontal className="size-3.5" />
-                {!compact ? <span>{label}</span> : null}
-            </button>
+            </PopoverContent>
         </Popover>
     );
 }
@@ -849,19 +847,7 @@ function ConnectedReferenceShelf({
                 </div>
             </div>
             {imagePreview?.previewUrl ? (
-                <AntImage
-                    src={imagePreview.previewUrl}
-                    alt={imagePreview.title || imagePreview.label}
-                    style={{ display: "none" }}
-                    preview={{
-                        open: true,
-                        movable: true,
-                        minScale: 0.5,
-                        maxScale: 12,
-                        scaleStep: 0.25,
-                        onOpenChange: (open) => !open && setImagePreview(null),
-                    }}
-                />
+                <CanvasImagePreview src={imagePreview.previewUrl} alt={imagePreview.title || imagePreview.label} onClose={() => setImagePreview(null)} />
             ) : null}
         </>
     );

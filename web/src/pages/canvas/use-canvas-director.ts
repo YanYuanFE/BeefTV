@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 import { nanoid } from "nanoid";
 
 import { imageMetadata, videoMetadata } from "@/lib/canvas/canvas-generation-task-sync";
@@ -13,6 +12,7 @@ import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
 import type { DirectorScene, DirectorSceneOutput } from "@/types/director";
+import { toast } from "sonner";
 
 type UseCanvasDirectorOptions = {
     projectId: string;
@@ -55,7 +55,6 @@ export function useCanvasDirector({
     setDirectorNodeId,
     updateProject,
 }: UseCanvasDirectorOptions) {
-    const { message } = App.useApp();
     const projectIdRef = useRef<string | null>(projectId);
     projectIdRef.current = projectId;
 
@@ -95,8 +94,8 @@ export function useCanvasDirector({
         setSelectedNodeIds(new Set([node.id]));
         setSelectedConnectionId(null);
         updateProject(projectId, { directorScenes: upsertDirectorSceneById(currentDirectorScenes(projectId, directorScenes), scene) });
-        message.success("已创建导演台节点，点击缩略图进入编辑");
-    }, [directorScenes, getCanvasCenter, message, nodesRef, projectId, setNodes, setSelectedConnectionId, setSelectedNodeIds, updateProject]);
+        toast.success("已创建导演台节点，点击缩略图进入编辑");
+    }, [directorScenes, getCanvasCenter, nodesRef, projectId, setNodes, setSelectedConnectionId, setSelectedNodeIds, updateProject]);
 
     const openDirectorWorkbench = useCallback((nodeId: string) => {
         const node = nodesRef.current.find((item) => item.id === nodeId);

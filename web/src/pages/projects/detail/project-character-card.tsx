@@ -1,4 +1,6 @@
-import { Button, Dropdown, Popconfirm } from "antd";
+import { Button } from "@/components/ui/button";
+import { ConfirmPopover } from "@/components/ui/confirm-popover";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
 import { Image as ImageIcon, MoveRight, Pencil, Sparkles, Trash2, UserRound, Volume2 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -41,14 +43,14 @@ export function ProjectCharacterCard({ asset, folderItems, generating, removing,
                 </div>
             </AssetLibraryCardMedia>
             <div className="p-3">
-                <div className="flex items-start justify-between gap-3"><button type="button" className="project-character-title-button" onClick={onOpen}><h3 className="truncate text-sm font-semibold">{asset.title}</h3><p className="mt-0.5 truncate text-[var(--fs-label)] text-foreground/48">{role}</p></button><Button type="text" size="small" className="!h-7 !px-1.5" icon={<Pencil className="size-3.5" />} onClick={onEdit} aria-label={`编辑 ${asset.title}`} /></div>
+                <div className="flex items-start justify-between gap-3"><button type="button" className="project-character-title-button" onClick={onOpen}><h3 className="truncate text-sm font-semibold">{asset.title}</h3><p className="mt-0.5 truncate text-[var(--fs-label)] text-foreground/48">{role}</p></button><Button variant="ghost" size="icon-sm" onClick={onEdit} aria-label={`编辑 ${asset.title}`}><Pencil className="size-3.5" /></Button></div>
                 <p className="mt-2 line-clamp-2 min-h-9 text-[var(--fs-label)] leading-[18px] text-foreground/55">{appearance}</p>
                 <div className="mt-2 grid gap-1.5">
                     <StatusLine icon={<ImageIcon className="size-3.5" />} ready={character?.visualStatus === "ready"} label={imageStatus} action={character?.visualStatus === "ready" ? "更换" : "初始化"} onClick={character?.visualStatus === "ready" ? onBindImages : onGenerate} />
                     <StatusLine icon={<Volume2 className="size-3.5" />} ready={character?.voiceStatus === "ready"} label={voiceStatus} action={character?.voiceStatus === "ready" ? "调整" : "选择"} onClick={onBindVoice} />
                 </div>
                 <div className="mt-3 flex min-w-0 gap-2 border-t border-border/60 pt-2">
-                    <Button size="small" className="min-w-0 flex-1" icon={<Sparkles className="size-3.5" />} loading={generating} disabled={removing} onClick={onGenerate}>{character?.visualStatus === "missing" ? "初始化三视图" : "重新生成三视图"}</Button><Dropdown trigger={["click"]} menu={{ selectedKeys: [asset.folderId || ""], items: folderItems, onClick: ({ key }) => onMove(key) }}><Button type="text" size="small" disabled={generating || removing} icon={<MoveRight className="size-3.5" />} aria-label={`移动 ${asset.title}`} /></Dropdown><Popconfirm title="移出项目角色？" description="已有画布或镜头引用时将无法移出。" okText="移出" cancelText="取消" onConfirm={onRemove}><Button type="text" danger size="small" loading={removing} disabled={generating} icon={<Trash2 className="size-3.5" />} aria-label={`移出 ${asset.title}`} /></Popconfirm>
+                    <Button variant="outline" size="sm" className="min-w-0 flex-1" loading={generating} disabled={removing} onClick={onGenerate}>{generating ? null : <Sparkles className="size-3.5" />}{character?.visualStatus === "missing" ? "初始化三视图" : "重新生成三视图"}</Button><MenuDropdown selectedKeys={[asset.folderId || ""]} items={folderItems} onClick={({ key }) => onMove(key)}><Button variant="ghost" size="icon-sm" disabled={generating || removing} aria-label={`移动 ${asset.title}`}><MoveRight className="size-3.5" /></Button></MenuDropdown><ConfirmPopover title="移出项目角色？" description="已有画布或镜头引用时将无法移出。" okText="移出" cancelText="取消" onConfirm={onRemove}><Button variant="destructive" size="icon-sm" loading={removing} disabled={generating} aria-label={`移出 ${asset.title}`}>{removing ? null : <Trash2 className="size-3.5" />}</Button></ConfirmPopover>
                 </div>
             </div>
         </AssetLibraryCard>

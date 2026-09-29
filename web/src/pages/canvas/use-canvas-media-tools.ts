@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 import { nanoid } from "nanoid";
 
 import type { CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
@@ -71,6 +70,7 @@ function normalizeMaskEditQuality(quality: string | undefined, size: string | un
 import { defaultConfig, resolveModelRequestConfig, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ContextMenuState } from "@/types/canvas";
 import type { StartCanvasUploadStatus } from "./use-canvas-upload";
+import { toast } from "sonner";
 
 type UseCanvasMediaToolsOptions = {
     projectId: string;
@@ -118,7 +118,6 @@ export function useCanvasMediaTools({
     finishGenerationRequest,
     bindGenerationTask,
 }: UseCanvasMediaToolsOptions) {
-    const { message } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const extractingVideoFramesNodeIdRef = useRef<string | null>(null);
@@ -149,10 +148,10 @@ export function useCanvasMediaTools({
                 metadata: runtime ? { styleProfileJson: runtime.profileJson, styleExecutionPlan: runtime.plan } : {},
             };
         } catch (error) {
-            message.error(generationErrorMessage(error));
+            toast.error(generationErrorMessage(error));
             return null;
         }
-    }, [message, nodesRef]);
+    }, [nodesRef]);
 
     const persistMediaNodes = useCallback(async (mediaNodes: CanvasNodeData[], mediaConnections: CanvasConnection[] = []) => {
         const assetIds = new Map<string, string>();
@@ -161,7 +160,7 @@ export function useCanvasMediaTools({
                 const result = await ensureCanvasNodeAsset({ canvasId: projectId, domainProjectId, node: mediaNode, source: "canvas-manual" });
                 assetIds.set(mediaNode.id, result.assetId);
             } catch (error) {
-                message.warning(`媒体节点已创建，但素材库写入失败：${error instanceof Error ? error.message : "未知错误"}`);
+                toast.warning(`媒体节点已创建，但素材库写入失败：${error instanceof Error ? error.message : "未知错误"}`);
             }
         }
         // State setters may still be queued when media processing finishes.
@@ -185,7 +184,7 @@ export function useCanvasMediaTools({
                 assetIds.set(node.id, result.assetId);
                 latestNodes.set(node.id, { ...node, metadata: { ...node.metadata, assetId: result.assetId } });
             } catch (error) {
-                message.warning(`已有媒体节点尚未完成素材库绑定，无法保存本次结果：${error instanceof Error ? error.message : "未知错误"}`);
+                toast.warning(`已有媒体节点尚未完成素材库绑定，无法保存本次结果：${error instanceof Error ? error.message : "未知错误"}`);
                 throw error;
             }
         }
@@ -218,16 +217,16 @@ export function useCanvasMediaTools({
                     }
                 }
             } catch (error) {
-                message.error(`媒体结果已生成，但本地画布保存失败：${error instanceof Error ? error.message : "未知错误"}`);
+                toast.error(`媒体结果已生成，但本地画布保存失败：${error instanceof Error ? error.message : "未知错误"}`);
                 throw error;
             }
         }
         return assetIds;
-    }, [connectionsRef, domainProjectId, message, nodesRef, projectId, setNodes]);
+    }, [connectionsRef, domainProjectId, nodesRef, projectId, setNodes]);
 
     const createImageReversePromptNodes = useCallback((node: CanvasNodeData) => {
         if (node.type !== CanvasNodeType.Image || !node.metadata?.content) {
-            message.warning("图片节点为空，无法反推提示词");
+            toast.warning("图片节点为空，无法反推提示词");
             return;
         }
         const gap = 96;
@@ -254,11 +253,11 @@ export function useCanvasMediaTools({
         setSelectedConnectionId(null);
         setDialogNodeId(resultNode.id);
         setContextMenu(null);
-    }, [effectiveConfig.model, effectiveConfig.textModel, message, setConnections, setContextMenu, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+    }, [effectiveConfig.model, effectiveConfig.textModel, setConnections, setContextMenu, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const openPortraitTextureEditor = useCallback((node: CanvasNodeData) => {
         if (node.type !== CanvasNodeType.Image || !node.metadata?.content) {
-            message.warning("图片节点为空，无法调节人物质感");
+            toast.warning("图片节点为空，无法调节人物质感");
             return;
         }
         const portraitTextureSettings = { ...DEFAULT_PORTRAIT_TEXTURE_SETTINGS, ...node.metadata?.portraitTexture };
@@ -271,7 +270,7 @@ export function useCanvasMediaTools({
         setSelectedNodeIds(new Set([child.id]));
         setSelectedConnectionId(null);
         setDialogNodeId(child.id);
-    }, [message, setConnections, setDialogNodeId, setHoveredNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds, setToolbarNodeId]);
+    }, [setConnections, setDialogNodeId, setHoveredNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds, setToolbarNodeId]);
 
     const cropImageNode = useCallback(async (node: CanvasNodeData, crop: CanvasImageCropRect) => {
         if (!node.metadata?.content) return;
@@ -290,9 +289,9 @@ export function useCanvasMediaTools({
             setCropNodeId(null);
             await persistMediaNodes([child], [connection]);
         } catch (error) {
-            message.error(error instanceof Error ? `裁切失败：${error.message}` : "裁切失败，请重试");
+            toast.error(error instanceof Error ? `裁切失败：${error.message}` : "裁切失败，请重试");
         }
-    }, [message, persistMediaNodes, setConnections, setDialogNodeId, setNodes, setSelectedNodeIds]);
+    }, [persistMediaNodes, setConnections, setDialogNodeId, setNodes, setSelectedNodeIds]);
 
     const cropVideoNode = useCallback(async (node: CanvasNodeData, crop: CanvasVideoCropRect, sourceDimensions: { width: number; height: number }) => {
         const source = { url: node.metadata?.content, storageKey: node.metadata?.storageKey };
@@ -352,7 +351,7 @@ export function useCanvasMediaTools({
     const depthCaptureNode = useCallback(async (node: CanvasNodeData) => {
         const resourceId = ownedResourceIdFromMediaRef(node.metadata?.storageKey, node.metadata?.content);
         if (!resourceId) {
-            message.error("请先等待视频保存到本地资源库，再进行深度动作捕捉");
+            toast.error("请先等待视频保存到本地资源库，再进行深度动作捕捉");
             return;
         }
         const childId = nanoid();
@@ -419,9 +418,9 @@ export function useCanvasMediaTools({
         } catch (error) {
             const details = error instanceof Error ? error.message : "深度动作捕捉失败";
             setNodes((current) => current.map((item) => item.id === childId ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, taskStatus: "failed", errorDetails: details } } : item));
-            message.error(details);
+            toast.error(details);
         }
-    }, [message, persistMediaNodes, projectId, setConnections, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+    }, [persistMediaNodes, projectId, setConnections, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const retryDepthCaptureNode = useCallback(async (node: CanvasNodeData) => {
         const sourceNodeId = node.metadata?.depthSourceNodeId;
@@ -430,7 +429,7 @@ export function useCanvasMediaTools({
         if (!sourceNode || !resourceId) {
             const details = "原始视频已丢失，无法重新生成深度动作参考";
             setNodes((current) => current.map((item) => item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, errorDetails: details } } : item));
-            message.error(details);
+            toast.error(details);
             return;
         }
         setNodes((current) => current.map((item) => item.id === node.id ? {
@@ -487,9 +486,9 @@ export function useCanvasMediaTools({
         } catch (error) {
             const details = error instanceof Error ? error.message : "深度动作捕捉失败";
             setNodes((current) => current.map((item) => item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, taskStatus: "failed", errorDetails: details } } : item));
-            message.error(details);
+            toast.error(details);
         }
-    }, [message, nodesRef, persistMediaNodes, projectId, setNodes]);
+    }, [nodesRef, persistMediaNodes, projectId, setNodes]);
 
     const recoverDepthCaptureNodes = useCallback((signal: AbortSignal) => {
         for (const node of nodesRef.current) {
@@ -565,8 +564,8 @@ export function useCanvasMediaTools({
         setDialogNodeId(null);
         setAnnotationNodeId(null);
         await persistMediaNodes([child], [connection]);
-        message.success("标注图片已保存为新节点");
-    }, [message, persistMediaNodes, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+        toast.success("标注图片已保存为新节点");
+    }, [persistMediaNodes, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const closeFrameDialog = useCallback(() => {
         if (extractingVideoFramesNodeIdRef.current) return;
@@ -611,21 +610,21 @@ export function useCanvasMediaTools({
             await persistMediaNodes(frameNodes, links);
             const failedCount = captured.failures.length + uploadFailures.length;
             progress.done(failedCount ? `已截取 ${frameNodes.length} 个关键帧，${failedCount} 个失败` : `已截取 ${frameNodes.length} 个关键帧并创建独立图片节点`);
-            if (failedCount) message.warning(`${failedCount} 个时间点提取失败，其余画面已创建`);
+            if (failedCount) toast.warning(`${failedCount} 个时间点提取失败，其余画面已创建`);
         } catch (error) {
             const details = error instanceof Error ? error.message : "视频画面提取失败";
             progress.fail(details);
-            message.error(details);
+            toast.error(details);
         } finally {
             extractingVideoFramesNodeIdRef.current = null;
             setExtractingVideoFramesNodeId(null);
         }
-    }, [connectionsRef, message, nodesRef, persistMediaNodes, selectedNodeIdsRef, setConnections, setNodes, setSelectedConnectionId, setSelectedNodeIds, startUploadStatus]);
+    }, [connectionsRef, nodesRef, persistMediaNodes, selectedNodeIdsRef, setConnections, setNodes, setSelectedConnectionId, setSelectedNodeIds, startUploadStatus]);
 
     // 视频节点工具栏的三个快捷取帧动作直接执行，不再打开批量选帧弹窗。
     const extractVideoFrameAt = useCallback((node: CanvasNodeData, preset: "current" | "first" | "last" = "current") => {
         if (!node.metadata?.content) {
-            message.warning("视频节点为空，无法进行关键帧截取");
+            toast.warning("视频节点为空，无法进行关键帧截取");
             return;
         }
         const video = document.querySelector<HTMLVideoElement>(`[data-node-id="${CSS.escape(node.id)}"] video`);
@@ -635,11 +634,11 @@ export function useCanvasMediaTools({
         setHoveredNodeId(null);
         setToolbarNodeId(null);
         void extractVideoFrames(node, { timesMs: [timeMs] });
-    }, [extractVideoFrames, message, setHoveredNodeId, setToolbarNodeId]);
+    }, [extractVideoFrames, setHoveredNodeId, setToolbarNodeId]);
 
     const openInlineVideoTrim = useCallback((node: CanvasNodeData) => {
         if (!node.metadata?.content) {
-            message.warning("视频节点为空，无法剪辑");
+            toast.warning("视频节点为空，无法剪辑");
             return;
         }
         if (inlineTrimRunningRef.current) return;
@@ -650,11 +649,11 @@ export function useCanvasMediaTools({
         // A failure remains non-blocking here and is reported by submission.
         void warmFFmpeg().catch(() => undefined);
         setInlineTrimNodeId(node.id);
-    }, [message, setDialogNodeId, setHoveredNodeId, setToolbarNodeId]);
+    }, [setDialogNodeId, setHoveredNodeId, setToolbarNodeId]);
 
     const openVideoCrop = useCallback((node: CanvasNodeData) => {
         if (!node.metadata?.content) {
-            message.warning("视频节点为空，无法裁切");
+            toast.warning("视频节点为空，无法裁切");
             return;
         }
         setHoveredNodeId(null);
@@ -663,7 +662,7 @@ export function useCanvasMediaTools({
         // background; confirmation then reuses this exact worker instance.
         void warmFFmpeg().catch(() => undefined);
         setVideoCropNodeId(node.id);
-    }, [message, setHoveredNodeId, setToolbarNodeId]);
+    }, [setHoveredNodeId, setToolbarNodeId]);
 
     const closeInlineVideoTrim = useCallback(() => {
         if (!inlineTrimRunningRef.current) setInlineTrimNodeId(null);
@@ -717,16 +716,16 @@ export function useCanvasMediaTools({
             await persistMediaNodes([child]);
             setInlineTrimNodeId(null);
             progress.done(`已生成 ${((range.endMs - range.startMs) / 1000).toFixed(2)} 秒剪辑视频`);
-            message.success("已生成新的剪辑视频，原视频已保留");
+            toast.success("已生成新的剪辑视频，原视频已保留");
         } catch (error) {
             const details = error instanceof Error ? error.message : "视频剪辑失败";
             progress.fail(details);
-            message.error(details);
+            toast.error(details);
         } finally {
             inlineTrimRunningRef.current = false;
             setInlineTrimRunning(false);
         }
-    }, [connectionsRef, message, nodesRef, persistMediaNodes, selectedNodeIdsRef, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds, startUploadStatus]);
+    }, [connectionsRef, nodesRef, persistMediaNodes, selectedNodeIdsRef, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds, startUploadStatus]);
 
     // 音视频分离同时产出独立音轨和无声视频，原视频始终保留。
     const runExtractVideoAudio = useCallback(async (node: CanvasNodeData, params: { startMs: number; endMs: number }) => {
@@ -776,14 +775,14 @@ export function useCanvasMediaTools({
             const details = error instanceof Error ? error.message : "音频提取失败";
             setNodes((current) => current.map((item) => item.id === node.id ? { ...item, metadata: { ...item.metadata, mediaOperationError: details } } : item));
             progress.fail(details);
-            message.error(details);
+            toast.error(details);
         }
-    }, [domainProjectId, message, projectId, setConnections, setSelectedConnectionId, setSelectedNodeIds, setNodes, startUploadStatus]);
+    }, [domainProjectId, projectId, setConnections, setSelectedConnectionId, setSelectedNodeIds, setNodes, startUploadStatus]);
 
     // 音视频分离始终处理整段视频，直接生成独立音轨节点，不再打开范围选择弹窗。
     const extractAudioFromVideo = useCallback((node: CanvasNodeData) => {
         if (!node.metadata?.content) {
-            message.warning("视频节点为空，无法进行音视频分离");
+            toast.warning("视频节点为空，无法进行音视频分离");
             return;
         }
         if (segmentRunningRef.current) return;
@@ -796,14 +795,14 @@ export function useCanvasMediaTools({
         if (!durationMs || durationMs <= 0) {
             segmentRunningRef.current = false;
             setSegmentRunningMode(null);
-            message.warning("视频时长尚未就绪，无法分离整段音频，请稍后重试");
+            toast.warning("视频时长尚未就绪，无法分离整段音频，请稍后重试");
             return;
         }
         void runExtractVideoAudio(node, { startMs: 0, endMs: durationMs }).finally(() => {
             segmentRunningRef.current = false;
             setSegmentRunningMode(null);
         });
-    }, [message, runExtractVideoAudio, setHoveredNodeId, setSegmentRunningMode, setToolbarNodeId]);
+    }, [runExtractVideoAudio, setHoveredNodeId, setSegmentRunningMode, setToolbarNodeId]);
 
     const mergeVideosByIds = useCallback(async (videoNodeIds: string[]) => {
         if (mergeVideoRunningRef.current) return;
@@ -816,7 +815,7 @@ export function useCanvasMediaTools({
                 return leftShot - rightShot || left.position.y - right.position.y || left.position.x - right.position.x;
             });
         if (videos.length < 2) {
-            message.warning("请至少选择两个已有视频");
+            toast.warning("请至少选择两个已有视频");
             return;
         }
         mergeVideoRunningRef.current = true;
@@ -855,14 +854,14 @@ export function useCanvasMediaTools({
             setDialogNodeId(null);
             await persistMediaNodes([mergedNode]);
             setMergeVideoProgress({ phase: "encoding", progress: 100 });
-            message.success(`已合并 ${videos.length} 段视频，成片节点已添加`);
+            toast.success(`已合并 ${videos.length} 段视频，成片节点已添加`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "视频合并失败");
+            toast.error(error instanceof Error ? error.message : "视频合并失败");
         } finally {
             mergeVideoRunningRef.current = false;
             window.setTimeout(() => setMergeVideoProgress(null), 700);
         }
-    }, [connectionsRef, message, nodesRef, persistMediaNodes, selectedNodeIdsRef, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+    }, [connectionsRef, nodesRef, persistMediaNodes, selectedNodeIdsRef, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const mergeSelectedVideos = useCallback(() => mergeVideosByIds(Array.from(selectedNodeIdsRef.current)), [mergeVideosByIds, selectedNodeIdsRef]);
 
@@ -904,8 +903,8 @@ export function useCanvasMediaTools({
         // 全景节点是纯查看器，创建后不弹提示词面板。
         setDialogNodeId(null);
         setPanoramaConfigNodeId(null);
-        message.success(config.sourceMode === "image" ? "已创建全景查看节点" : "已创建全景生成节点");
-    }, [message, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+        toast.success(config.sourceMode === "image" ? "已创建全景查看节点" : "已创建全景生成节点");
+    }, [setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const addPanoramaCaptureNode = useCallback(async (node: CanvasNodeData, dataUrl: string, title: string) => {
         const image = await uploadImage(dataUrl);
@@ -924,8 +923,8 @@ export function useCanvasMediaTools({
         setNodes((current) => [...current, childNode]);
         setConnections((current) => [...current, { id: nanoid(), fromNodeId: node.id, toNodeId: childNode.id }]);
         await persistMediaNodes([childNode]);
-        message.success(`已导出「${title}」`);
-    }, [connectionsRef, message, persistMediaNodes, setConnections, setNodes]);
+        toast.success(`已导出「${title}」`);
+    }, [connectionsRef, persistMediaNodes, setConnections, setNodes]);
 
     const splitImageNode = useCallback(async (node: CanvasNodeData, params: CanvasImageSplitParams) => {
         if (!node.metadata?.content || !isValidGridSplit(params)) return;
@@ -954,8 +953,8 @@ export function useCanvasMediaTools({
         setSelectedConnectionId(null);
         setDialogNodeId(null);
         await persistMediaNodes(childNodes);
-        message.success(`已切分为 ${childNodes.length} 个子节点`);
-    }, [message, persistMediaNodes, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+        toast.success(`已切分为 ${childNodes.length} 个子节点`);
+    }, [persistMediaNodes, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const maskEditImageNode = useCallback(async (node: CanvasNodeData, payload: CanvasImageMaskEditPayload) => {
         if (!node.metadata?.content) return;
@@ -964,7 +963,7 @@ export function useCanvasMediaTools({
         const modelDefaults = defaultImageParamsForModel(baseGenerationConfig, selectedModel);
         const selectedImageProfile = modelCapabilityConfigFor(baseGenerationConfig, selectedModel).image;
         if (!selectedImageProfile?.references.maskSupported) {
-            message.error("当前图片模型不支持局部重绘蒙版，请选择支持蒙版编辑的模型");
+            toast.error("当前图片模型不支持局部重绘蒙版，请选择支持蒙版编辑的模型");
             return;
         }
         const generationConfig = {
@@ -1096,7 +1095,7 @@ export function useCanvasMediaTools({
                 return;
             }
             if (failureCount > 0) {
-                message.error(hasSuccess ? "部分局部编辑失败" : representativeError || "局部编辑失败");
+                toast.error(hasSuccess ? "部分局部编辑失败" : representativeError || "局部编辑失败");
             }
             setNodes((current) => current.map((item) => {
                 if (item.id !== rootId) return item;
@@ -1116,7 +1115,7 @@ export function useCanvasMediaTools({
             if (requestedCount > 1) finishGenerationRequest(rootId, controller);
             setRunningNodeId(null);
         }
-    }, [bindGenerationTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, nodesRef, persistMediaNodes, projectId, resolveImageEditStyle, setConnections, setDialogNodeId, setNodes, setRunningNodeId, setSelectedConnectionId, setSelectedNodeIds, startGenerationRequest]);
+    }, [bindGenerationTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, nodesRef, persistMediaNodes, projectId, resolveImageEditStyle, setConnections, setDialogNodeId, setNodes, setRunningNodeId, setSelectedConnectionId, setSelectedNodeIds, startGenerationRequest]);
 
     const upscaleImageNode = useCallback(async (node: CanvasNodeData, params: CanvasImageUpscaleParams) => {
         if (!node.metadata?.content) return;
@@ -1216,7 +1215,7 @@ export function useCanvasMediaTools({
         const generationConfig = { ...baseConfig, count: "1", size: providerSize, quality: !baseConfig.quality || baseConfig.quality === "auto" ? "high" : baseConfig.quality };
         if (!isAiConfigReady(generationConfig, generationConfig.model)) { navigateToSettings({ continueCreation: true }); return; }
         if (resolveModelRequestConfig(generationConfig, generationConfig.model).interfaceType !== "openai-image") {
-            message.error("表情编辑需要支持多参考图编辑的 OpenAI Images 渠道");
+            toast.error("表情编辑需要支持多参考图编辑的 OpenAI Images 渠道");
             return;
         }
         const imageProfile = modelCapabilityConfigFor(generationConfig, generationConfig.model).image!;
@@ -1242,7 +1241,7 @@ export function useCanvasMediaTools({
         const providerPrompt = normalizeEmotionPromptForProvider(effectivePrompt);
         const generationMetadata = { ...buildImageGenerationMetadata("edit", generationConfig, 1, [source]), size: `${payload.imageWidth}x${payload.imageHeight}` };
         const emotionEdit = { sourceNodeId: node.id, characterName: payload.characterName, presetId: payload.presetId, intimacy: payload.intimacy, arousal: payload.arousal, label: payload.label, faceBox: payload.faceBox, editRegion: payload.editRegion, sourceWidth: payload.imageWidth, sourceHeight: payload.imageHeight, providerSize, editMode: editPlan.mode };
-        if (editPlan.notice) message.info(editPlan.notice);
+        if (editPlan.notice) toast.info(editPlan.notice);
         setEmotionNodeId(null);
         setRunningNodeId(childId);
         setNodes((current) => [...current, { id: childId, type: CanvasNodeType.Image, title: `${payload.characterName} · ${payload.label}`, position: { x: node.position.x + node.width + 96, y: node.position.y }, width: node.width, height: node.height, metadata: { prompt: providerPrompt, status: NODE_STATUS_LOADING, ...generationMetadata, ...styleMetadata, emotionEdit } }]);
@@ -1268,10 +1267,10 @@ export function useCanvasMediaTools({
         } catch (error) {
             if (isGenerationCanceled(error)) return;
             const details = generationErrorMessage(error);
-            message.error(details);
+            toast.error(details);
             setNodes((current) => current.map((item) => item.id === childId ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, errorDetails: details } } : item));
         } finally { finishGenerationRequest(childId, controller); setRunningNodeId(null); }
-    }, [bindGenerationTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, nodesRef, persistMediaNodes, projectId, resolveImageEditStyle, setConnections, setDialogNodeId, setNodes, setRunningNodeId, setSelectedConnectionId, setSelectedNodeIds, startGenerationRequest]);
+    }, [bindGenerationTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, nodesRef, persistMediaNodes, projectId, resolveImageEditStyle, setConnections, setDialogNodeId, setNodes, setRunningNodeId, setSelectedConnectionId, setSelectedNodeIds, startGenerationRequest]);
 
     return {
         angleNodeId,

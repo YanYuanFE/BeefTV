@@ -1,37 +1,33 @@
 import type { ReactNode } from "react";
-import { Tooltip as RACTooltip, TooltipTrigger, type Placement } from "react-aria-components";
 
+import { Tooltip as TooltipRoot, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /**
- * Tooltip — 气泡提示（自研，react-aria-components overlay）。
+ * Tooltip — 气泡提示（Radix Tooltip）。
  *
- * - API 对齐 AntD Tooltip（title/placement/children），title 为空时不渲染浮层。
- * - 浮层定位、进出场、焦点管理由 RAC 承担（ADR-0008：复杂浮层以 RAC 为无障碍地基）。
- * - 样式只吃语义 token：bg-surface-strong（light #fff / dark #2a2a2a）+ text-foreground +
- *   border-border hairline，无裸色；motion 走 RAC 动画类 + motion-reduce 关停。
- * - trigger 包一层 inline-flex span：保证 RAC ref 定位可用（children 可为任意组件）。
- * - placement 映射 AntD → RAC（topLeft→top left …）。
- * 对标：AntD Tooltip；boardui base/tooltip。
+ * - API 保持 title/placement/delay/className/children；title 为空时不渲染浮层。
+ * - trigger 包一层 inline-flex span，children 可为任意组件（不要求转发 ref）。
+ * - 样式只吃语义 token：bg-surface-strong + text-foreground + border-border hairline。
  */
 
 export type TooltipPlacement = "top" | "topLeft" | "topRight" | "bottom" | "bottomLeft" | "bottomRight" | "left" | "right";
 
-const PLACEMENT_MAP: Record<TooltipPlacement, Placement> = {
-    top: "top",
-    topLeft: "top left",
-    topRight: "top right",
-    bottom: "bottom",
-    bottomLeft: "bottom left",
-    bottomRight: "bottom right",
-    left: "left",
-    right: "right",
+const PLACEMENT_MAP: Record<TooltipPlacement, { side: "top" | "bottom" | "left" | "right"; align: "start" | "center" | "end" }> = {
+    top: { side: "top", align: "center" },
+    topLeft: { side: "top", align: "start" },
+    topRight: { side: "top", align: "end" },
+    bottom: { side: "bottom", align: "center" },
+    bottomLeft: { side: "bottom", align: "start" },
+    bottomRight: { side: "bottom", align: "end" },
+    left: { side: "left", align: "center" },
+    right: { side: "right", align: "center" },
 };
 
 export interface TooltipProps {
     title?: ReactNode;
     placement?: TooltipPlacement;
-    /** 悬停延迟 ms（默认 350，贴近 AntD mouseEnterDelay） */
+    /** 悬停延迟 ms（默认 350） */
     delay?: number;
     className?: string;
     children: ReactNode;
@@ -39,13 +35,18 @@ export interface TooltipProps {
 
 export function Tooltip({ title, placement = "top", delay = 350, className, children }: TooltipProps) {
     if (!title) return <>{children}</>;
-
+    const { side, align } = PLACEMENT_MAP[placement];
     return (
-        <TooltipTrigger delay={delay}>
-            <span className="inline-flex">{children}</span>
-            <RACTooltip placement={PLACEMENT_MAP[placement]} offset={6} className={cn("z-50 max-w-64 rounded-md border border-border bg-surface-strong px-2 py-1 text-xs leading-relaxed text-foreground shadow-md", "ra-pop-in", className)}>
+        // Own provider keeps each tooltip self-contained (portals, isolated renders).
+        <TooltipProvider delayDuration={delay}>
+        <TooltipRoot>
+            <TooltipTrigger asChild>
+                <span className="inline-flex">{children}</span>
+            </TooltipTrigger>
+            <TooltipContent side={side} align={align} sideOffset={6} className={cn("max-w-64 border border-border bg-surface-strong px-2 py-1 leading-relaxed text-foreground shadow-md [&>svg:last-child]:hidden", className)}>
                 {title}
-            </RACTooltip>
-        </TooltipTrigger>
+            </TooltipContent>
+        </TooltipRoot>
+        </TooltipProvider>
     );
 }

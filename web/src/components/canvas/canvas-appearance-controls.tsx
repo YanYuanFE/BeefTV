@@ -1,5 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Button, ColorPicker, Input, Segmented, Slider } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { Switch } from "@/components/ui/base/switch";
 import { CircleDot, Grid2x2, Link2, Moon, Sun, Paintbrush, RotateCcw, Save, Square } from "lucide-react";
 
@@ -98,20 +101,23 @@ export function CanvasAppearanceControls({
                     <SliderField label="明亮度" value={draft.custom.backgroundBrightness} min={-30} max={30} suffix="%" onChange={(backgroundBrightness) => updateCustom({ backgroundBrightness })} />
                     <ColorField label="网格颜色" value={draft.custom.gridColor} theme={theme} onChange={(gridColor) => updateCustom({ gridColor })} />
                     <SliderField label="网格强度" value={draft.custom.gridOpacity} min={0} max={100} suffix="%" onChange={(gridOpacity) => updateCustom({ gridOpacity })} />
-                    <Button block size="small" type="text" icon={<RotateCcw className="size-3.5" />} onClick={resetCustom}>从继承主题重新开始</Button>
-                    <Button block size="small" type="primary" icon={<Save className="size-3.5" />} onClick={saveAsDefault}>保存为默认</Button>
+                    <Button className="w-full" size="sm" variant="ghost" onClick={resetCustom}><RotateCcw className="size-3.5" />从继承主题重新开始</Button>
+                    <Button className="w-full" size="sm" onClick={saveAsDefault}><Save className="size-3.5" />保存为默认</Button>
                 </div>
             ) : null}
 
             <div className="mt-3 text-[var(--fs-micro)] font-semibold uppercase opacity-45">空间网格</div>
-            <Segmented
-                className="mt-1 w-full !rounded-[var(--dock-item-radius-labeled)] !p-0.5 [&_.ant-segmented-group]:!flex [&_.ant-segmented-item]:!min-h-7 [&_.ant-segmented-item]:!flex-1 [&_.ant-segmented-item-label]:!min-h-7 [&_.ant-segmented-item-label]:!text-[var(--fs-tiny)] [&_.ant-segmented-item-label]:!leading-7"
+            <SegmentedControl
+                block
+                size="sm"
+                ariaLabel="空间网格"
+                className="mt-1 w-full rounded-[var(--dock-item-radius-labeled)]! [&>button]:text-[var(--fs-tiny)]!"
                 value={backgroundMode}
                 onChange={(value) => onBackgroundModeChange(value as CanvasBackgroundMode)}
                 options={[
-                    { value: "dots", label: <span className="inline-flex items-center gap-1.5"><CircleDot className="size-3.5" />点</span> },
-                    { value: "lines", label: <span className="inline-flex items-center gap-1.5"><Grid2x2 className="size-3.5" />线</span> },
-                    { value: "blank", label: <span className="inline-flex items-center gap-1.5"><Square className="size-3.5" />空白</span> },
+                    { value: "dots", icon: <CircleDot className="size-3.5" />, label: "点" },
+                    { value: "lines", icon: <Grid2x2 className="size-3.5" />, label: "线" },
+                    { value: "blank", icon: <Square className="size-3.5" />, label: "空白" },
                 ]}
             />
             <div className="mt-2 flex items-center justify-between rounded-[var(--dock-item-radius-labeled)] border px-2.5 py-2 text-[var(--fs-tiny)]" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
@@ -153,13 +159,15 @@ function ColorField({ label, value, theme, onChange }: { label: string; value: s
     return (
         <label className="grid grid-cols-[72px_28px_minmax(0,1fr)] items-center gap-1.5 text-[var(--fs-tiny)] font-medium">
             <span>{label}</span>
-            <ColorPicker disabledAlpha size="small" value={value} onChange={(color) => onChange(color.toHexString().toUpperCase())} />
-            <Input size="small" value={textValue} aria-label={`${label}色码`} style={{ color: theme.node.text }} onFocus={() => setEditing(true)} onChange={(event) => {
+            <input type="color" className="h-6 w-7 cursor-pointer rounded-md border border-border bg-transparent p-0.5 focus-visible:outline-2 focus-visible:outline-ring" value={value} aria-label={`${label}取色`} onChange={(event) => onChange(event.target.value.toUpperCase())} />
+            <Input className="h-6 px-2 text-[var(--fs-tiny)] md:text-[var(--fs-tiny)]" value={textValue} aria-label={`${label}色码`} style={{ color: theme.node.text }} onFocus={() => setEditing(true)} onChange={(event) => {
                 const next = event.target.value;
                 setTextValue(next);
                 const normalized = normalizeHexColor(next);
                 if (normalized) onChange(normalized);
-            }} onBlur={commit} onPressEnter={commit} />
+            }} onBlur={commit} onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing) commit();
+            }} />
         </label>
     );
 }
@@ -168,7 +176,7 @@ function SliderField({ label, value, min, max, suffix, onChange }: { label: stri
     return (
         <div className="grid grid-cols-[72px_minmax(0,1fr)_38px] items-center gap-1.5 text-[var(--fs-tiny)] font-medium">
             <span>{label}</span>
-            <Slider className="m-0" min={min} max={max} value={value} tooltip={{ open: false }} onChange={onChange} />
+            <Slider className="m-0" min={min} max={max} value={[value]} onValueChange={([next]) => onChange(next)} aria-label={label} />
             <span className="text-right tabular-nums opacity-60">{value > 0 && min < 0 ? "+" : ""}{value}{suffix}</span>
         </div>
     );

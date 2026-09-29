@@ -1,4 +1,4 @@
-# BeefTV Depth Capture CLI
+# Framely Depth Capture CLI
 
 将普通 RGB 视频转换成近白远黑、时间连续的相对深度参考视频。第一版使用 Apache-2.0 许可的 Video Depth Anything Small 模型。
 

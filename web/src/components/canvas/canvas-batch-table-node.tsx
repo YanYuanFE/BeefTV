@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Button, Switch, Tooltip } from "antd";
 import { Image as ImageIcon, LoaderCircle, Minus, Play, Plus, Rows3, Trash2, Upload } from "lucide-react";
 
 import { CachedResourceImage } from "@/components/cached-resource-image";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/base/switch";
+import { Tooltip } from "@/components/ui/base/tooltip";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import {
     BATCH_REFERENCE_HANDLE_GAP,
@@ -178,10 +180,11 @@ export function CanvasBatchTableNodeContent({ node, nodes, connections, batch, t
                     {!readOnly ? (
                         <div className="ml-auto flex shrink-0 items-center gap-1.5" onPointerDown={(event) => event.stopPropagation()}>
                             <Tooltip title="增量同步画布连线，不会删除已有任务行">
-                                <Button size="small" type="text" icon={<Rows3 className="size-3.5" />} onClick={onFillRows}>同步连线</Button>
+                                <Button size="sm" variant="ghost" onClick={onFillRows}><Rows3 className="size-3.5" />同步连线</Button>
                             </Tooltip>
-                            <Button size="small" type="text" icon={<Plus className="size-3.5" />} onClick={onAddRow}>添加任务</Button>
-                            <Button size="small" type="primary" icon={<Play className="size-3.5" />} disabled={!unfinishedReadyCount} onClick={() => onGenerate()}>
+                            <Button size="sm" variant="ghost" onClick={onAddRow}><Plus className="size-3.5" />添加任务</Button>
+                            <Button size="sm" disabled={!unfinishedReadyCount} onClick={() => onGenerate()}>
+                                <Play className="size-3.5" />
                                 生成未完成项{unfinishedReadyCount ? ` · ${unfinishedReadyCount}` : ""}
                             </Button>
                         </div>
@@ -237,7 +240,7 @@ export function CanvasBatchTableNodeContent({ node, nodes, connections, batch, t
                         return (
                             <div key={row.id} className="group grid items-center border-b px-3 py-3 transition-colors hover:bg-black/[.025] dark:hover:bg-white/[.025]" style={{ borderColor: theme.node.stroke, gridTemplateColumns, opacity: row.enabled ? 1 : 0.58 }}>
                                 <div className="flex items-center justify-center gap-1.5">
-                                    {!readOnly ? <Switch size="small" checked={row.enabled} aria-label={`启用任务 ${index + 1}`} onChange={(enabled) => onUpdateRow(row.id, { enabled })} /> : null}
+                                    {!readOnly ? <Switch size="sm" checked={row.enabled} aria-label={`启用任务 ${index + 1}`} onChange={(enabled) => onUpdateRow(row.id, { enabled })} /> : null}
                                     <span className="tabular-nums" style={{ color: theme.node.muted }}>{index + 1}</span>
                                 </div>
                                 {referenceColumns.map((column, columnIndex) => (
@@ -288,9 +291,9 @@ export function CanvasBatchTableNodeContent({ node, nodes, connections, batch, t
                                 {!readOnly ? (
                                     <div className="flex items-center justify-center gap-1">
                                         <Tooltip title={disabledReason || (completedRow ? "重新生成这一行" : "只生成这一行")}>
-                                            <Button type={completedRow ? "text" : "primary"} size="small" className="w-8 px-0" disabled={Boolean(disabledReason)} icon={status.loading ? <LoaderCircle className="size-3.5 animate-spin" /> : <Play className="size-3.5" />} onClick={() => onGenerate([row.id])} />
+                                            <Button variant={completedRow ? "ghost" : "default"} size="sm" className="w-8 px-0" aria-label={completedRow ? "重新生成这一行" : "只生成这一行"} disabled={Boolean(disabledReason)} onClick={() => onGenerate([row.id])}>{status.loading ? <LoaderCircle className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}</Button>
                                         </Tooltip>
-                                        <Tooltip title="删除这一行"><Button type="text" size="small" className="w-7 px-0 opacity-60 transition-opacity group-hover:opacity-100" danger icon={<Trash2 className="size-3.5" />} onClick={() => onRemoveRow(row.id)} /></Tooltip>
+                                        <Tooltip title="删除这一行"><Button variant="ghost" size="sm" className="w-7 px-0 text-destructive opacity-60 transition-opacity hover:text-destructive group-hover:opacity-100" aria-label="删除这一行" onClick={() => onRemoveRow(row.id)}><Trash2 className="size-3.5" /></Button></Tooltip>
                                     </div>
                                 ) : <span />}
                             </div>
@@ -302,7 +305,7 @@ export function CanvasBatchTableNodeContent({ node, nodes, connections, batch, t
                             <div className="grid size-10 place-items-center rounded-xl" style={{ background: theme.accent.primarySoft, color: theme.node.text }}><Rows3 className="size-5" /></div>
                             <div className="font-medium">还没有批量任务</div>
                             <p className="m-0 leading-5" style={{ color: theme.node.muted }}>把图片连接到左侧参考图端口后同步连线，或先添加一行手工配置。</p>
-                            {!readOnly ? <Button size="small" icon={<Plus className="size-3.5" />} onClick={onAddRow}>添加第一条任务</Button> : null}
+                            {!readOnly ? <Button size="sm" variant="outline" onClick={onAddRow}><Plus className="size-3.5" />添加第一条任务</Button> : null}
                         </div>
                     </div>
                 )}

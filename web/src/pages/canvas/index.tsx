@@ -1,9 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { App, Button, Dropdown, Input, Modal } from "antd";
 import { Select } from "@/components/ui/base/select";
-import { ArrowLeft, Download, FolderPlus, Image as ImageIcon, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { ArrowLeft, Download, FolderPlus, Image as ImageIcon, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 import { CollectionGrid, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
@@ -37,6 +40,7 @@ import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { cn } from "@/lib/utils";
 import { canvasIdsForWorkspaceProjects, canvasWorkspaceProjectId, listCanvasWorkspaceProjectCanvases, listCanvasWorkspaceProjectRoots, previewNodesForWorkspaceProject } from "@/lib/canvas/canvas-workspace-project";
+import { toast } from "sonner";
 
 function isExpectedLocalOnlySyncError(error: unknown) {
     const message = error instanceof Error ? error.message : String(error || "");
@@ -46,7 +50,6 @@ function isExpectedLocalOnlySyncError(error: unknown) {
 const CanvasDeleteProjectsDialog = lazy(() => import("@/components/canvas/canvas-delete-projects-dialog").then((module) => ({ default: module.CanvasDeleteProjectsDialog })));
 
 export default function CanvasPage() {
-    const { message } = App.useApp();
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -76,7 +79,7 @@ export default function CanvasPage() {
     // The sync layer is the source of truth: it also recognizes the synthetic
     // local identity, which protects the library from stale session state after
     // a desktop reload or HMR cycle.
-    // The default BeefTV build is local-only even when a stale/embedded browser
+    // The default Framely build is local-only even when a stale/embedded browser
     // session still contains a logged-in user. Cloud project APIs are opt-in via
     // the explicit hosted build flag, never inferred from login state.
     const remoteMode = import.meta.env.VITE_CANVAS_LOCAL_MODE === "false" && Boolean(userId) && !isLocalWorkspaceMode();
@@ -156,7 +159,7 @@ export default function CanvasPage() {
                 copiedWorkspaceProjectId ||= copy.id;
             }
             if (!copiedWorkspaceProjectId) throw new Error("项目不存在");
-            message.success(`项目副本已创建，共 ${sourceCanvases.length} 张画布`);
+            toast.success(`项目副本已创建，共 ${sourceCanvases.length} 张画布`);
             enterProject(copiedWorkspaceProjectId);
             return;
         }
@@ -168,9 +171,9 @@ export default function CanvasPage() {
             chatSessions: source.chatSessions,
             activeChatId: source.activeChatId,
         });
-        message.success("项目副本已创建");
+        toast.success("项目副本已创建");
         enterProject(copy.id);
-    }, [enterProject, localProjects, message, remoteMode]);
+    }, [enterProject, localProjects, remoteMode]);
     const filteredProjects = useMemo(() => {
         if (remoteMode) return projects;
         const query = keyword.trim().toLowerCase();
@@ -224,10 +227,10 @@ export default function CanvasPage() {
             for (const id of selectedIds) await loadCanvasProjectForEditing(id);
             selectedIds.forEach((id) => updateProject(id, { projectId }));
             if (remoteMode) await saveRemoteUserDataNow();
-            message.success(projectId ? "已加入项目" : "已移出项目，画布仍保留");
+            toast.success(projectId ? "已加入项目" : "已移出项目，画布仍保留");
             setAssociationOpen(false);
         } catch (error) {
-            message.error(error instanceof Error ? `画布关系保存失败：${error.message}` : "画布关系保存失败");
+            toast.error(error instanceof Error ? `画布关系保存失败：${error.message}` : "画布关系保存失败");
         }
     };
     const exportSelected = async () => {
@@ -238,12 +241,12 @@ export default function CanvasPage() {
                 if (!project) throw new Error("画布不存在，无法导出");
                 selected.push(project);
             }
-            await reportOwnedMediaSave(message, exportCanvasProjects(selected, `${brandName}画布-${selected.length}个画布`, { folders }));
-        } catch (error) { message.error(error instanceof Error ? error.message : "导出失败"); }
+            await reportOwnedMediaSave(toast, exportCanvasProjects(selected, `${brandName}画布-${selected.length}个画布`, { folders }));
+        } catch (error) { toast.error(error instanceof Error ? error.message : "导出失败"); }
     };
     const importCanvas = async (file?: File) => {
         if (!file) return;
-        const hideLoading = message.loading({ content: "正在解压并准备导入画布...", duration: 0 });
+        const loadingToast = toast.loading("正在解压并准备导入画布...", { duration: Infinity });
         try {
             const zip = await readZip(file);
             const projectFile = zip.get("projects.json");
@@ -260,7 +263,7 @@ export default function CanvasPage() {
                 if (!folder || typeof folder.id !== "string" || typeof folder.name !== "string") continue;
                 folderIdMap.set(folder.id, createFolder(folder.name));
             }
-            hideLoading();
+            toast.dismiss(loadingToast);
             const remoteSyncEnabled = hasRemoteUserDataSyncSession();
             let remoteSyncWarning: unknown;
             const importedWorkspaceProjectIds = new Map<string, string>();
@@ -470,14 +473,14 @@ export default function CanvasPage() {
 
             await flushCanvasStorePersistence();
             if (remoteSyncWarning) {
-                message.warning(`已导入 ${data.projects.length} 个画布，云端同步未完成，将自动重试`);
+                toast.warning(`已导入 ${data.projects.length} 个画布，云端同步未完成，将自动重试`);
             } else {
-                message.success(remoteSyncEnabled ? `已导入 ${data.projects.length} 个画布并完成云端同步` : `已导入 ${data.projects.length} 个画布并保存到本地`);
+                toast.success(remoteSyncEnabled ? `已导入 ${data.projects.length} 个画布并完成云端同步` : `已导入 ${data.projects.length} 个画布并保存到本地`);
             }
         } catch (error) {
-            hideLoading();
+            toast.dismiss(loadingToast);
             console.error("导入画布失败", error);
-            message.error(error instanceof Error ? `导入失败：${error.message}` : "导入失败，请选择有效的画布压缩包");
+            toast.error(error instanceof Error ? `导入失败：${error.message}` : "导入失败，请选择有效的画布压缩包");
         } finally {
             if (inputRef.current) inputRef.current.value = "";
         }
@@ -497,7 +500,7 @@ export default function CanvasPage() {
         void createLocalCanvasProject("未命名项目").then(({ id }) => {
             enterProject(id);
         });
-    }, [hydrated, message, mode, projects, remoteMode, sessionHydrated, libraryQuery.isSuccess]);
+    }, [hydrated, mode, projects, remoteMode, sessionHydrated, libraryQuery.isSuccess]);
 
     if (!libraryQuery.isError && (mode === "new" || mode === "recent" || mode === "handoff")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">正在打开画布...</main>;
 
@@ -514,9 +517,17 @@ export default function CanvasPage() {
                     </> : <h1>全部项目</h1>}
                 </div>
                 <div className="libtv-project-actions">
-                    <Input prefix={<Search />} value={keyword} allowClear placeholder="搜索项目" aria-label="搜索项目" onChange={(event) => setKeyword(event.target.value)} />
-                    <Button icon={<Trash2 />} onClick={() => setHistoryOpen(true)}>回收站</Button>
-                    <Button icon={<FolderPlus />} disabled={!hydrated} onClick={() => createFolder("未命名文件夹")}>新建文件夹</Button>
+                    <div className="relative flex h-8 w-[200px] items-center max-[720px]:w-full">
+                        <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" aria-hidden="true" />
+                        <Input className="h-8 px-8" value={keyword} placeholder="搜索项目" aria-label="搜索项目" onChange={(event) => setKeyword(event.target.value)} />
+                        {keyword ? (
+                            <button type="button" className="absolute right-2 grid size-5 place-items-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2" aria-label="清除搜索" onClick={() => setKeyword("")}>
+                                <X className="size-3.5" />
+                            </button>
+                        ) : null}
+                    </div>
+                    <Button variant="outline" className="h-8 w-[82px] min-w-[82px] px-2.5" onClick={() => setHistoryOpen(true)}><Trash2 />回收站</Button>
+                    <Button variant="outline" className="h-8 w-[108px] min-w-[108px] px-2.5" disabled={!hydrated} onClick={() => createFolder("未命名文件夹")}><FolderPlus />新建文件夹</Button>
                 </div>
             </header>
 
@@ -526,7 +537,8 @@ export default function CanvasPage() {
                         <strong className="mr-auto font-medium">已选 {selectedIds.length} 个项目</strong>
                         {remoteMode ? <>
                             <Button
-                                size="small"
+                                variant="outline"
+                                size="sm"
                                 disabled={!hydrated || projectQuery.isLoading}
                                 onClick={() => {
                                     setAssociationProjectId(selectedProjects[0]?.projectId || "");
@@ -537,7 +549,8 @@ export default function CanvasPage() {
                             </Button>
                             {selectedProjects.some((project) => project.projectId) ? (
                                 <Button
-                                    size="small"
+                                    variant="outline"
+                                    size="sm"
                                     disabled={!hydrated}
                                     onClick={() => {
                                         setAssociationProjectId("");
@@ -548,17 +561,18 @@ export default function CanvasPage() {
                                 </Button>
                             ) : null}
                         </> : null}
-                        <Button size="small" disabled={!hydrated} icon={<Download className="size-3.5" />} onClick={() => void exportSelected()}>
+                        <Button variant="outline" size="sm" disabled={!hydrated} onClick={() => void exportSelected()}>
+                            <Download className="size-3.5" />
                             导出
                         </Button>
-                        <Button size="small" danger disabled={!hydrated} onClick={deleteSelectedProjects}>
+                        <Button variant="destructive" size="sm" disabled={!hydrated} onClick={deleteSelectedProjects}>
                             删除
                         </Button>
                     </div>
                 ) : null}
 
                 {remoteMode && libraryQuery.isError ? (
-                    <div role="alert">画布列表读取失败<Button onClick={() => void libraryQuery.refetch()}>重试</Button></div>
+                    <div role="alert">画布列表读取失败<Button variant="outline" onClick={() => void libraryQuery.refetch()}>重试</Button></div>
                 ) : !hydrated || (remoteMode && libraryQuery.isPending) ? (
                     <WorkspaceLoadingState label="正在恢复画布" detail="读取本地缓存与账号同步状态" />
                 ) : visibleProjects.length || (!keyword && projectFilter === "all") ? (
@@ -576,8 +590,8 @@ export default function CanvasPage() {
                             const folderProjectIds = localProjects.filter((project) => project.folderId === folder.id).map((project) => project.id);
                             if (folderProjectIds.length) void deleteLocalCanvasProjects(folderProjectIds);
                             deleteFolder(folder.id);
-                            message.success(folderProjectIds.length ? `文件夹及其中 ${folderProjectIds.length} 个项目已移入回收站` : "文件夹已删除");
-                        }} onCoverChange={(dataUrl) => { setFolderCover(folder.id, dataUrl); message.success("文件夹封面已更新"); }} />)}
+                            toast.success(folderProjectIds.length ? `文件夹及其中 ${folderProjectIds.length} 个项目已移入回收站` : "文件夹已删除");
+                        }} onCoverChange={(dataUrl) => { setFolderCover(folder.id, dataUrl); toast.success("文件夹封面已更新"); }} />)}
                         {visibleProjects.map((project) => (
                             <CanvasFolderCard
                                 key={project.id}
@@ -600,9 +614,9 @@ export default function CanvasPage() {
                                         if (!movedProject || (movedProject.folderId || undefined) !== (folderId || undefined)) {
                                             throw new Error("项目移动未完成，请重试");
                                         }
-                                        message.success(folderId ? "已移动到文件夹" : "已移出文件夹");
+                                        toast.success(folderId ? "已移动到文件夹" : "已移出文件夹");
                                     } catch (error) {
-                                        message.error(error instanceof Error ? error.message : "移动项目失败");
+                                        toast.error(error instanceof Error ? error.message : "移动项目失败");
                                     }
                                 }}
                                 onDuplicate={() => duplicateCanvasProject(project)}
@@ -620,30 +634,42 @@ export default function CanvasPage() {
                         ))}
                     </CollectionGrid>
                 ) : (
-                    <WorkspaceState icon="canvas" title={keyword || projectFilter !== "all" || folderFilter !== "all" ? "没有匹配的项目" : "让第一个想法落在画布上"} description={keyword || projectFilter !== "all" || folderFilter !== "all" ? "换一个名称或重置筛选条件。" : "图片、分镜和灵感，都可以在这里自由组织。"} action={!keyword && projectFilter === "all" && folderFilter === "all" ? <Button type="primary" icon={<Plus />} disabled={!hydrated} onClick={createAndEnter}>新建项目</Button> : undefined} />
+                    <WorkspaceState icon="canvas" title={keyword || projectFilter !== "all" || folderFilter !== "all" ? "没有匹配的项目" : "让第一个想法落在画布上"} description={keyword || projectFilter !== "all" || folderFilter !== "all" ? "换一个名称或重置筛选条件。" : "图片、分镜和灵感，都可以在这里自由组织。"} action={!keyword && projectFilter === "all" && folderFilter === "all" ? <Button disabled={!hydrated} onClick={createAndEnter}><Plus />新建项目</Button> : undefined} />
                 )}
                 {hydrated && visibleProjects.length && (hasMore || libraryQuery.isFetchNextPageError) ? (
                     <div ref={loadMoreRef} className="library-load-more" aria-live="polite">
-                        {libraryQuery.isFetchNextPageError ? <Button onClick={() => void libraryQuery.fetchNextPage()}>加载失败，重试</Button> : hasMore ? "继续下滑加载更多" : `已加载全部 ${filteredProjects.length} 个画布`}
+                        {libraryQuery.isFetchNextPageError ? <Button variant="outline" onClick={() => void libraryQuery.fetchNextPage()}>加载失败，重试</Button> : hasMore ? "继续下滑加载更多" : `已加载全部 ${filteredProjects.length} 个画布`}
                     </div>
                 ) : null}
             </div>
 
             <input ref={inputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importCanvas(event.target.files?.[0])} />
-            <Modal
-                className="libtv-folder-dialog"
-                wrapClassName="libtv-folder-dialog-wrap"
+            <AppModal
+                className="libtv-folder-dialog rounded-2xl border border-[color-mix(in_srgb,var(--user-ink)_12%,transparent)] bg-[var(--user-surface)] shadow-2xl [&_[data-slot=app-modal-title]]:mb-[18px] [&_[data-slot=app-modal-title]]:text-xl [&_[data-slot=app-modal-title]]:leading-7 [&_[data-slot=app-modal-title]]:text-[var(--user-ink)]"
+                rootClassName="libtv-folder-dialog-wrap"
                 title="重命名文件夹"
                 open={folderDialogOpen}
-                okText="保存"
-                okButtonProps={{ type: "default" }}
-                cancelText="取消"
                 onCancel={() => { setFolderDialogOpen(false); setEditingFolderId(null); setFolderName(""); }}
-                onOk={saveFolderRename}
+                styles={{ body: { padding: "0 0 4px" }, footer: { gap: 10, marginTop: 24 } }}
+                footer={
+                    <>
+                        <Button variant="ghost" className={FOLDER_DIALOG_BUTTON_CLASS} onClick={() => { setFolderDialogOpen(false); setEditingFolderId(null); setFolderName(""); }}>取消</Button>
+                        <Button variant="ghost" className={FOLDER_DIALOG_BUTTON_CLASS} onClick={saveFolderRename}>保存</Button>
+                    </>
+                }
             >
-                <Input autoFocus value={folderName} placeholder="例如：短片项目" onChange={(event) => setFolderName(event.target.value)} onPressEnter={saveFolderRename} />
-            </Modal>
-            <Modal
+                <Input
+                    autoFocus
+                    className="h-[46px] rounded-xl border-[color-mix(in_srgb,var(--user-ink)_18%,transparent)] bg-[var(--user-surface-muted)] text-[15px] text-[var(--user-ink)] focus-visible:border-[color-mix(in_srgb,var(--user-ink)_38%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--user-ink)_8%,transparent)]"
+                    value={folderName}
+                    placeholder="例如：短片项目"
+                    onChange={(event) => setFolderName(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.nativeEvent.isComposing) saveFolderRename();
+                    }}
+                />
+            </AppModal>
+            <AppModal
                 title="加入项目"
                 open={associationOpen}
                 okText="保存关联"
@@ -660,21 +686,23 @@ export default function CanvasPage() {
                     options={(projectQuery.data?.projects || []).map((item) => ({ label: item.project.name, value: item.project.id }))}
                     onChange={setAssociationProjectId}
                 />
-            </Modal>
+            </AppModal>
             <RecycleBinDialog open={historyOpen} onClose={() => setHistoryOpen(false)} />
             {deleteDialogOpen ? <Suspense fallback={null}><CanvasDeleteProjectsDialog /></Suspense> : null}
         </WorkspacePage>
     );
 }
 
+// Quiet neutral footer buttons for the folder rename dialog.
+const FOLDER_DIALOG_BUTTON_CLASS = "h-10 min-w-[76px] rounded-[10px] border-transparent bg-[var(--user-surface-muted)] text-sm text-[var(--user-ink-muted)] hover:border-[color-mix(in_srgb,var(--user-ink)_14%,transparent)] hover:bg-[var(--user-surface-muted)] hover:text-[var(--user-ink)]";
+
 function CanvasLibraryFolderTile({ folder, onOpen, onRename, onDelete, onCoverChange }: { folder: { id: string; name: string; updatedAt: string; coverDataUrl?: string }; onOpen: () => void; onRename: () => void; onDelete: () => void; onCoverChange: (dataUrl: string) => void }) {
-    const { message } = App.useApp();
     const coverInputRef = useRef<HTMLInputElement>(null);
     const chooseCover = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        if (!file.type.startsWith("image/")) { message.error("封面请选择图片文件"); return; }
-        if (file.size > 12 * 1024 * 1024) { message.error("封面图片不能超过 12MB"); return; }
+        if (!file.type.startsWith("image/")) { toast.error("封面请选择图片文件"); return; }
+        if (file.size > 12 * 1024 * 1024) { toast.error("封面图片不能超过 12MB"); return; }
         const reader = new FileReader();
         reader.onload = () => {
             if (typeof reader.result !== "string") return;
@@ -702,23 +730,20 @@ function CanvasLibraryFolderTile({ folder, onOpen, onRename, onDelete, onCoverCh
             title={folder.name}
             cover={<div className={cn("libtv-folder-cover-art", folder.coverDataUrl && "has-custom-cover")} style={folder.coverDataUrl ? { backgroundImage: `url(${folder.coverDataUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} />}
             actions={<>
-                <Dropdown
-                trigger={["click"]}
+                <MenuDropdown
                 placement="bottomRight"
-                overlayClassName="project-library-menu folder-library-menu"
-                menu={{
-                    onClick: ({ domEvent }) => domEvent.stopPropagation(),
-                    items: [
-                        { key: "open", label: "打开", onClick: onOpen },
-                        { key: "rename", label: "重命名", onClick: onRename },
-                        { key: "cover", label: "更换封面", onClick: () => coverInputRef.current?.click() },
-                        { type: "divider" },
-                        { key: "delete", danger: true, label: "删除文件夹", onClick: onDelete },
-                    ],
-                }}
+                contentClassName="project-library-menu folder-library-menu w-[140px] min-w-[140px] rounded-[10px] border border-[color-mix(in_srgb,var(--foreground)_10%,transparent)] p-[6.5px] shadow-xl [&_[data-slot=dropdown-menu-item]]:h-[34.8px] [&_[data-slot=dropdown-menu-item]]:rounded-md [&_[data-slot=dropdown-menu-item]]:px-2.5 [&_[data-slot=dropdown-menu-item]]:text-sm [&_[data-slot=dropdown-menu-separator]]:my-[3px]"
+                onClick={({ domEvent }) => domEvent.stopPropagation()}
+                items={[
+                    { key: "open", label: "打开", onClick: onOpen },
+                    { key: "rename", label: "重命名", onClick: onRename },
+                    { key: "cover", label: "更换封面", onClick: () => coverInputRef.current?.click() },
+                    { type: "divider" },
+                    { key: "delete", danger: true, label: "删除文件夹", onClick: onDelete },
+                ]}
                 >
                     <button type="button" className="product-icon-button libtv-folder-card-more" aria-label={`${folder.name} 文件夹操作`} title="更多操作" onClick={(event) => event.stopPropagation()}><MoreHorizontal /></button>
-                </Dropdown>
+                </MenuDropdown>
                 <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={chooseCover} />
             </>}
         />

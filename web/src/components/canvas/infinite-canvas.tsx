@@ -6,6 +6,7 @@ import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { applyCanvasLiveViewport, subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { ViewportTransform } from "@/types/canvas";
+import { OVERLAY_SELECTOR } from "@/lib/overlay-selectors";
 
 type InfiniteCanvasProps = {
     interactive?: boolean;
@@ -28,8 +29,8 @@ type InfiniteCanvasProps = {
     graphicsLayer?: React.ReactNode;
 };
 
-const CANVAS_WHEEL_IGNORE_SELECTOR = "[data-canvas-no-zoom],[data-canvas-wheel-scroll],.ant-modal,.ant-popover,.ant-dropdown,.ant-select-dropdown,.ant-picker-dropdown";
-const CANVAS_POINTER_IGNORE_SELECTOR = "[data-canvas-no-zoom],[data-connection-create-menu],.ant-modal,.ant-popover,.ant-dropdown,.ant-select-dropdown,.ant-picker-dropdown";
+const CANVAS_WHEEL_IGNORE_SELECTOR = `[data-canvas-no-zoom],[data-canvas-wheel-scroll],${OVERLAY_SELECTOR}`;
+const CANVAS_POINTER_IGNORE_SELECTOR = `[data-canvas-no-zoom],[data-connection-create-menu],${OVERLAY_SELECTOR}`;
 const WHEEL_ZOOM_DELTA = 72;
 const TRACKPAD_PINCH_ZOOM_DELTA = 24;
 

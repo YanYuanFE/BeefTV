@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { App, Button, Input, Modal } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { Select } from "@/components/ui/base/select";
 import { Archive, Check, Eye, FolderOpen, Image as ImageIcon, Palette, Pencil, Save, ShieldAlert, Trash2 } from "lucide-react";
 
@@ -15,9 +17,9 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { modelDisplayName, resolveModelRequestConfig, useEffectiveConfig } from "@/stores/use-config-store";
 
 import type { ProjectDetailViewProps } from "./shared";
+import { toast } from "sonner";
 
 export default function ProjectSettingsView({ detail, refreshProject }: ProjectDetailViewProps) {
-    const { message } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
     const { project } = detail;
     const personalAssets = useAssetStore((state) => state.assets);
@@ -95,13 +97,13 @@ export default function ProjectSettingsView({ detail, refreshProject }: ProjectD
         for (const [itemId, resourceId] of coverResourceByItemId) coverResourceByItemIdRef.current.set(itemId, resourceId);
     }, [coverResourceByItemId]);
     const currentCoverItemId = coverPickerItems.find((item) => coverResourceByItemId.get(item.id) === project.coverResourceId)?.id;
-    const saveMutation = useMutation({ mutationFn: () => updateProject(project.id, { name: name.trim(), description, aspectRatio, sourceType, stylePresetId, styleProfileJson, defaultImageModel, defaultVideoModel }), onSuccess: () => { refreshProject(); message.success("项目设置已保存"); }, onError: (error) => message.error(error instanceof Error ? error.message : "项目设置保存失败") });
-    const archiveMutation = useMutation({ mutationFn: () => updateProject(project.id, { status: project.status === "archived" ? "active" : "archived" }), onSuccess: () => { setArchiveOpen(false); refreshProject(); message.success(project.status === "archived" ? "项目已恢复" : "项目已归档"); }, onError: (error) => message.error(error instanceof Error ? error.message : "项目状态更新失败") });
-    const coverMutation = useMutation({ mutationFn: (coverResourceId: string) => updateProject(project.id, { coverResourceId }), onSuccess: (_, coverResourceId) => { setCoverPickerOpen(false); refreshProject(); message.success(coverResourceId ? "项目主图已更新" : "项目主图已移除"); }, onError: (error) => message.error(error instanceof Error ? error.message : "项目主图更新失败") });
+    const saveMutation = useMutation({ mutationFn: () => updateProject(project.id, { name: name.trim(), description, aspectRatio, sourceType, stylePresetId, styleProfileJson, defaultImageModel, defaultVideoModel }), onSuccess: () => { refreshProject(); toast.success("项目设置已保存"); }, onError: (error) => toast.error(error instanceof Error ? error.message : "项目设置保存失败") });
+    const archiveMutation = useMutation({ mutationFn: () => updateProject(project.id, { status: project.status === "archived" ? "active" : "archived" }), onSuccess: () => { setArchiveOpen(false); refreshProject(); toast.success(project.status === "archived" ? "项目已恢复" : "项目已归档"); }, onError: (error) => toast.error(error instanceof Error ? error.message : "项目状态更新失败") });
+    const coverMutation = useMutation({ mutationFn: (coverResourceId: string) => updateProject(project.id, { coverResourceId }), onSuccess: (_, coverResourceId) => { setCoverPickerOpen(false); refreshProject(); toast.success(coverResourceId ? "项目主图已更新" : "项目主图已移除"); }, onError: (error) => toast.error(error instanceof Error ? error.message : "项目主图更新失败") });
 
     return (
         <div>
-            <header className="flex items-end justify-between gap-3 pb-3"><div><h2 className="text-lg font-semibold">项目设置</h2><p className="mt-1 text-xs text-foreground/48">基础信息、项目画风与归档管理</p></div><Button type={dirty ? "primary" : "default"} icon={dirty ? <Save className="size-3.5" /> : <Check className="size-3.5" />} disabled={!dirty || !name.trim()} loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>{dirty ? "保存设置" : "已保存"}</Button></header>
+            <header className="flex items-end justify-between gap-3 pb-3"><div><h2 className="text-lg font-semibold">项目设置</h2><p className="mt-1 text-xs text-foreground/48">基础信息、项目画风与归档管理</p></div><Button variant={dirty ? "default" : "outline"} disabled={!dirty || !name.trim()} loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>{saveMutation.isPending ? null : dirty ? <Save className="size-3.5" /> : <Check className="size-3.5" />}{dirty ? "保存设置" : "已保存"}</Button></header>
 
             <section className="py-5">
                 <h3 className="mb-3 text-sm font-semibold">基础设置</h3>
@@ -119,13 +121,13 @@ export default function ProjectSettingsView({ detail, refreshProject }: ProjectD
                     <Field label="默认生图模型">
                         <div className="flex items-center gap-2">
                             <ModelPicker config={effectiveConfig} value={defaultImageModel} capability="image" onChange={setDefaultImageModel} fullWidth placeholder={`跟随全局 · ${modelDisplayName(effectiveConfig, effectiveConfig.imageModel) || "未配置"}`} />
-                            {defaultImageModel ? <Button type="text" size="small" onClick={() => setDefaultImageModel("")}>跟随全局</Button> : null}
+                            {defaultImageModel ? <Button variant="ghost" size="sm" onClick={() => setDefaultImageModel("")}>跟随全局</Button> : null}
                         </div>
                     </Field>
                     <Field label="默认视频模型">
                         <div className="flex items-center gap-2">
                             <ModelPicker config={effectiveConfig} value={defaultVideoModel} capability="video" onChange={setDefaultVideoModel} fullWidth placeholder={`跟随全局 · ${modelDisplayName(effectiveConfig, effectiveConfig.videoModel) || "未配置"}`} />
-                            {defaultVideoModel ? <Button type="text" size="small" onClick={() => setDefaultVideoModel("")}>跟随全局</Button> : null}
+                            {defaultVideoModel ? <Button variant="ghost" size="sm" onClick={() => setDefaultVideoModel("")}>跟随全局</Button> : null}
                         </div>
                     </Field>
                 </div>
@@ -136,7 +138,7 @@ export default function ProjectSettingsView({ detail, refreshProject }: ProjectD
                 <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-surface-active p-3 sm:flex-row sm:items-center">
                     {project.coverResourceId ? <img src={resourceFileUrl(project.coverResourceId)} alt={`${project.name}项目主图`} className="aspect-video w-full shrink-0 rounded-md bg-foreground/5 object-cover sm:w-52" /> : <span className="grid aspect-video w-full shrink-0 place-items-center rounded-md bg-foreground/5 text-foreground/30 sm:w-52"><ImageIcon className="size-6" /></span>}
                     <div className="min-w-0 flex-1"><div className="text-sm font-medium">{project.coverResourceId ? "已设置项目主图" : "尚未设置项目主图"}</div><p className="mt-1 text-xs leading-5 text-foreground/48">从个人素材库或项目素材库选择，也可以在选择窗口中上传一张新图片。</p></div>
-                    <div className="flex shrink-0 gap-2"><Button icon={<FolderOpen className="size-3.5" />} onClick={() => { setCoverPage(1); setCoverPickerOpen(true); }}>{project.coverResourceId ? "替换主图" : "设置主图"}</Button>{project.coverResourceId ? <Button danger type="text" icon={<Trash2 className="size-3.5" />} loading={coverMutation.isPending} onClick={() => coverMutation.mutate("")}>移除</Button> : null}</div>
+                    <div className="flex shrink-0 gap-2"><Button variant="outline" onClick={() => { setCoverPage(1); setCoverPickerOpen(true); }}><FolderOpen className="size-3.5" />{project.coverResourceId ? "替换主图" : "设置主图"}</Button>{project.coverResourceId ? <Button variant="destructive" loading={coverMutation.isPending} onClick={() => coverMutation.mutate("")}>{coverMutation.isPending ? null : <Trash2 className="size-3.5" />}移除</Button> : null}</div>
                 </div>
             </section>
 
@@ -149,7 +151,7 @@ export default function ProjectSettingsView({ detail, refreshProject }: ProjectD
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground/48">{styleProfile?.description || selectedStyle?.description || "从系统风格开始，或创建可自由编辑的项目视觉规范。"}</p>
                         {styleProfile ? <div className="mt-2 flex flex-wrap gap-1">{styleProfile.tags.map((tag) => <span key={tag} className="rounded bg-foreground/10 px-1.5 py-0.5 text-[var(--fs-tiny)] text-foreground/55">{tag}</span>)}</div> : null}
                     </div>
-                    <div className="flex shrink-0 flex-wrap gap-2"><Button icon={<Eye className="size-3.5" />} disabled={!selectedStyle} onClick={() => setStyleDetail(selectedStyle || null)}>查看规范</Button><Button icon={<Pencil className="size-3.5" />} disabled={!styleProfile} onClick={() => { setStyleEditorRequested(true); setStylePickerOpen(true); }}>编辑画风</Button><Button icon={<Palette className="size-3.5" />} onClick={() => { setStyleEditorRequested(false); setStylePickerOpen(true); }}>{selectedStyle ? "更换画风" : "选择画风"}</Button></div>
+                    <div className="flex shrink-0 flex-wrap gap-2"><Button variant="outline" disabled={!selectedStyle} onClick={() => setStyleDetail(selectedStyle || null)}><Eye className="size-3.5" />查看规范</Button><Button variant="outline" disabled={!styleProfile} onClick={() => { setStyleEditorRequested(true); setStylePickerOpen(true); }}><Pencil className="size-3.5" />编辑画风</Button><Button variant="outline" onClick={() => { setStyleEditorRequested(false); setStylePickerOpen(true); }}><Palette className="size-3.5" />{selectedStyle ? "更换画风" : "选择画风"}</Button></div>
                 </div>
                 {styleProfile ? <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5"><StyleMetric label="执行策略" value={styleProfile.executionPolicy === "strict-assets" ? "严格校验" : "兼容降级"} /><StyleMetric label="绑定资产" value={`${styleProfile.assets.length} 个`} /><StyleMetric label="已启用" value={`${enabledStyleAssets.length} 个`} /><StyleMetric label="图片执行" value={styleExecutionStatusLabel(styleExecutionPlans?.image.status)} /><StyleMetric label="视频执行" value={styleExecutionStatusLabel(styleExecutionPlans?.video.status)} /></div> : null}
                 {styleExecutionPlans && (styleExecutionPlans.image.warnings.length || styleExecutionPlans.video.warnings.length) ? <div className="mt-2 grid gap-1 rounded-md bg-amber-500/5 px-3 py-2 text-[var(--fs-label)] leading-5 text-amber-600 dark:text-amber-400">{styleExecutionPlans.image.warnings.length ? <p>图片：{styleExecutionPlans.image.warnings.join("；")}</p> : null}{styleExecutionPlans.video.warnings.length ? <p>视频：{styleExecutionPlans.video.warnings.join("；")}</p> : null}</div> : null}
@@ -158,11 +160,11 @@ export default function ProjectSettingsView({ detail, refreshProject }: ProjectD
             <section className="py-4">
                 <div className="flex flex-col gap-3 rounded-lg bg-red-500/5 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5"><span className="grid size-7 shrink-0 place-items-center rounded bg-red-500/10 text-red-500"><Archive className="size-3.5" /></span><div className="min-w-0"><h3 className="text-sm font-medium">{project.status === "archived" ? "恢复项目" : "归档项目"}</h3><p className="mt-0.5 text-[var(--fs-label)] text-foreground/48">{project.status === "archived" ? "恢复后可继续创建章节、画布和生成任务" : "保留全部章节、画布和资产，停止项目内新建与生成"}</p></div></div>
-                    <Button size="small" danger={project.status !== "archived"} icon={project.status === "archived" ? <Check className="size-3.5" /> : <ShieldAlert className="size-3.5" />} onClick={() => setArchiveOpen(true)}>{project.status === "archived" ? "恢复项目" : "归档项目"}</Button>
+                    <Button size="sm" variant={project.status !== "archived" ? "destructive" : "outline"} onClick={() => setArchiveOpen(true)}>{project.status === "archived" ? <Check className="size-3.5" /> : <ShieldAlert className="size-3.5" />}{project.status === "archived" ? "恢复项目" : "归档项目"}</Button>
                 </div>
             </section>
 
-            <Modal className="workspace-modal workspace-modal-compact" title={project.status === "archived" ? "恢复项目" : "归档项目"} open={archiveOpen} okText={project.status === "archived" ? "确认恢复" : "确认归档"} cancelText="取消" okButtonProps={{ danger: project.status !== "archived", loading: archiveMutation.isPending }} onCancel={() => setArchiveOpen(false)} onOk={() => archiveMutation.mutate()} styles={{ body: { paddingTop: 12 } }}><p className="m-0 text-sm leading-6 text-foreground/65">{project.status === "archived" ? "恢复后项目会重新进入可编辑状态。" : "归档不会删除章节、画布或资产，画布文档仍可在创作画布中打开。"}</p></Modal>
+            <AppModal className="workspace-modal workspace-modal-compact" title={project.status === "archived" ? "恢复项目" : "归档项目"} open={archiveOpen} okText={project.status === "archived" ? "确认恢复" : "确认归档"} cancelText="取消" okButtonProps={{ danger: project.status !== "archived", loading: archiveMutation.isPending }} onCancel={() => setArchiveOpen(false)} onOk={() => archiveMutation.mutate()} styles={{ body: { paddingTop: 12 } }}><p className="m-0 text-sm leading-6 text-foreground/65">{project.status === "archived" ? "恢复后项目会重新进入可编辑状态。" : "归档不会删除章节、画布或资产，画布文档仍可在创作画布中打开。"}</p></AppModal>
             <AssetLibraryPickerModal
                 open={coverPickerOpen}
                 items={coverPickerItems}

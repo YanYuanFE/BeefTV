@@ -31,33 +31,45 @@
     margin-top: 4px;
 }
 
-.eagle-library-page .eagle-folder-tree .ant-tree-treenode {
+.eagle-library-page .eagle-folder-tree-node {
+    display: flex;
     width: 100%;
     min-width: 0;
     min-height: 34px;
+    align-items: center;
     padding-block: 1px;
 }
 
-.eagle-library-page .eagle-folder-tree .ant-tree-indent-unit {
-    width: 12px;
-}
-
-.eagle-library-page .eagle-folder-tree .ant-tree-switcher {
+.eagle-library-page .eagle-folder-tree-switcher {
+    display: grid;
     flex: 0 0 16px;
     width: 16px;
-    margin-inline-end: 0;
+    height: 24px;
+    place-items: center;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: color-mix(in srgb, var(--foreground) 45%, transparent);
 }
-.eagle-library-page .eagle-folder-tree .ant-tree-switcher-noop {
+.eagle-library-page .eagle-folder-tree-switcher.is-noop {
     flex-basis: 0;
     width: 0;
 }
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper {
+.eagle-library-page .eagle-folder-tree-switcher:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+}
+.eagle-library-page .eagle-folder-tree-item {
     display: flex;
     min-width: 0;
     flex: 1;
     align-items: center;
+    border: 0;
     border-radius: var(--r-md);
+    background: transparent;
     padding: 6px 4px;
+    color: inherit;
+    text-align: left;
     transition: background-color var(--motion-state) ease-out, color var(--motion-state) ease-out;
 }
 
@@ -71,17 +83,17 @@
     white-space: nowrap;
 }
 
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:hover {
+.eagle-library-page .eagle-folder-tree-item:hover {
     background: color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+.eagle-library-page .eagle-folder-tree-item.is-selected {
     background: var(--control-selected-bg);
     color: var(--control-selected-fg);
     font-weight: 560;
 }
 
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:focus-visible {
+.eagle-library-page .eagle-folder-tree-item:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 1px;
 }
@@ -197,7 +209,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper,
+    .eagle-library-page .eagle-folder-tree-item,
     .eagle-library-page .eagle-cover-download,
     .eagle-library-page .eagle-drawer-download {
         transition: none;

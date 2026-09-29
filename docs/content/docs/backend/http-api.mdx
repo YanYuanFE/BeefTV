@@ -18,7 +18,7 @@ Wails 和浏览器开发模式共用同一套 `127.0.0.1` HTTP 合同。路由�
 | 路由组 | 用途 |
 | --- | --- |
 | `/workspace/*` | 本地工作区启动和模型配置 |
-| `/beefapi/connection*` | 内置 BeefAPI 企业连接：开始、状态、取消、断开；页面只收到账号和状态，收不到密钥 |
+| `/account/login` | 账号密码（含双重验证）登录部署配置的模型服务并签发访问密钥；服务端不保存会话 |
 | `/canvas-projects/*`, `/projects/*` | 画布、项目、章节、分镜与快照 |
 | `/resources/*` | 本地素材、分片上传和媒体读取 |
 | `/tasks/*` | 生成任务创建、查询、取消、恢复与事件流 |
@@ -28,8 +28,8 @@ Wails 和浏览器开发模式共用同一套 `127.0.0.1` HTTP 合同。路由�
 
 ## 明确不存在的端点
 
-`/auth/*`、`/admin/*`、`/payments/*`、`/wallet/*`、`/public/canvas-shares/*` 以及云存储配置端点不属于本地产品合同。
+`/admin/*`、`/payments/*`、`/wallet/*`、`/public/canvas-shares/*` 以及云存储配置端点不属于本地产品合同。
 
 旧内置 Agent 的 `/agent/*` 端点已随该功能退场，历史运行、偏好和记忆数据仍保留在本地数据库中。通用任务接口会按产品边界拒绝 `cloud_agent`、`cloud_agent_step` 和 `agent_memory_compact`，不会把它们当作普通生成任务执行。
 
-内置 BeefAPI 连接成功后，同一份企业凭证用于渠道请求和模型目录。企业连接、模型目录、Provider/Protocol 与自定义渠道不受 Agent 退场影响。
+应用启动后必须先在独立登录页 `/login` 登录。登录目标由后端环境变量决定，前端不携带也看不到服务地址：`BEEFTV_GATEWAY_BASE_URL` 指定 new-api 兼容服务（主站或分站域名），`BEEFTV_GATEWAY_KEY_GROUP` 指定签发密钥使用的令牌分组。登录返回的密钥写入本地模型配置中唯一的 `account` 渠道，模型目录经 `/ai/custom` 中转拉取；该渠道持有密钥即视为已登录，退出登录会清空本机密钥和模型列表，服务端的密钥不会删除。双重验证失败时 `reason` 为 `two_factor_required`。界面不展示上游服务名称或地址。

@@ -4,13 +4,13 @@
 
 ## 1. 项目边界
 
-BeefTV（`glanderness/BeefTV`）是面向 AI 影视与短剧创作的工作台，当前仍在快速开发。公开接口、数据结构和部署配置可能直接调整；除非任务明确要求，不为旧字段、旧 API 或旧数据增加兼容层。
+Framely（`glanderness/BeefTV`）是面向 AI 影视与短剧创作的工作台，当前仍在快速开发。公开接口、数据结构和部署配置可能直接调整；除非任务明确要求，不为旧字段、旧 API 或旧数据增加兼容层。
 
 仓库由几个边界清晰但可独立运行的单元组成：
 
 | 单元 | 技术栈 | 入口 | 责任 |
 | --- | --- | --- | --- |
-| `web/` | Vite、React 19、TypeScript、React Router、Ant Design、Tailwind、Zustand、TanStack Query | `web/src/application.tsx`、`web/src/router.tsx` | 工作区 UI、画布交互、浏览器缓存、API 调用和模型协议适配 |
+| `web/` | Vite、React 19、TypeScript、React Router、shadcn/ui（Radix）、Tailwind、Zustand、TanStack Query | `web/src/application.tsx`、`web/src/router.tsx` | 工作区 UI、画布交互、浏览器缓存、API 调用和模型协议适配 |
 | `backend/` | Go 1.25、Gin、GORM、SQLite | `backend/cmd/desktop`、`backend/cmd/server` | 本地工作区 API、持久化任务、资源和外部模型协议适配 |
 | `docs/` | Next.js、Fumadocs、MDX | `docs/content/docs/` | 面向用户和开发者的专题文档；构建配置见 `docs/source.config.ts` |
 
@@ -31,7 +31,7 @@ BeefTV（`glanderness/BeefTV`）是面向 AI 影视与短剧创作的工作台�
 - `web/src/pages/`：路由页面及页面私有 hook/组件；页面协调流程，不直接拼装后端协议。
 - `web/src/layouts/`：路由级布局、全局浮层和页面壳；不要在页面重复设置全局 body 状态。
 - `web/src/components/`：真实跨页面复用的 UI 或交互能力；页面私有组件留在页面目录。
-- `web/src/services/api/`：业务 API、模型渠道协议、资源 API；不依赖 JSX、路由或 AntD 提示。
+- `web/src/services/api/`：业务 API、模型渠道协议、资源 API；不依赖 JSX、路由或 UI 提示（toast/confirm）。
 - `web/src/services/`：文件、媒体、同步、缓存和生成任务等跨页面副作用。
 - `web/src/stores/`：跨页面状态和持久化配置；页面临时状态留在页面，媒体大对象不进 `localStorage`。
 - `web/src/lib/`：纯函数、画布算法、协议转换、设计 token 和可独立测试的基础能力。
@@ -102,8 +102,9 @@ BeefTV（`glanderness/BeefTV`）是面向 AI 影视与短剧创作的工作台�
 - 画布组件、状态、算法分别放在 `web/src/components/canvas/`、`web/src/stores/canvas/`、`web/src/lib/canvas/`。事件忽略选择器必须覆盖 modal、popover、dropdown 等浮层。
 - 画布拖拽、连接、缩放和快捷键要考虑 pointer capture、滚轮冒泡、焦点以及 `data-canvas-no-zoom` / `data-canvas-wheel-scroll` 边界。
 - 节点和对象名称要有可发现的铅笔入口并支持单击编辑；双击或右键不能是唯一入口。图片节点保持原始比例，面板不能长期遮挡主要画布空间。
-- Ant Design 共性主题和控件状态集中在 `web/src/lib/app-theme.ts` / `AppProviders`。自带外壳的产品弹窗用 `AppModal flush`，侧栏用 `AppDrawer`；不要再复制 `padding: 0` 的 Modal styles。内容外壳仍是 `.ant-modal-container`。
-- 第三方覆盖限定在具体组件，不新增全局 `.ant-modal-*`、`.dark .ant-switch-*`、`.ant-checkbox-*` 或 Segmented 状态补丁。新增 CSS 前先搜索同名选择器，回到唯一源规则修改。
+- UI 组件统一用 shadcn/ui（Radix）：原语在 `web/src/components/ui/*.tsx`（CLI 生成，按需增补），产品件在 `ui/base/`、`ui/product/`。antd、`@ant-design/*`、react-aria-components 已退场，由 `bun run lint` 禁止重新引入。
+- 弹窗用 `AppModal`（自带外壳时加 `flush`），侧栏用 `AppDrawer`；提示用 `sonner` 的 `toast`，命令式确认用 `confirmDialog` / `warningDialog`，行内确认用 `ConfirmPopover`，数据驱动菜单用 `MenuDropdown`。样式钩子用 `data-slot`（如 `[data-slot=app-modal]`、`[data-slot=app-modal-body]`），不要依赖第三方内部类名。
+- 画布与快捷键的浮层忽略选择器统一用 `web/src/lib/overlay-selectors.ts`；新增浮层类型时在那里补充。新增 CSS 前先搜索同名选择器，回到唯一源规则修改。
 - 遵循 `docs/ui-design-system.md` 及项目三层 token：Primitive → Semantic → Component。inline style 优先引用 `var(--token-name)`，不要散落颜色、圆角、阴影和层级字面值。
 - 主操作、普通选中、Checkbox/Radio、Switch 是不同颜色角色；持久切换使用 `aria-pressed`，`type="primary"` 只表示当前主要命令。尊重 `prefers-reduced-motion`，键盘导航保留 `:focus-visible`。
 
@@ -114,14 +115,14 @@ BeefTV（`glanderness/BeefTV`）是面向 AI 影视与短剧创作的工作台�
 - 宿主机开发：`backend/` 运行 `CANVAS_BACKEND_DATA_DIR=../.local/project-workbench-debug go run ./cmd/server`，`web/` 使用 Bun 和 Vite；不要用 pnpm/npm 覆盖同一套 `node_modules`，也不要提交 `pnpm-lock.yaml` 或 `package-lock.json`。Docker 热更新使用 `docker-compose.dev.yml`；本地构建运行使用 `docker-compose.local.yml`。
 - 生产 Compose 使用 `docker-compose.deploy.yml`（PostgreSQL、Redis、backend、web），源码构建可叠加 `docker-compose.build.yml`。公网只暴露 web 的 `3000`，backend `8080` 留在 Compose 网络内。
 - 默认不启动 dev server；只有用户明确要求浏览器预览或联调时才启动，并先确认端口、数据目录和现有进程。
-- macOS 本机唯一正式应用路径是 `/Applications/BeefTV.app`。需要更新本机应用时只运行 `./scripts/update-local-beeftv-app.sh`；不将 `build/bin/BeefTV.app` 作为可使用版本保留，不复制、重命名或存档额外 `.app` 副本。
+- macOS 本机唯一正式应用路径是 `/Applications/Framely.app`。需要更新本机应用时只运行 `./scripts/update-local-framely-app.sh`；不将 `build/bin/Framely.app` 作为可使用版本保留，不复制、重命名或存档额外 `.app` 副本。
 - 健康检查只能证明入口可用，不能替代登录、SSE、任务生成和资源访问验证。
 
 ## 8. 验证纪律
 
 项目当前默认不自动运行语法检查、类型检查、测试或构建。用户明确要求验证，或改动风险需要验证时，按范围选择最小充分命令，并在交付中如实记录：
 
-- 前端：`cd web && bun run build`；专项测试用 `bun test ...`。UI 退场规则用 `bun run lint`（只禁 antd Empty 和静态 `Modal.confirm`，不是风格检查）。
+- 前端：`cd web && bun run build`；专项测试用 `bun test ...`。UI 退场规则用 `bun run lint`（只禁 antd、`@ant-design/*` 与 react-aria-components 导入，不是风格检查）。
 - 后端：`cd backend && go test ./...`；涉及 PostgreSQL、资源、任务或权限时补对应集成/冒烟路径。
 - 旧内置 Agent 已从产品运行面退场：`/agent/*` 路由不再注册，通用任务创建、任务重试和任务 Worker 都按产品边界拒绝 `cloud_agent`、`cloud_agent_step`、`agent_memory_compact`，并且不再启动 Agent 轮次调度与记忆压缩调度。历史运行、偏好、记忆和任务数据保留，不做破坏性迁移。替换内核落地前，不得恢复旧入口、旧调度或旧任务 operation；替换内核未选型，本文件不规定其运行时形态，只要求按该内核真实使用的接入路径补齐验证。
 - 文档站：`cd docs && bun run types:check` 或 `bun run build`。

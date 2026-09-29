@@ -75,7 +75,8 @@ describe("canvas custom appearance", () => {
     test("keeps color-picker popups inside the appearance interaction boundary", async () => {
         const toolbarSource = await Bun.file(new URL("../src/components/canvas/canvas-toolbar.tsx", import.meta.url)).text();
         const controlsSource = await Bun.file(new URL("../src/components/canvas/canvas-appearance-controls.tsx", import.meta.url)).text();
-        expect(toolbarSource).toContain('closest(".ant-color-picker,.ant-popover")');
+        expect(toolbarSource).toContain("if (element?.closest(POPOVER_SELECTOR)) return;");
+        expect(controlsSource).toContain('<input type="color"');
         expect(controlsSource).toContain("if (normalized) onChange(normalized)");
     });
 

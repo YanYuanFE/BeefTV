@@ -1,15 +1,11 @@
 import { useLayoutEffect, type ReactNode } from "react";
 import { useLocation } from "react-router";
-import { ConfigProvider } from "antd";
 
 import { AppWorkspaceShell } from "@/components/layout/app-top-nav";
 import { cn } from "@/lib/utils";
 import { isSpatialWorkbenchPath } from "@/lib/workspace-routes";
-import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
 import { useWorkspaceButtonFeedback } from "@/hooks/use-workspace-button-feedback";
 import "@/styles/workspace-product.css";
-
-const workspaceTheme = getWorkspaceAntThemeConfig();
 
 export default function UserLayout({ children }: { children: ReactNode }) {
     const { pathname } = useLocation();
@@ -18,7 +14,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     useWorkspaceButtonFeedback(productWorkspace);
 
     useLayoutEffect(() => {
-        // Ant Design 浮层挂载在 body，必须用路由级标记隔离用户工作台与画布编辑器、运营后台。
+        // 浮层挂载在 body，必须用路由级标记隔离用户工作台与画布编辑器。
         document.body.classList.add("app-user-overlays");
         document.body.classList.toggle("app-spatial-overlays", spatialWorkbench);
         document.body.classList.toggle("app-product-overlays", productWorkspace);
@@ -30,10 +26,8 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     }, [spatialWorkbench, productWorkspace]);
 
     return (
-        <ConfigProvider theme={productWorkspace ? workspaceTheme : undefined}>
-            <div className={cn("app-user-workspace h-dvh overflow-hidden text-foreground", spatialWorkbench && "app-spatial-workspace", productWorkspace && "app-product-workspace")}>
-                <AppWorkspaceShell>{children}</AppWorkspaceShell>
-            </div>
-        </ConfigProvider>
+        <div className={cn("app-user-workspace h-dvh overflow-hidden text-foreground", spatialWorkbench && "app-spatial-workspace", productWorkspace && "app-product-workspace")}>
+            <AppWorkspaceShell>{children}</AppWorkspaceShell>
+        </div>
     );
 }

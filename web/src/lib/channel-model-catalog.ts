@@ -1,6 +1,8 @@
 import { defaultModelCapabilityConfig, type ModelCapabilityConfig } from "@/lib/model-capabilities";
 import { modelProtocolCapability, protocolForModelCatalog, type ModelProtocol } from "@/lib/model-protocols";
-import type { ModelChannel } from "@/stores/use-config-store";
+import { ACCOUNT_CHANNEL_ID } from "@/services/api/account";
+import type { ChannelModelFetchResult } from "@/services/api/image";
+import { filterModelsByCapability, modelOptionsFromChannels, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 
 export type ChannelModelCatalogOption = { value: string; label?: string };
 
@@ -63,7 +65,7 @@ export function sanitizeChannelModelCatalogItem(value: unknown): ChannelModelCat
 
 export function catalogModelMapping(
     item: Pick<ChannelModelCatalogItem, "id" | "modelType" | "supportedEndpointTypes">,
-    options: { providerNameFallback?: boolean } = {},
+    options: { providerNameFallback?: boolean; endpointCapability?: boolean } = {},
 ): {
     capability?: ChannelModelProfile["capability"];
     protocol?: ModelProtocol;
@@ -87,8 +89,16 @@ export function catalogModelMapping(
     if (options.providerNameFallback && !modelType && catalogIsSpeechOrMusic(id)) {
         return { capability: "audio", protocol: "openai-audio" };
     }
+    // Account catalogs carry no model_type, so endpoint types are the only media signal. new-api lists
+    // them in arbitrary order; image endpoints win over a stray video tag, and chat-capable models that
+    // also list openai-video stay text. Generic channels keep requiring explicit model metadata.
+    if (!options.endpointCapability) return {};
+    if (endpoints.some((endpoint) => endpoint === "image-generation" || endpoint === "image-edit")) return { capability: "image" };
+    if (endpoints.includes("openai-video") && !endpoints.some((endpoint) => CATALOG_CHAT_ENDPOINTS.has(endpoint))) return { capability: "video" };
     return {};
 }
+
+const CATALOG_CHAT_ENDPOINTS = new Set(["openai-response", "openai-response-compact", "openai-completion", "anthropic", "gemini", "gemini-stream"]);
 
 function catalogNameTokens(id: string) {
     return id
@@ -126,7 +136,7 @@ export function mergeFetchedChannelModelProfiles(channel: ModelChannel, catalog:
     const next: ChannelModelProfile[] = [];
     for (const item of catalog) {
         const existing = existingByModel.get(item.id);
-        const mapped = catalogModelMapping(item, { providerNameFallback: isBeefAPICatalogChannel(channel) });
+        const mapped = catalogModelMapping(item, { providerNameFallback: isBeefAPICatalogChannel(channel), endpointCapability: channel.id === ACCOUNT_CHANNEL_ID });
         const inferredProtocol = mapped.protocol || protocolForModelCatalog(item.supportedEndpointTypes);
         const inferredCapability = mapped.capability || modelProtocolCapability(inferredProtocol) || item.modelType;
         if (mapped.skipGeneration) {
@@ -296,4 +306,38 @@ function uniqueNumbers(values: string[]) {
 
 function nonNegativeInteger(value: unknown) {
     return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : undefined;
+}
+
+export function applyFetchedChannelModelCatalog(channel: ModelChannel, result: ChannelModelFetchResult): ModelChannel {
+    const models = Array.from(new Set(result.models.map((model) => model.trim()).filter(Boolean)));
+    return { ...channel, models, modelProfiles: mergeFetchedChannelModelProfiles(channel, result.catalog) };
+}
+
+/** Replaces the channel list and repairs model options and defaults against it. */
+export function configWithChannels(config: AiConfig, channels: ModelChannel[]): AiConfig {
+    const models = modelOptionsFromChannels(channels);
+    const imageModels = filterModelsByCapability(models, "image", channels);
+    const videoModels = filterModelsByCapability(models, "video", channels);
+    const textModels = filterModelsByCapability(models, "text", channels);
+    const audioModels = filterModelsByCapability(models, "audio", channels);
+    return {
+        ...config,
+        channels,
+        models,
+        baseUrl: channels[0]?.baseUrl || config.baseUrl,
+        apiKey: channels[0]?.apiKey || config.apiKey,
+        apiFormat: channels[0]?.apiFormat || config.apiFormat,
+        imageModels,
+        videoModels,
+        textModels,
+        audioModels,
+        imageModel: normalizeDefaultModel(config.imageModel, imageModels),
+        videoModel: normalizeDefaultModel(config.videoModel, videoModels),
+        textModel: normalizeDefaultModel(config.textModel, textModels),
+        audioModel: normalizeDefaultModel(config.audioModel, audioModels),
+    };
+}
+
+function normalizeDefaultModel(value: string, options: string[]) {
+    return options.includes(value) ? value : options[0] || "";
 }

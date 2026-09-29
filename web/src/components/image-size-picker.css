@@ -128,7 +128,7 @@
     align-items: center;
     gap: 2px;
 }
-.image-size-preset-bulk-actions .ant-btn {
+.image-size-preset-bulk-actions [data-slot="button"] {
     min-height: 24px;
     padding-inline: 4px;
 }

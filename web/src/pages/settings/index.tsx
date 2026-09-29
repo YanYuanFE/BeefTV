@@ -1,12 +1,13 @@
-import { App, Button } from "antd";
 import { ArrowLeft, RadioTower } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
+import { Button } from "@/components/ui/button";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { ChannelSettingsPane, channelValidationError, focusInvalidChannelField, isChannelReady } from "./channel-settings-pane";
 import { ModelDefaultGrid } from "./model-default-grid";
+import { toast } from "sonner";
 
 type ConfigSectionKey = "channels" | "models";
 
@@ -19,7 +20,6 @@ export function isConfigSection(value: string | null): value is ConfigSectionKey
 }
 
 export default function SettingsPage() {
-    const { message } = App.useApp();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const requestedSection = searchParams.get("section");
@@ -59,16 +59,16 @@ export default function SettingsPage() {
         const invalidChannel = customChannelsEnabled ? userChannels.find((channel) => channelValidationError(channel)) : undefined;
         if (invalidChannel) {
             selectSection("channels");
-            message.warning(`${invalidChannel.name || "未命名渠道"}：${channelValidationError(invalidChannel)}`);
+            toast.warning(`${invalidChannel.name || "未命名渠道"}：${channelValidationError(invalidChannel)}`);
             focusInvalidChannelField(invalidChannel);
             return;
         }
         if (!effectiveConfig.channels.some(isChannelReady)) {
             selectSection("channels");
-            message.error(customChannelsEnabled ? (shouldPromptContinue ? "请先完成至少一个渠道的 Base URL、API Key 和模型配置" : "当前没有可用渠道，请先完成连接信息和模型配置") : "当前没有可用的系统模型，请联系管理员配置系统渠道");
+            toast.error(customChannelsEnabled ? (shouldPromptContinue ? "请先完成至少一个渠道的 Base URL、API Key 和模型配置" : "当前没有可用渠道，请先完成连接信息和模型配置") : "当前没有可用的系统模型，请联系管理员配置系统渠道");
             return;
         }
-        message.success("配置已保存，正在返回创作页面");
+        toast.success("配置已保存，正在返回创作页面");
         navigate(-1);
     };
 
@@ -106,8 +106,8 @@ export default function SettingsPage() {
             {shouldPromptContinue ? (
                 <div className="settings-topbar shrink-0">
                     <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                        <Button icon={<ArrowLeft className="size-4" />} onClick={() => navigate(-1)}>返回创作</Button>
-                        <Button type="primary" onClick={finishConfig}>保存并返回</Button>
+                        <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="size-4" />返回创作</Button>
+                        <Button variant="outline" onClick={finishConfig}>保存并返回</Button>
                     </div>
                 </div>
             ) : null}

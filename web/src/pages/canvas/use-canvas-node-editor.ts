@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
 
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { FOLDER_COLLAPSED_HEIGHT, FOLDER_COLLAPSED_WIDTH, FRAME_COLLAPSED_HEIGHT, FRAME_COLLAPSED_WIDTH, getFrameChildIds, isCanvasFolderNode, isFrameNode } from "@/lib/canvas/canvas-frame";
@@ -13,6 +12,7 @@ import { resetGenerationTaskMetadata } from "@/lib/canvas/canvas-project-generat
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { CanvasNodeType, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
+import { toast } from "sonner";
 
 type UseCanvasNodeEditorOptions = {
     canvasId: string;
@@ -39,7 +39,6 @@ export function useCanvasNodeEditor({
     setToolbarNodeId,
     setHoveredNodeId,
 }: UseCanvasNodeEditorOptions) {
-    const { message } = App.useApp();
     const queryClient = useQueryClient();
     const [collapsingBatchIds, setCollapsingBatchIds] = useState<Set<string>>(new Set());
     const [openingBatchIds, setOpeningBatchIds] = useState<Set<string>>(new Set());
@@ -192,32 +191,32 @@ export function useCanvasNodeEditor({
             .then(async (result) => {
                 setNodes((current) => current.map((item) => item.id === nodeId ? { ...item, metadata: { ...item.metadata, assetId: result.assetId } } : item));
                 if (domainProjectId) await queryClient.invalidateQueries({ queryKey: ["project", domainProjectId] });
-                message.success("资产分类已更新");
+                toast.success("资产分类已更新");
             })
-            .catch((error) => message.error(error instanceof Error ? error.message : "资产分类更新失败"));
-    }, [canvasId, domainProjectId, message, nodesRef, queryClient, setNodes]);
+            .catch((error) => toast.error(error instanceof Error ? error.message : "资产分类更新失败"));
+    }, [canvasId, domainProjectId, nodesRef, queryClient, setNodes]);
 
     const downloadNodeImage = useCallback((node: CanvasNodeData) => {
         if ((node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) || !node.metadata?.content) return;
-        void reportOwnedMediaSave(message, downloadOwnedOrBrowserMedia({
+        void reportOwnedMediaSave(toast, downloadOwnedOrBrowserMedia({
             fileName: buildCanvasMediaDownloadFileName(canvasTitle, node),
             resourceId: ownedResourceIdFromMediaRef(node.metadata?.storageKey, node.metadata?.content),
             browserUrl: node.metadata.content,
         }));
-    }, [canvasTitle, message]);
+    }, [canvasTitle]);
 
     const saveNodeAsset = useCallback(async (node: CanvasNodeData) => {
-        if (node.type !== CanvasNodeType.Text && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) return message.error("当前节点类型不能保存为素材");
-        if (!node.metadata?.content?.trim()) return message.error("当前节点没有可保存的内容");
+        if (node.type !== CanvasNodeType.Text && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) return toast.error("当前节点类型不能保存为素材");
+        if (!node.metadata?.content?.trim()) return toast.error("当前节点没有可保存的内容");
         try {
             const result = await ensureCanvasNodeAsset({ canvasId, domainProjectId, node, source: "canvas-manual" });
             setNodes((current) => current.map((item) => item.id === node.id ? { ...item, metadata: { ...item.metadata, assetId: result.assetId } } : item));
             if (domainProjectId) await queryClient.invalidateQueries({ queryKey: ["project", domainProjectId] });
-            message.success(result.linkedToProject ? "已加入项目资产" : "已加入我的素材");
+            toast.success(result.linkedToProject ? "已加入项目资产" : "已加入我的素材");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "素材保存失败");
+            toast.error(error instanceof Error ? error.message : "素材保存失败");
         }
-    }, [canvasId, domainProjectId, message, queryClient, setNodes]);
+    }, [canvasId, domainProjectId, queryClient, setNodes]);
 
     const handleFontSizeChange = useCallback((nodeId: string, fontSize: number) => {
         setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, fontSize } } : node)));

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Button, Card, message } from "antd";
+import { toast } from "sonner";
 import { Mic, Send } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { VoiceRecordingButton } from "@/components/conversation/voice-recording-button";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -18,7 +19,7 @@ export default function TestVoiceRecording() {
     const handleTranscribed = (text: string) => {
         // 转写结果填入输入框，供用户确认或直接发送
         setPrompt((current) => (current.trim() ? `${current} ${text}` : text));
-        message.success("语音已转写为文字");
+        toast.success("语音已转写为文字");
     };
 
     const handleSubmit = async () => {
@@ -27,7 +28,7 @@ export default function TestVoiceRecording() {
         try {
             // 原型阶段：发送到对话入口由调用方接入；此处仅输出
             console.log("发送文本:", prompt);
-            message.success("发送成功（原型阶段，仅控制台输出）");
+            toast.success("发送成功（原型阶段，仅控制台输出）");
             setPrompt("");
         } finally {
             setSending(false);
@@ -38,16 +39,12 @@ export default function TestVoiceRecording() {
     return (
         <div className="min-h-screen p-8" style={{ background: theme.spatial.surface }}>
             <div className="mx-auto max-w-2xl">
-                <Card
-                    title={
-                        <div className="flex items-center gap-2">
-                            <Mic className="size-5" style={{ color: theme.accent.primary }} />
-                            <span>实时对话功能测试（MVP）</span>
-                        </div>
-                    }
-                    style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border }}
-                >
-                    <div className="space-y-4">
+                <section className="rounded-lg border" style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border }}>
+                    <div className="flex items-center gap-2 border-b px-6 py-4 text-base font-semibold" style={{ borderColor: theme.toolbar.border }}>
+                        <Mic className="size-5" style={{ color: theme.accent.primary }} />
+                        <span>实时对话功能测试（MVP）</span>
+                    </div>
+                    <div className="space-y-4 p-6">
                         {/* 文本输入 */}
                         <div>
                             <label className="mb-2 block text-sm font-medium" style={{ color: theme.node.text }}>
@@ -75,13 +72,12 @@ export default function TestVoiceRecording() {
                                 <VoiceRecordingButton onTranscribed={handleTranscribed} />
                             </div>
                             <Button
-                                type="primary"
-                                icon={<Send className="size-4" />}
                                 disabled={!prompt.trim()}
                                 loading={sending}
                                 onClick={handleSubmit}
                                 style={{ background: theme.accent.primary, borderColor: theme.accent.primary, color: theme.accent.onPrimary }}
                             >
+                                {sending ? null : <Send className="size-4" />}
                                 发送
                             </Button>
                         </div>
@@ -100,7 +96,7 @@ export default function TestVoiceRecording() {
                             </ul>
                         </div>
                     </div>
-                </Card>
+                </section>
             </div>
         </div>
     );

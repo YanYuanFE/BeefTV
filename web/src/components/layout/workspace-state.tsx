@@ -1,4 +1,5 @@
-import { Button, Skeleton } from "antd";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ReactNode } from "react";
 
 import { WorkspaceSignalIcon, type WorkspaceSignalIconVariant } from "@/components/ui/aceternity/workspace-signal-icon";
@@ -16,7 +17,7 @@ export function WorkspaceState({ icon = "empty", title, description, action, com
 }
 
 export function WorkspaceErrorState({ title = "暂时无法加载", description, actionLabel = "重新加载", onRetry, compact = false }: { title?: string; description?: string; actionLabel?: string; onRetry?: () => void; compact?: boolean }) {
-    return <WorkspaceState icon="error" title={title} description={description || "请检查网络连接后重试，当前内容不会被覆盖。"} compact={compact} action={onRetry ? <Button onClick={onRetry}>{actionLabel}</Button> : undefined} />;
+    return <WorkspaceState icon="error" title={title} description={description || "请检查网络连接后重试，当前内容不会被覆盖。"} compact={compact} action={onRetry ? <Button variant="outline" onClick={onRetry}>{actionLabel}</Button> : undefined} />;
 }
 
 export function WorkspaceLoadingState({ label = "正在加载内容", detail, rows = 3, className }: { label?: string; detail?: string; rows?: number; className?: string }) {
@@ -27,7 +28,7 @@ export function WorkspaceLoadingState({ label = "正在加载内容", detail, ro
                 <div><div className="text-sm font-medium">{label}</div>{detail ? <div className="mt-0.5 text-xs text-foreground/50">{detail}</div> : null}</div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: rows }, (_, index) => <div key={index} className="rounded-md bg-surface-active p-4"><Skeleton active title={{ width: `${48 + index * 8}%` }} paragraph={{ rows: 3 }} /></div>)}
+                {Array.from({ length: rows }, (_, index) => <div key={index} className="rounded-md bg-surface-active p-4"><div className="space-y-3"><Skeleton className="h-4 rounded-[4px]" style={{ width: `${48 + index * 8}%` }} />{Array.from({ length: 3 }, (_, line) => <Skeleton key={line} className="h-4 rounded-[4px]" style={line === 2 ? { width: "61%" } : undefined} />)}</div></div>)}
             </div>
         </section>
     );

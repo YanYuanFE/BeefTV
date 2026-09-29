@@ -38,13 +38,14 @@ const (
 )
 
 const (
-	defaultAppearanceBrandName = "BeefTV"
-	defaultAppearanceBrandSlug = "beeftv"
-	defaultAppearanceSkinID    = "classic"
-	defaultAppearanceLogoURL   = "/logo.svg"
-	defaultAppearanceVideoURL  = "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4"
-	defaultAppearancePosterURL = "https://i0.hdslb.com/bfs/aitool/aniforge/image/02933f26-5f1b-49ff-a811-b7f95ee5e5b8_m1hc-u0-sau.jpg"
-	defaultAppearanceHeroTitle = "让一个故事，\n从文字走向银幕。"
+	defaultAppearanceBrandName   = "Framely"
+	defaultAppearanceBrandSlug   = "framely"
+	defaultAppearanceSkinID      = "classic"
+	defaultAppearanceLogoURL     = "/framely-logo-light.svg"
+	defaultAppearanceDarkLogoURL = "/framely-logo-dark.svg"
+	defaultAppearanceVideoURL    = "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4"
+	defaultAppearancePosterURL   = "https://i0.hdslb.com/bfs/aitool/aniforge/image/02933f26-5f1b-49ff-a811-b7f95ee5e5b8_m1hc-u0-sau.jpg"
+	defaultAppearanceHeroTitle   = "让一个故事，\n从文字走向银幕。"
 )
 
 type AppearanceSetting struct {
@@ -243,7 +244,7 @@ func (s *Service) ResetAppearance(actor *model.User) (*AdminAppearanceSetting, e
 		return nil, err
 	}
 	after := defaultAppearanceSetting()
-	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复 BeefTV 默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
+	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
 		return nil, err
 	}
 	return s.AdminAppearance(actor)
@@ -614,7 +615,7 @@ func publicAppearanceSetting(setting *model.SystemSetting, value AppearanceSetti
 		AuthHeroTitle:       value.AuthHeroTitle,
 		AuthHeroDescription: value.AuthHeroDescription,
 		LogoURL:             defaultAppearanceLogoURL,
-		DarkLogoURL:         defaultAppearanceLogoURL,
+		DarkLogoURL:         defaultAppearanceDarkLogoURL,
 		LogoFrameEnabled:    value.LogoFrameEnabled,
 		AuthVideoURL:        defaultAppearanceVideoURL,
 		AuthVideoPosterURL:  defaultAppearancePosterURL,

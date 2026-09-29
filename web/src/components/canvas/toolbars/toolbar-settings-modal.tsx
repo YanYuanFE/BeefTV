@@ -1,4 +1,4 @@
-import { Modal } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { Switch } from "@/components/ui/base/switch";
 import { GripVertical, RotateCcw, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
@@ -133,18 +133,17 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
     };
 
     return (
-        <Modal
-            className="canvas-toolbar-settings-modal"
+        <AppModal
+            className="canvas-toolbar-settings-modal rounded-[var(--r-xl)] border-0 shadow-[var(--workspace-overlay-shadow)]"
             open={open}
             onCancel={onClose}
             footer={null}
             closable={false}
+            flush
             width={720}
-            centered
-            destroyOnClose
             styles={{
-                container: { padding: 0, background: theme.spatial.elevated, border: 0, boxShadow: "none" },
-                body: { padding: 0, background: theme.spatial.elevated },
+                container: { background: theme.spatial.elevated },
+                body: { background: theme.spatial.elevated },
             }}
         >
             <div className="flex items-start justify-between gap-4 px-5 pb-3 pt-5">
@@ -190,7 +189,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
                     />
                 ))}
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

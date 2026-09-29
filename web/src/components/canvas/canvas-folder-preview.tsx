@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Dropdown } from "antd";
 import { FileAudio, FileText, MoreHorizontal, Pencil, Plus, SlidersHorizontal, Sparkles, Video } from "lucide-react";
 
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
 import { CANVAS_FOLDER_THEME_OPTIONS, resolveCanvasFolderTheme, resolveCanvasFolderThemeCover } from "@/lib/canvas/canvas-folder-theme";
 import { canvasNodeVideoPreviewUrl } from "@/lib/canvas/canvas-media-preview";
 import type { CanvasFolderStyle, CanvasFolderTheme, CanvasNodeData } from "@/types/canvas";
@@ -149,7 +149,7 @@ export const CanvasFolderPreview = React.memo(function CanvasFolderPreview({
                             <Plus />
                         </button>
                     ) : (
-                        <Dropdown trigger={["click"]} menu={folderMenu}>
+                        <MenuDropdown {...folderMenu}>
                             <button
                                 type="button"
                                 className="canvas-folder-action canvas-folder-options"
@@ -160,16 +160,16 @@ export const CanvasFolderPreview = React.memo(function CanvasFolderPreview({
                             >
                                 <MoreHorizontal />
                             </button>
-                        </Dropdown>
+                        </MenuDropdown>
                     )
                 ) : null}
 
                 {!readOnly && showAdd ? (
-                    <Dropdown trigger={["click"]} menu={folderMenu}>
+                    <MenuDropdown {...folderMenu}>
                         <button type="button" className="canvas-folder-style-trigger" aria-label="切换文件夹样式与主题" title="切换文件夹样式与主题" onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
                             <MoreHorizontal />
                         </button>
-                    </Dropdown>
+                    </MenuDropdown>
                 ) : null}
 
                 {readOnly && childNodes.length > 0 ? <span className="canvas-folder-count">{childNodes.length}</span> : null}

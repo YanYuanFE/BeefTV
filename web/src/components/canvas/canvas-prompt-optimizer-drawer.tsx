@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { App, Button, Dropdown, Input, Popover, Tag, Typography } from "antd";
+import { createPortal } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
+import { Textarea } from "@/components/ui/textarea";
 import { Callout } from "@/components/ui/product/callout";
-import { Bubble, Sender, type BubbleItemType } from "@ant-design/x";
 import { ArrowUp, Check, ChevronDown, FileText, Image as ImageIcon, LoaderCircle, Music2, Sparkles, UserRound, Video, X } from "lucide-react";
 
 import { ModelPicker } from "@/components/model-picker";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { PromptOptimizationMode, PromptOptimizationResult, PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import type { AiConfig } from "@/stores/use-config-store";
+import { toast } from "sonner";
 
 type CanvasPromptOptimizerDrawerProps = {
     open: boolean;
@@ -39,6 +42,9 @@ const modeDescriptions: Record<PromptOptimizationMode, string> = {
     "model-adapt": "根据当前生成模型的习惯调整提示词结构和描述重点，减少模型不易理解的表达。",
     reference: "结合已连接的参考图或文本，补充一致性、外观、构图和关联关系。",
 };
+
+type ChatRole = "ai" | "user" | "system";
+type ChatItem = { key: string; role: ChatRole; content: ReactNode };
 
 type PanelSize = { width: number; height: number };
 type PanelOffset = { x: number; y: number };
@@ -99,7 +105,6 @@ function getInitialPanelPosition(panelSize: PanelSize): PanelPosition {
 }
 
 export function CanvasPromptOptimizerDrawer({ open, children, prompt, generationMode, targetModel, targetProtocol, config, optimizerModel, references, provider, onClose, onApply }: CanvasPromptOptimizerDrawerProps) {
-    const { message } = App.useApp();
     const abortRef = useRef<AbortController | null>(null);
     const chatRef = useRef<HTMLDivElement | null>(null);
     const contentRef = useRef<HTMLDivElement | null>(null);
@@ -227,7 +232,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
     useEffect(() => {
         if (!open) return;
         const frame = requestAnimationFrame(() => {
-            const scrollBox = chatRef.current?.querySelector<HTMLElement>(".ant-bubble-list-scroll-box");
+            const scrollBox = chatRef.current?.querySelector<HTMLElement>(".canvas-prompt-optimizer-chat");
             if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
         });
         return () => cancelAnimationFrame(frame);
@@ -466,7 +471,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
         if (!value) return;
         onApply(value);
         onClose();
-        message.success("提示词已采用并回填到当前输入框");
+        toast.success("提示词已采用并回填到当前输入框");
     };
 
     const modeMenuItems = modeOptions.map((option) => ({
@@ -479,7 +484,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
         ),
     }));
 
-    const bubbleItems: BubbleItemType[] = [
+    const bubbleItems: ChatItem[] = [
         {
             key: "assistant-intro",
             role: "ai",
@@ -501,7 +506,9 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
                             <span>将结合参考</span>
                             <div className="flex min-w-0 flex-wrap gap-1.5">
                                 {activeReferences.map((reference) => (
-                                    <Tag key={reference.id}>{reference.title || reference.label}</Tag>
+                                    <span key={reference.id} className={`${OPTIMIZER_TAG_CLASS} max-w-[160px] border-border bg-muted`}>
+                                        {reference.title || reference.label}
+                                    </span>
                                 ))}
                             </div>
                         </div>
@@ -561,22 +568,23 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
                     <div className="canvas-prompt-optimizer-message-meta">
                         <span>提示词助手</span>
                         {result.modelProfile ? (
-                            <Tag color="blue" bordered={false}>
+                            <span className={`${OPTIMIZER_TAG_CLASS} border-transparent bg-[color-mix(in_srgb,var(--workspace-accent)_12%,transparent)] text-[var(--workspace-accent)]`}>
                                 已按 {result.modelProfile.label} 适配
-                            </Tag>
+                            </span>
                         ) : null}
                     </div>
                     <div className="canvas-prompt-optimizer-result-heading">
                         <span>我建议这样写</span>
-                        <Button type="primary" size="small" icon={<Check className="size-3.5" />} onClick={applyPrompt} disabled={!selectedPrompt.trim()} aria-label="采用优化后的提示词">
+                        <Button size="sm" onClick={applyPrompt} disabled={!selectedPrompt.trim()} aria-label="采用优化后的提示词">
+                            <Check className="size-3.5" />
                             采用
                         </Button>
                     </div>
-                    <Input.TextArea
-                        className="canvas-prompt-optimizer-textarea canvas-prompt-optimizer-result-textarea"
+                    <Textarea
+                        className="canvas-prompt-optimizer-textarea canvas-prompt-optimizer-result-textarea max-h-[218px] min-h-[104px] resize-y rounded-[var(--r-md)] border-[color-mix(in_srgb,var(--foreground)_12%,transparent)] bg-[var(--popover)] px-[10px] py-[9px] text-[length:var(--fs-body)] leading-5 text-foreground shadow-none hover:border-[color-mix(in_srgb,var(--foreground)_22%,transparent)] focus-visible:border-[color-mix(in_srgb,var(--workspace-accent)_58%,transparent)] focus-visible:ring-[3px] focus-visible:ring-[color-mix(in_srgb,var(--workspace-accent)_12%,transparent)] md:text-[length:var(--fs-body)] dark:bg-[var(--popover)]"
                         value={selectedPrompt}
                         onChange={(event) => setSelectedPrompt(event.target.value)}
-                        autoSize={{ minRows: 4, maxRows: 10 }}
+                        rows={4}
                         aria-label="优化后的提示词"
                     />
 
@@ -642,7 +650,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
                     </span>
                     <div className="canvas-prompt-optimizer-header-title">
                         <div className="canvas-prompt-optimizer-header-title-row">
-                            <Typography.Text strong>AI 提示词优化</Typography.Text>
+                            <span className="min-w-0 truncate font-semibold @max-[420px]:max-w-[112px] @max-[350px]:max-w-[86px]">AI 提示词优化</span>
                             <span className="canvas-prompt-optimizer-mode-badge">{generationMode === "image" ? "图片" : "视频"}</span>
                             <span className="canvas-prompt-optimizer-context" title={targetModel || "未配置模型"}>
                                 · {targetModel || "未配置模型"}
@@ -657,56 +665,56 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
             </div>
 
             <div ref={chatRef} className="canvas-prompt-optimizer-chat-shell">
-                <Bubble.List
-                    className="canvas-prompt-optimizer-chat thin-scrollbar"
-                    items={bubbleItems}
-                    autoScroll={false}
-                    aria-live="polite"
-                    role={{
-                        ai: {
-                            placement: "start",
-                            variant: "borderless",
-                            avatar: (
-                                <span className="canvas-prompt-optimizer-message-avatar">
-                                    <Sparkles className="size-3.5" aria-hidden="true" />
-                                </span>
-                            ),
-                        },
-                        user: { placement: "end", variant: "borderless" },
-                        system: { placement: "start", variant: "borderless" },
-                    }}
-                />
+                <div className="canvas-prompt-optimizer-chat thin-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto px-[15px] pt-[14px] pb-3 @max-[350px]:px-[11px]" aria-live="polite">
+                    <div className="flex h-max min-h-full flex-col gap-[14px]">
+                        {bubbleItems.map((item) => (
+                            <div key={item.key} className={`canvas-prompt-optimizer-message flex-none ${item.role === "user" ? "is-user" : ""}`}>
+                                {item.role === "ai" ? (
+                                    <span className="canvas-prompt-optimizer-message-avatar">
+                                        <Sparkles className="size-3.5" aria-hidden="true" />
+                                    </span>
+                                ) : null}
+                                <div className={`min-w-0 flex-1 ${item.role === "user" ? "flex justify-end" : ""}`}>{item.content}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             <div className="canvas-prompt-optimizer-composer">
-                <Sender
-                    className="canvas-prompt-optimizer-sender"
-                    value={draftPrompt}
-                    onChange={(value) => setDraftPrompt(value)}
-                    onSubmit={(value) => void runOptimization(value)}
-                    placeholder="继续描述你的画面想法，Enter 发送"
-                    autoSize={{ minRows: 2, maxRows: 6 }}
-                    disabled={working}
-                    suffix={false}
-                    submitType="enter"
-                    footer={
+                <div className={`canvas-prompt-optimizer-sender overflow-hidden rounded-[var(--r-lg)] border border-[color-mix(in_srgb,var(--foreground)_13%,transparent)] bg-[var(--popover)] transition-[border-color,box-shadow] duration-[var(--motion-dur-fast)] ease-[var(--motion-ease-out)] hover:border-[color-mix(in_srgb,var(--foreground)_23%,transparent)] focus-within:border-[color-mix(in_srgb,var(--workspace-accent)_58%,transparent)] focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--workspace-accent)_12%,transparent)] ${working ? "opacity-72" : ""}`}>
+                    <div className="min-h-[54px] px-[11px] pt-[9px] pb-1">
+                        <textarea
+                            className="field-sizing-content block max-h-[120px] min-h-9 w-full resize-none border-0 bg-transparent text-[length:var(--fs-body)] leading-5 text-foreground outline-none placeholder:text-[color-mix(in_srgb,var(--foreground)_38%,transparent)] disabled:cursor-not-allowed"
+                            rows={2}
+                            value={draftPrompt}
+                            onChange={(event) => setDraftPrompt(event.target.value)}
+                            onKeyDown={(event) => {
+                                // Enter sends; Shift+Enter inserts a newline.
+                                if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+                                event.preventDefault();
+                                if (draftPrompt.trim()) void runOptimization(draftPrompt);
+                            }}
+                            placeholder="继续描述你的画面想法，Enter 发送"
+                            disabled={working}
+                            aria-label="输入提示词优化请求"
+                        />
+                    </div>
+                    <div className="px-2 pb-[7px]">
                         <div className="canvas-prompt-optimizer-composer-toolbar">
                             <div className="canvas-prompt-optimizer-composer-leading">
-                                <Dropdown
-                                    trigger={["click"]}
+                                <MenuDropdown
                                     placement="topLeft"
-                                    classNames={{ root: "canvas-prompt-optimizer-mode-dropdown" }}
-                                    menu={{
-                                        items: modeMenuItems,
-                                        selectedKeys: [mode],
-                                        onClick: ({ key }) => setMode(key as PromptOptimizationMode),
-                                    }}
+                                    contentClassName="canvas-prompt-optimizer-mode-dropdown w-[min(278px,calc(100vw-32px))] min-w-0 p-1 [&_[data-slot=dropdown-menu-item]]:px-2 [&_[data-slot=dropdown-menu-item]]:py-[7px]"
+                                    items={modeMenuItems}
+                                    selectedKeys={[mode]}
+                                    onClick={({ key }) => setMode(key as PromptOptimizationMode)}
                                 >
                                     <button type="button" className="canvas-prompt-optimizer-mode-trigger" aria-label="选择优化方式" aria-haspopup="menu">
                                         <span>{modeOptions.find((option) => option.value === mode)?.label}</span>
                                         <ChevronDown className="size-3" aria-hidden="true" />
                                     </button>
-                                </Dropdown>
+                                </MenuDropdown>
                             </div>
                             <div className="flex min-w-0 items-center gap-2">
                                 <ModelPicker
@@ -731,9 +739,8 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
                                 </button>
                             </div>
                         </div>
-                    }
-                    aria-label="输入提示词优化请求"
-                />
+                    </div>
+                </div>
             </div>
 
             <div className="canvas-prompt-optimizer-resize-handle is-edge-top" aria-hidden="true" onPointerDown={(event) => beginPanelInteraction(event, "resize", { top: true })} />
@@ -747,24 +754,23 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
     );
 
     return (
-        <Popover
-            open={open}
-            onOpenChange={(nextOpen) => {
-                if (!nextOpen) onClose();
-            }}
-            trigger={[]}
-            placement="top"
-            arrow={false}
-            autoAdjustOverflow
-            motion={{ motionName: "" }}
-            styles={{ root: popoverRootStyle }}
-            content={content}
-            classNames={{ root: "canvas-prompt-optimizer-popover", container: "canvas-prompt-optimizer-popover-surface", content: "canvas-prompt-optimizer-popover-content" }}
-        >
+        <>
             {children}
-        </Popover>
+            {open && typeof document !== "undefined"
+                ? createPortal(
+                      <div className="canvas-prompt-optimizer-popover z-50" style={popoverRootStyle}>
+                          <div className="canvas-prompt-optimizer-popover-surface">
+                              <div className="canvas-prompt-optimizer-popover-content">{content}</div>
+                          </div>
+                      </div>,
+                      document.body,
+                  )
+                : null}
+        </>
     );
 }
+
+const OPTIMIZER_TAG_CLASS = "inline-flex h-5 items-center truncate rounded-sm border px-1.5 text-[length:var(--fs-micro)] leading-5";
 
 function ResultList({ title, items, warning = false }: { title: string; items: string[]; warning?: boolean }) {
     return (

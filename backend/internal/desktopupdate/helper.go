@@ -93,7 +93,7 @@ func RunHelperRequest(req HelperRequest) error {
 		result.Error = err.Error()
 		return err
 	}
-	unlock, err := lockInstall(filepath.Join(filepath.Dir(req.TargetPath), ".BeefTV.update.lock"))
+	unlock, err := lockInstall(filepath.Join(filepath.Dir(req.TargetPath), ".Framely.update.lock"))
 	if err != nil {
 		result.Error = "已有更新正在安装"
 		return err
@@ -323,9 +323,9 @@ func physicalPath(path string) (string, error) {
 
 func helperFileName() string {
 	if runtime.GOOS == "windows" {
-		return "BeefTV-update-helper.exe"
+		return "Framely-update-helper.exe"
 	}
-	return "BeefTV-update-helper"
+	return "Framely-update-helper"
 }
 
 func waitForPrepared(ctx context.Context, path string, timeout time.Duration) error {

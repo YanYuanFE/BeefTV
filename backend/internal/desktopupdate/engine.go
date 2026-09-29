@@ -424,7 +424,7 @@ func (e *Engine) prepareStaging(version string) (string, error) {
 		if err != nil {
 			cache = os.TempDir()
 		}
-		root = filepath.Join(cache, "BeefTV", "updates")
+		root = filepath.Join(cache, "Framely", "updates")
 	}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return "", err

@@ -1,4 +1,5 @@
-import { Button, Input } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/base/tooltip";
 
 import { Plus, Trash2 } from "lucide-react";
@@ -6,7 +7,7 @@ import type { ChangeEvent } from "react";
 
 import type { ChannelHeader } from "@/stores/use-config-store";
 
-const DEFAULT_USER_AGENT = "BeefTV/1.0 (+https://github.com/glanderness/BeefTV)";
+const DEFAULT_USER_AGENT = "Framely/1.0 (+https://github.com/glanderness/BeefTV)";
 const MAX_HEADER_COUNT = 32;
 const BLOCKED_HEADERS = new Set([
     "authorization",
@@ -51,7 +52,7 @@ export function ChannelHeadersEditor({ value = [], onChange, disabled }: Props) 
                     <div className="mt-0.5 break-all text-xs leading-5 text-foreground/50">默认发送 {DEFAULT_USER_AGENT}；添加 User-Agent 后会覆盖默认值。</div>
                 </div>
                 {!hasUserAgent ? (
-                    <Button size="small" disabled={disabled || headers.length >= MAX_HEADER_COUNT} onClick={() => onChange?.([...headers, { name: "User-Agent", value: DEFAULT_USER_AGENT }])}>
+                    <Button variant="outline" size="sm" disabled={disabled || headers.length >= MAX_HEADER_COUNT} onClick={() => onChange?.([...headers, { name: "User-Agent", value: DEFAULT_USER_AGENT }])}>
                         添加 User-Agent
                     </Button>
                 ) : null}
@@ -69,9 +70,9 @@ export function ChannelHeadersEditor({ value = [], onChange, disabled }: Props) 
                         return (
                             <div key={index} className="grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_32px] gap-2">
                                 <Input aria-label={`请求头 ${index + 1} 名称`} disabled={disabled} value={header.name} placeholder="Header 名称" onChange={(event) => updateHeader(index, { name: event.target.value })} />
-                                {/token|key|secret/i.test(header.name) ? <Input.Password {...inputProps} /> : <Input {...inputProps} />}
+                                {/token|key|secret/i.test(header.name) ? <Input type="password" autoComplete="off" {...inputProps} /> : <Input {...inputProps} />}
                                 <Tooltip title="删除请求头">
-                                    <Button aria-label={`删除请求头 ${index + 1}`} className="size-8 p-0" disabled={disabled} icon={<Trash2 className="size-3.5" />} onClick={() => onChange?.(headers.filter((_, itemIndex) => itemIndex !== index))} />
+                                    <Button variant="outline" size="icon" aria-label={`删除请求头 ${index + 1}`} className="size-8 p-0" disabled={disabled} onClick={() => onChange?.(headers.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="size-3.5" /></Button>
                                 </Tooltip>
                             </div>
                         );
@@ -79,7 +80,8 @@ export function ChannelHeadersEditor({ value = [], onChange, disabled }: Props) 
                 </div>
             ) : null}
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button size="small" type="dashed" icon={<Plus className="size-3.5" />} disabled={disabled || headers.length >= MAX_HEADER_COUNT} onClick={() => onChange?.([...headers, { name: "", value: "" }])}>
+                <Button variant="outline" size="sm" className="border-dashed" disabled={disabled || headers.length >= MAX_HEADER_COUNT} onClick={() => onChange?.([...headers, { name: "", value: "" }])}>
+                    <Plus className="size-3.5" />
                     添加请求头
                 </Button>
                 <span className={`text-xs ${validation ? "text-destructive" : "text-foreground/45"}`}>{validation || `${headers.length}/${MAX_HEADER_COUNT}`}</span>

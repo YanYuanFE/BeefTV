@@ -1,4 +1,7 @@
-import { App, Button, Input, Skeleton, Tabs } from "antd";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { registerDesktopUpdatePreparation } from "@/services/desktop-update-preparation";
 import { Select } from "@/components/ui/base/select";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
@@ -16,6 +19,8 @@ import {
     type UserPromptCustomization,
     type UserPromptPreference,
 } from "@/services/api/prompt-preferences";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 type CustomizationMode = UserPromptCustomization["mode"];
 
@@ -26,7 +31,6 @@ const modeOptions = [
 ];
 
 export function PromptPreferencesPane() {
-    const { message, modal } = App.useApp();
     const [preferences, setPreferences] = useState<UserPromptPreference[]>([]);
     const [selectedOperation, setSelectedOperation] = useState("");
     const [mode, setMode] = useState<CustomizationMode>("inherit");
@@ -50,7 +54,7 @@ export function PromptPreferencesPane() {
             if (reqId !== requestIdRef.current) return;
             const msg = error instanceof Error ? error.message : "读取提示词偏好失败";
             setLoadError(msg);
-            message.error(msg);
+            toast.error(msg);
         } finally {
             if (reqId === requestIdRef.current) {
                 setLoading(false);
@@ -96,7 +100,7 @@ export function PromptPreferencesPane() {
             setSelectedOperation(operation);
             return;
         }
-        modal.confirm({
+        confirmDialog({
             title: "切换模板并放弃修改？",
             content: "当前模板还有未保存内容。切换后这些修改将丢失。",
             okText: "放弃并切换",
@@ -110,16 +114,16 @@ export function PromptPreferencesPane() {
         if (!selected) return;
         const content = mode === "append" ? appendContent : mode === "rewrite" ? rewriteContent : "";
         if (mode !== "inherit" && !content.trim()) {
-            message.warning("请填写个人提示词内容");
+            toast.warning("请填写个人提示词内容");
             return;
         }
         setSaving(true);
         try {
             await updateUserPromptCustomization(selected.definition.operation, { mode, content });
             await reload(selected.definition.operation);
-            message.success("提示词偏好已保存");
+            toast.success("提示词偏好已保存");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存提示词偏好失败");
+            toast.error(error instanceof Error ? error.message : "保存提示词偏好失败");
         } finally {
             setSaving(false);
         }
@@ -127,7 +131,7 @@ export function PromptPreferencesPane() {
 
     const reset = () => {
         if (!selected) return;
-        modal.confirm({
+        confirmDialog({
             title: "恢复平台模板？",
             content: `将删除“${selected.definition.label}”的个人定制，后续自动跟随平台版本。`,
             okText: "恢复平台模板",
@@ -136,20 +140,27 @@ export function PromptPreferencesPane() {
                 try {
                     await resetUserPromptCustomization(selected.definition.operation);
                     await reload(selected.definition.operation);
-                    message.success("已恢复平台模板");
+                    toast.success("已恢复平台模板");
                 } catch (error) {
-                    message.error(error instanceof Error ? error.message : "恢复平台模板失败");
+                    toast.error(error instanceof Error ? error.message : "恢复平台模板失败");
                 }
             },
         });
     };
 
-    if (loading && preferences.length === 0) return <Skeleton active paragraph={{ rows: 10 }} />;
+    if (loading && preferences.length === 0) {
+        return (
+            <div className="space-y-3" aria-busy="true">
+                <Skeleton className="h-5 w-2/5" />
+                {Array.from({ length: 10 }, (_, index) => <Skeleton key={index} className={index === 9 ? "h-4 w-3/5" : "h-4 w-full"} />)}
+            </div>
+        );
+    }
     if (loadError && preferences.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
                 <Callout tone="error" title="加载提示词偏好失败">{loadError}</Callout>
-                <Button icon={<RotateCcw className="size-4" />} onClick={() => void reload()}>重试</Button>
+                <Button variant="outline" onClick={() => void reload()}><RotateCcw className="size-4" />重试</Button>
             </div>
         );
     }
@@ -177,9 +188,9 @@ export function PromptPreferencesPane() {
                         />
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-2">
-                        <Button icon={<Undo2 className="size-4" />} disabled={!dirty || saving} onClick={() => restoreDraft()}>撤销修改</Button>
-                        <Button icon={<RotateCcw className="size-4" />} disabled={!selected.customization || saving} onClick={reset}>恢复平台</Button>
-                        <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty} onClick={() => void save()}>保存更改</Button>
+                        <Button variant="outline" disabled={!dirty || saving} onClick={() => restoreDraft()}><Undo2 className="size-4" />撤销修改</Button>
+                        <Button variant="outline" disabled={!selected.customization || saving} onClick={reset}><RotateCcw className="size-4" />恢复平台</Button>
+                        <Button loading={saving} disabled={!dirty} onClick={() => void save()}>{saving ? null : <Save className="size-4" />}保存更改</Button>
                     </div>
                 </div>
 
@@ -208,14 +219,16 @@ export function PromptPreferencesPane() {
                         </p>
                     </div>
                     {mode === "append" ? (
-                        <Input.TextArea
-                            className="min-h-96 resize-none"
-                            value={appendContent}
-                            maxLength={12000}
-                            showCount
-                            placeholder="例如：仙侠项目采用明亮、宏大、高清的休闲剧质感；避免阴森恐怖色调，人物表演自然、轻松。"
-                            onChange={(event) => setAppendContent(event.target.value)}
-                        />
+                        <div>
+                            <Textarea
+                                className="min-h-96 resize-none field-sizing-fixed"
+                                value={appendContent}
+                                maxLength={12000}
+                                placeholder="例如：仙侠项目采用明亮、宏大、高清的休闲剧质感；避免阴森恐怖色调，人物表演自然、轻松。"
+                                onChange={(event) => setAppendContent(event.target.value)}
+                            />
+                            <span className="mt-1 block text-right text-xs tabular-nums text-muted-foreground" aria-hidden="true">{appendContent.length} / 12000</span>
+                        </div>
                     ) : (
                         <div className="min-h-96 flex-1 overflow-hidden rounded-md bg-surface-active">
                             <PromptCodeEditor
@@ -229,26 +242,22 @@ export function PromptPreferencesPane() {
                 </section>
 
                 <aside className="min-h-0 pt-4 lg:pl-6 lg:pt-0">
-                    <Tabs
-                        size="small"
-                        items={[
-                            {
-                                key: "baseline",
-                                label: "平台基线",
-                                children: <pre className="thin-scrollbar max-h-96 overflow-auto whitespace-pre-wrap text-xs leading-6 text-foreground/65">{templateContent}</pre>,
-                            },
-                            {
-                                key: "contract",
-                                label: "输出契约",
-                                children: <div><div className="mb-3 flex items-center gap-2 text-xs font-medium"><ShieldCheck className="size-4" />服务端只读</div><pre className="thin-scrollbar max-h-96 overflow-auto whitespace-pre-wrap text-xs leading-6 text-foreground/65">{selected.definition.outputContract}</pre></div>,
-                            },
-                            {
-                                key: "preview",
-                                label: "最终结构",
-                                children: <div className="space-y-5 text-xs leading-6"><section><div className="mb-2 font-medium text-foreground/80">创作策略</div><pre className="thin-scrollbar max-h-64 overflow-auto whitespace-pre-wrap text-foreground/65">{previewCreative || "尚未填写"}</pre></section><section><div className="mb-2 font-medium text-foreground/80">运行时强制追加</div><p className="text-foreground/55">当前剧情、项目画风、当前角色版本、画布资产与受保护输出契约。</p></section></div>,
-                            },
-                        ]}
-                    />
+                    <Tabs defaultValue="baseline">
+                        <TabsList variant="line">
+                            <TabsTrigger value="baseline">平台基线</TabsTrigger>
+                            <TabsTrigger value="contract">输出契约</TabsTrigger>
+                            <TabsTrigger value="preview">最终结构</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="baseline" className="pt-3">
+                            <pre className="thin-scrollbar max-h-96 overflow-auto whitespace-pre-wrap text-xs leading-6 text-foreground/65">{templateContent}</pre>
+                        </TabsContent>
+                        <TabsContent value="contract" className="pt-3">
+                            <div><div className="mb-3 flex items-center gap-2 text-xs font-medium"><ShieldCheck className="size-4" />服务端只读</div><pre className="thin-scrollbar max-h-96 overflow-auto whitespace-pre-wrap text-xs leading-6 text-foreground/65">{selected.definition.outputContract}</pre></div>
+                        </TabsContent>
+                        <TabsContent value="preview" className="pt-3">
+                            <div className="space-y-5 text-xs leading-6"><section><div className="mb-2 font-medium text-foreground/80">创作策略</div><pre className="thin-scrollbar max-h-64 overflow-auto whitespace-pre-wrap text-foreground/65">{previewCreative || "尚未填写"}</pre></section><section><div className="mb-2 font-medium text-foreground/80">运行时强制追加</div><p className="text-foreground/55">当前剧情、项目画风、当前角色版本、画布资产与受保护输出契约。</p></section></div>
+                        </TabsContent>
+                    </Tabs>
                 </aside>
             </div>
         </div>

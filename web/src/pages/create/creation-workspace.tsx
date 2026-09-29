@@ -2,7 +2,9 @@ import { ImageSizePicker } from "@/components/image-size-picker";
 import { imageResolutionUsesQuality } from "@/lib/image-size-presets";
 import { createPortal } from "react-dom";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type RefObject } from "react";
-import { App, Button, Dropdown, Popover } from "antd";
+import { Button } from "@/components/ui/button";
+import { MenuDropdown } from "@/components/ui/menu-dropdown";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AppDrawer } from "@/components/ui/product/app-drawer";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { useWorkspaceTopBarMount } from "@/components/layout/workspace-top-bar-extension";
@@ -47,6 +49,7 @@ import { conversationTimestamp, isImageAttachment, isVideoAttachment } from "./c
 import { conversationTimeFormatter, countOptions, historyDayFormatter, messageTimeFormatter, modeLabels, qualityOptions, ratioOptions, resolutionOptions, shotScriptLabels, type CreationConversation, type CreationMessage, type CreationShotRailEntry, type CreationStatus } from "./creation-types";
 import "./creation-product.css";
 import { creationFeaturedWorks, inspirationSource } from "./creation-inspirations";
+import { toast } from "sonner";
 
 const CanvasPromptOptimizerDrawer = lazy(() => import("@/components/canvas/canvas-prompt-optimizer-drawer").then((module) => ({ default: module.CanvasPromptOptimizerDrawer })));
 
@@ -78,7 +81,6 @@ export function CreationHistoryDrawer({ open, conversations, activeId, onNew, on
     const assistantName = useAppearanceStore((state) => state.appearance.brandName);
     const exportUser = useUserStore((state) => state.user);
 
-    const { message: drawerToast } = App.useApp();
 
     useEffect(() => {
         if (!open) return;
@@ -156,9 +158,9 @@ export function CreationHistoryDrawer({ open, conversations, activeId, onNew, on
                                         </span>
                                     </button>
                                     <span className="creation-history-time-slot" aria-hidden={menuOpenId === conversation.id}><time dateTime={conversation.updatedAt}>{formatHistoryRelativeTime(conversation.updatedAt)}</time></span>
-                                    <Dropdown trigger={["click"]} placement="bottomRight" open={menuOpenId === conversation.id} onOpenChange={(open) => setMenuOpenId(open ? conversation.id : null)} overlayClassName="creation-history-menu-overlay" menu={{ items: [{ key: "rename", label: "重命名", icon: <Pencil /> }, { key: "export", label: "导出对话", icon: <Download /> }, { key: "delete", label: "删除对话", danger: true, icon: <Trash2 /> }], onClick: ({ key }) => { setMenuOpenId(null); if (key === "rename") { beginRename(conversation); } else if (key === "export") { downloadCreationConversation(conversation, assistantName, exportUser?.displayName || "你"); drawerToast.success("对话已导出为 Markdown"); } else { onDelete(conversation); } } }}>
+                                    <MenuDropdown placement="bottomRight" open={menuOpenId === conversation.id} onOpenChange={(open) => setMenuOpenId(open ? conversation.id : null)} contentClassName="creation-history-menu-overlay" items={[{ key: "rename", label: "重命名", icon: <Pencil /> }, { key: "export", label: "导出对话", icon: <Download /> }, { key: "delete", label: "删除对话", danger: true, icon: <Trash2 /> }]} onClick={({ key }) => { setMenuOpenId(null); if (key === "rename") { beginRename(conversation); } else if (key === "export") { downloadCreationConversation(conversation, assistantName, exportUser?.displayName || "你"); toast.success("对话已导出为 Markdown"); } else { onDelete(conversation); } }}>
                                         <button type="button" className={menuOpenId === conversation.id ? "creation-history-more is-open" : "creation-history-more"} aria-label={`更多操作：${conversation.title.trim() || "新创作"}`} onClick={(event) => event.preventDefault()}><MoreHorizontal /></button>
-                                    </Dropdown>
+                                    </MenuDropdown>
                                 </div>
                             )}
                         </li>,
@@ -196,7 +198,7 @@ export function CreationWorkspaceToolbar({ shots, onJumpToShot, onNewConversatio
             </div> : null}
         </div>
         <div className="creation-toolbar-actions">
-            <Button size="small" loading={openingCanvas} onClick={onContinueCanvas}>画布中继续</Button>
+            <Button variant="outline" size="sm" loading={openingCanvas} onClick={onContinueCanvas}>画布中继续</Button>
             <Tooltip title="新建创作"><button type="button" aria-label="新建创作" className="creation-toolbar-action" onClick={onNewConversation}><Plus /></button></Tooltip>
             <Tooltip title="历史对话"><button type="button" aria-label="查看历史对话" className="creation-toolbar-action" onClick={onOpenHistory}><History /></button></Tooltip>
         </div>
@@ -287,7 +289,7 @@ function MediaResult({ item, onRetryFailure, onCreateVariant, onContinueCanvas, 
     const isVideo = item.mode === "video";
     return <div className="creation-media-result">
         {isVideo ? <button type="button" className="creation-video-result" onClick={() => { setPreviewType("video"); setPreviewUrl(displayUrls[0]); }} aria-label="预览生成视频"><video muted preload="metadata" src={displayUrls[0]} /><span><Maximize2 />预览视频</span></button> : <div className="creation-image-result-grid">{displayUrls.map((url) => <button key={url} type="button" className="creation-image-result" onClick={() => { setPreviewType("image"); setPreviewUrl(url); }} aria-label="预览生成图片"><img src={url} alt="生成结果" /><span><Maximize2 /></span></button>)}</div>}
-        <div className="creation-media-actions"><span>{isVideo ? "视频结果" : `${resultUrls.length} 张图片`}</span><Button type="link" size="small" loading={openingCanvas} disabled={!canContinueWithResults} title={canContinueWithResults ? undefined : "素材保存完成后才能转入画布"} onClick={() => onContinueCanvas(resultAssetIds)}>添加到画布</Button>{displayUrls.map((url, index) => <a key={`${url}-download`} href={url} download>{displayUrls.length > 1 ? `下载 ${index + 1}` : <><Download />下载</>}</a>)}</div>
+        <div className="creation-media-actions"><span>{isVideo ? "视频结果" : `${resultUrls.length} 张图片`}</span><Button variant="link" size="sm" loading={openingCanvas} disabled={!canContinueWithResults} title={canContinueWithResults ? undefined : "素材保存完成后才能转入画布"} onClick={() => onContinueCanvas(resultAssetIds)}>添加到画布</Button>{displayUrls.map((url, index) => <a key={`${url}-download`} href={url} download>{displayUrls.length > 1 ? `下载 ${index + 1}` : <><Download />下载</>}</a>)}</div>
         <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
     </div>;
 }
@@ -313,7 +315,7 @@ function CreationMessageReferences({ references }: { references: CreationReferen
 function CreationMediaPreviewModal({ url, type, onClose }: { url: string; type: "image" | "video"; onClose: () => void }) {
     if (type === "image") return <CanvasImagePreview src={url} alt="媒体预览" onClose={onClose} />;
 
-    return <AppModal flush open={Boolean(url)} title={null} footer={null} centered destroyOnHidden width="min(1160px, calc(100vw - 32px))" onCancel={onClose} className="creation-media-preview-modal">
+    return <AppModal flush open={Boolean(url)} title={null} footer={null} width="min(1160px, calc(100vw - 32px))" onCancel={onClose} className="creation-media-preview-modal">
         {url ? <video controls autoPlay className="creation-media-preview-video" src={url} /> : null}
     </AppModal>;
 }
@@ -621,8 +623,8 @@ export function CreationComposer(props: ComposerProps) {
                 {props.prompt.trim() || props.attachments.length || props.references.some((reference) => reference.active) ? <Tooltip title="清空提示词和参考内容"><button type="button" className="creation-chat-control is-clear" onClick={props.onClearComposer} disabled={interactionBusy} aria-label="清空提示词和参考内容"><Trash2 /><span>清空</span></button></Tooltip> : null}
             </div>
             <Button
-                type="text"
-                className="creation-submit is-icon-only"
+                variant="ghost"
+                className="creation-submit is-icon-only disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-100"
                 disabled={interactionBusy || !canSubmit}
                 style={{
                     position: "relative",
@@ -728,10 +730,14 @@ function GenerationSettingsMenu(props: ComposerProps) {
             {props.imageProfile.maxOutputs > 1 ? <SettingSection title="生成数量" value={`${props.count} 张`}><div className="creation-parameter-content"><div className="creation-choice-grid is-count">{countOptions.filter((option) => Number(option) <= props.imageProfile.maxOutputs).map((option) => <button key={option} type="button" aria-pressed={option === props.count} className={option === props.count ? "is-selected" : ""} onClick={() => props.setCount(option)}>{option}</button>)}</div><label className="creation-custom-value"><span>自定义</span><input inputMode="numeric" pattern="[0-9]*" value={props.count} onChange={(event) => props.setCount(String(Math.max(1, Math.min(props.imageProfile.maxOutputs, Number(event.target.value) || 1))))} aria-label={`生成数量，范围 1 到 ${props.imageProfile.maxOutputs}`} /><em>张</em></label></div></SettingSection> : null}
         </>}
     </div>;
-    return <Popover open={open} onOpenChange={setOpen} trigger="click" placement="bottom" arrow={false} classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }} content={panel}>
-        <button type="button" className="creation-chat-control" aria-label={`生成设置：${summary}`}><SlidersHorizontal /><span>{summary}</span><ChevronDown className={open ? "is-open" : ""} /></button>
+    return <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild><button type="button" className="creation-chat-control" aria-label={`生成设置：${summary}`}><SlidersHorizontal /><span>{summary}</span><ChevronDown className={open ? "is-open" : ""} /></button></PopoverTrigger>
+        <PopoverContent side="bottom" className={CREATION_CONTROL_POPOVER_CLASS}>{panel}</PopoverContent>
     </Popover>;
 }
+
+// Parameter popovers keep the AntD root/surface/content class hooks on the single Radix content node.
+const CREATION_CONTROL_POPOVER_CLASS = "creation-control-popover creation-control-popover-surface creation-control-popover-content w-auto gap-0 p-0";
 
 function SettingSection({ title, value, children }: { title: string; value?: string; children: ReactNode }) {
     return <section className="creation-parameter-section"><header><h3>{title}</h3>{value ? <span>{value}</span> : null}</header>{children}</section>;
@@ -750,8 +756,9 @@ function DurationMenu({ profile, seconds, onChange }: { profile: VideoCapability
         <div className="flex justify-between px-0.5 text-[var(--fs-tiny)] text-[var(--creation-muted)]"><span>{min}s</span><span>{max}s</span></div>
         <label className="creation-custom-value is-duration"><span>自定义时长</span><span className="creation-duration-custom-field"><input type="number" min={min} max={max} step={step} inputMode="numeric" value={seconds} onFocus={(event) => event.currentTarget.select()} onBlur={() => onChange(String(value))} onChange={(event) => onChange(event.target.value)} aria-label="自定义视频时长，单位秒" /><em>秒</em></span></label>
     </> : <div className="creation-duration-choices">{presets.map((item) => <button key={item} type="button" className={item === value ? "is-selected" : ""} onClick={() => onChange(String(item))}>{item}s</button>)}</div>;
-    return <Popover open={open} onOpenChange={setOpen} trigger="click" placement="bottom" arrow={false} classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }} content={<div className="creation-duration-menu"><div className="creation-duration-heading"><span>时长</span><strong>{value} 秒</strong></div>{durationControl}</div>}>
-        <button type="button" className="creation-chat-control is-duration" aria-label={`视频时长：${value}秒`}><Clock3 /><span>{value}s</span><ChevronDown className={open ? "is-open" : ""} /></button>
+    return <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild><button type="button" className="creation-chat-control is-duration" aria-label={`视频时长：${value}秒`}><Clock3 /><span>{value}s</span><ChevronDown className={open ? "is-open" : ""} /></button></PopoverTrigger>
+        <PopoverContent side="bottom" className={CREATION_CONTROL_POPOVER_CLASS}><div className="creation-duration-menu"><div className="creation-duration-heading"><span>时长</span><strong>{value} 秒</strong></div>{durationControl}</div></PopoverContent>
     </Popover>;
 }
 
@@ -883,7 +890,7 @@ export function CreationFeaturedWorks({ onStartPrompt }: { onStartPrompt: (mode:
                 </button>)}
         </div>
         {isSkill && skillSection === "mine" && mySkillsLoaded && !visibleSkills.length ? <div className="creation-skill-empty"><Sparkles /><strong>还没有安装 Skill</strong><span>上传、安装或创建一个 Skill 后，它会显示在这里。</span></div> : null}
-        <footer className="creation-inspiration-footer">{isSkill ? <span>已展示 {visibleSkills.length} 个 Skill</span> : <>{limit < filtered.length ? <Button onClick={() => setLimit((count) => count + 12)}>展开更多灵感<ChevronDown /></Button> : <span>已展示全部 {filtered.length} 个创意</span>}<details><summary>模板与封面来源</summary><p>{inspirationSource.notice}</p><a href={inspirationSource.repository} target="_blank" rel="noreferrer">awesome-chatgpt-prompts · CC0</a></details></>}</footer>
+        <footer className="creation-inspiration-footer">{isSkill ? <span>已展示 {visibleSkills.length} 个 Skill</span> : <>{limit < filtered.length ? <Button variant="outline" onClick={() => setLimit((count) => count + 12)}>展开更多灵感<ChevronDown /></Button> : <span>已展示全部 {filtered.length} 个创意</span>}<details><summary>模板与封面来源</summary><p>{inspirationSource.notice}</p><a href={inspirationSource.repository} target="_blank" rel="noreferrer">awesome-chatgpt-prompts · CC0</a></details></>}</footer>
     </section>;
 }
 

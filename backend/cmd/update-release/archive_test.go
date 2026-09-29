@@ -15,7 +15,7 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 		t.Skip("macOS packaging requires a filesystem that preserves Unix executable modes")
 	}
 	root := t.TempDir()
-	app := writeFakeDarwinApp(t, filepath.Join(root, "BeefTV.app"))
+	app := writeFakeDarwinApp(t, filepath.Join(root, "Framely.app"))
 	outside := filepath.Join(root, "outside.txt")
 	if err := os.WriteFile(outside, []byte("nope"), 0o644); err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 		}
 	}
 
-	out := filepath.Join(t.TempDir(), "BeefTV-v1.6.0-darwin-arm64.zip")
+	out := filepath.Join(t.TempDir(), "Framely-v1.6.0-darwin-arm64.zip")
 	var stdout bytes.Buffer
 	err := run([]string{"package", "--platform", "darwin-arm64", "--input", app, "--output", out}, &stdout, ioDiscard{})
 	if runtime.GOOS != "windows" {
@@ -58,14 +58,14 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 	}
 
 	names := zipNames(t, out)
-	if !names["BeefTV.app/Contents/MacOS/BeefTV"] {
+	if !names["Framely.app/Contents/MacOS/Framely"] {
 		t.Fatalf("missing executable: %v", names)
 	}
-	if names["BeefTV.app/.env"] || names["BeefTV.app/Contents/Resources/user.db"] {
+	if names["Framely.app/.env"] || names["Framely.app/Contents/Resources/user.db"] {
 		t.Fatalf("secret or db leaked into zip: %v", names)
 	}
 	if runtime.GOOS != "windows" {
-		if !names["BeefTV.app/Contents/Resources/plugin-packages/alias.beeftv-plugin"] {
+		if !names["Framely.app/Contents/Resources/plugin-packages/alias.beeftv-plugin"] {
 			t.Fatalf("dereferenced plugin alias missing: %v", names)
 		}
 	}
@@ -79,7 +79,7 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 		if file.Mode()&os.ModeSymlink != 0 {
 			sawSymlink = true
 		}
-		if file.Name == "BeefTV.app/Contents/MacOS/BeefTV" {
+		if file.Name == "Framely.app/Contents/MacOS/Framely" {
 			sawExec = true
 			if file.Mode()&0o111 == 0 {
 				t.Fatalf("executable mode not preserved: %s", file.Mode())
@@ -98,7 +98,7 @@ func TestPackageDarwinLayoutAndModes(t *testing.T) {
 				}
 			}
 		}
-		if file.Name == "BeefTV.app/Contents/Resources/plugin-packages/alias.beeftv-plugin" {
+		if file.Name == "Framely.app/Contents/Resources/plugin-packages/alias.beeftv-plugin" {
 			if got := string(readZipFile(t, file)); got != "plugin-bytes" {
 				t.Fatalf("alias content %q", got)
 			}
@@ -123,12 +123,12 @@ func TestPackageWindowsLayout(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(bin, "extra.dll"), []byte("ignore"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	out := filepath.Join(t.TempDir(), "BeefTV-v1.6.0-windows-amd64.zip")
+	out := filepath.Join(t.TempDir(), "Framely-v1.6.0-windows-amd64.zip")
 	if err := run([]string{"package", "--platform", "windows-amd64", "--input", bin, "--output", out}, ioDiscard{}, ioDiscard{}); err != nil {
 		t.Fatal(err)
 	}
 	names := zipNames(t, out)
-	if !names["BeefTV.exe"] || !names["plugin-packages/core.beeftv-plugin"] {
+	if !names["Framely.exe"] || !names["plugin-packages/core.beeftv-plugin"] {
 		t.Fatalf("windows zip layout %v", names)
 	}
 	if names[".env.local"] || names["extra.dll"] {
@@ -152,7 +152,7 @@ func TestPackageRejectsInvalidInputs(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dataDir, "open_ai_canvas.db"), []byte("db"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dataDir, "BeefTV.exe"), []byte("exe"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dataDir, "Framely.exe"), []byte("exe"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dataDir, "plugin-packages"), 0o755); err != nil {
@@ -176,7 +176,7 @@ func writeFakeDarwinApp(t *testing.T, app string) string {
 	if err := os.MkdirAll(plugins, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	execPath := filepath.Join(macOS, "BeefTV")
+	execPath := filepath.Join(macOS, "Framely")
 	if err := os.WriteFile(execPath, []byte("binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func writeFakeWindowsBin(t *testing.T, dir string) string {
 	if err := os.MkdirAll(filepath.Join(dir, "plugin-packages"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "BeefTV.exe"), []byte("exe"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "Framely.exe"), []byte("exe"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "plugin-packages", "core.beeftv-plugin"), []byte("plugin"), 0o644); err != nil {

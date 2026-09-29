@@ -866,7 +866,7 @@ function ConnectionSideRail({ side, scale, theme, visible = false, onPointerDown
     const handleSize = Math.max(20, 8 * inverseScale);
     // LibTV centers the visual quick-add icon in an approximately 80px
     // circular hit zone, then offsets it toward the node edge. Keep that
-    // visual layer separate from the real centered connection anchor.
+    // visual layer separate from the real connection anchor.
     const sideOffset = side === "left" ? 25 : -25;
 
     const resetHandle = useCallback(() => {

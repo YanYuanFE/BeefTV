@@ -17,8 +17,8 @@ var (
 
 const (
 	helperFlag      = "--beeftv-update-helper"
-	appBundleName   = "BeefTV.app"
-	windowsExeName  = "BeefTV.exe"
+	appBundleName   = "Framely.app"
+	windowsExeName  = "Framely.exe"
 	pluginDirName   = "plugin-packages"
 	pluginExtension = ".beeftv-plugin"
 	payloadSchema   = 1

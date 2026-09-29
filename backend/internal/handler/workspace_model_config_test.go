@@ -13,47 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestWorkspaceModelConfigReturnsBuiltinBeefAPIAndPersistenceMetadata(t *testing.T) {
-	router, _ := newModelConfigTestRouter(t)
-	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/workspace/model-config", nil))
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body=%s", recorder.Code, recorder.Body.String())
-	}
-	data := modelConfigResponseData(t, recorder)
-	if data["health"] != string(workspace.ConfigHealthDefault) || data["revision"] != float64(0) || data["source"] != "builtin+local" {
-		t.Fatalf("missing persistence metadata: %#v", data)
-	}
-	config, _ := data["config"].(map[string]any)
-	channels, _ := config["channels"].([]any)
-	if len(channels) != 1 || channels[0].(map[string]any)["id"] != "beefapi" {
-		t.Fatalf("builtin BeefAPI missing: %#v", channels)
-	}
-	if models, _ := channels[0].(map[string]any)["models"].([]any); len(models) != 0 {
-		t.Fatalf("model catalog must remain dynamic: %#v", models)
-	}
-}
-
-func TestWorkspaceModelConfigGETRedactsBeefAPIKey(t *testing.T) {
-	router, _ := newModelConfigTestRouter(t)
-	first := putModelConfig(t, router, 0, "local-secret-key")
-	if first.Code != http.StatusOK {
-		t.Fatalf("put status = %d body=%s", first.Code, first.Body.String())
-	}
-	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/workspace/model-config", nil))
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d body=%s", recorder.Code, recorder.Body.String())
-	}
-	if bytes.Contains(recorder.Body.Bytes(), []byte("local-secret-key")) {
-		t.Fatalf("model-config leaked api key: %s", recorder.Body.String())
-	}
-	stale := putModelConfig(t, router, 1, "ui-overwrite")
-	if stale.Code != http.StatusOK {
-		t.Fatalf("second put status = %d body=%s", stale.Code, stale.Body.String())
-	}
-}
-
 func TestWorkspaceModelConfigRejectsStaleRevisionWithoutLeakingSecrets(t *testing.T) {
 	router, _ := newModelConfigTestRouter(t)
 	first := putModelConfig(t, router, 0, "first-secret")

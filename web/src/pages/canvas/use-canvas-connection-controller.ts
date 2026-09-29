@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
-import { App } from "antd";
 import { nanoid } from "nanoid";
 import { latchCanvasConnectionApproach, type CanvasConnectionApproach } from "@/lib/canvas/canvas-connection-tilt";
 
@@ -18,6 +17,7 @@ import { normalizeRunningHubCapability, type AiConfig } from "@/stores/use-confi
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type ConnectionHandle, type ContextMenuState, type Position, type ViewportTransform } from "@/types/canvas";
 import { workflowProviderPluginEnabled } from "@/lib/plugins/builtin/workflows";
 import { usePluginStore } from "@/stores/use-plugin-store";
+import { toast } from "sonner";
 
 type UseCanvasConnectionControllerOptions = {
     projectId: string;
@@ -130,7 +130,6 @@ export function useCanvasConnectionController({
     onConnectedNodeCreated,
     onReplaceReference,
 }: UseCanvasConnectionControllerOptions) {
-    const { message } = App.useApp();
     const runtimeStatuses = usePluginStore((state) => state.runtimeStatuses);
     const [connectingParams, setConnectingParams] = useState<ConnectionHandle | null>(null);
     const [connectionTargetNodeId, setConnectionTargetNodeId] = useState<string | null>(null);
@@ -230,7 +229,7 @@ export function useCanvasConnectionController({
         const plan = planBatchConnections({ sourceNodeIds, targetNodeId, targetHandleId, targetAnchorRatio, nodes: nodesRef.current, connections: connectionsRef.current, config });
         if (!plan.connections.length) {
             const reason = plan.skipped[0]?.reason || "没有可建立的连接";
-            message.warning(reason);
+            toast.warning(reason);
             return plan;
         }
         setNodes((currentNodes) => plan.connections.reduce((current, connection) => attachNodeToStoryboardRow(current, connection), currentNodes));
@@ -239,16 +238,16 @@ export function useCanvasConnectionController({
         const skippedCount = plan.skipped.length;
         const duplicateCount = plan.duplicates.length;
         const suffix = skippedCount || duplicateCount ? `，跳过 ${skippedCount + duplicateCount} 个` : "";
-        if (skippedCount) message.warning(`已连接 ${plan.connected.length} 个节点${suffix}：${plan.skipped[0].reason}`);
-        else message.success(`已连接 ${plan.connected.length} 个节点${suffix}`);
+        if (skippedCount) toast.warning(`已连接 ${plan.connected.length} 个节点${suffix}：${plan.skipped[0].reason}`);
+        else toast.success(`已连接 ${plan.connected.length} 个节点${suffix}`);
         return plan;
-    }, [config, connectionsRef, message, nodesRef, setConnections, setContextMenu, setNodes]);
+    }, [config, connectionsRef, nodesRef, setConnections, setContextMenu, setNodes]);
 
     const connectNodes = useCallback((current: ConnectionHandle, targetNodeId: string, targetHandleId?: string, targetAnchorRatio?: number) => {
         if (current.nodeId === targetNodeId) return;
         const connection = normalizeConnection(current.nodeId, targetNodeId, nodesRef.current, current.handleType);
         if (!connection) {
-            message.warning("配置节点之间不能连接");
+            toast.warning("配置节点之间不能连接");
             return;
         }
         const { fromNodeId, toNodeId } = connection;
@@ -258,7 +257,7 @@ export function useCanvasConnectionController({
         const toAnchorRatio = toNodeId === current.nodeId ? current.anchorRatio : targetAnchorRatio;
         const policyError = canvasConnectionError(config, nodesRef.current, connectionsRef.current, { fromNodeId, toNodeId });
         if (policyError) {
-            message.warning(policyError);
+            toast.warning(policyError);
             return;
         }
         const exists = connectionsRef.current.find((item) => item.fromNodeId === fromNodeId && item.toNodeId === toNodeId && item.fromHandleId === fromHandleId && item.toHandleId === toHandleId);
@@ -269,7 +268,7 @@ export function useCanvasConnectionController({
             setNodes((currentNodes) => attachNodeToStoryboardRow(currentNodes, { fromNodeId, toNodeId, fromHandleId, toHandleId }));
         }
         setContextMenu(null);
-    }, [config, connectionsRef, message, nodesRef, setConnections, setContextMenu, setNodes]);
+    }, [config, connectionsRef, nodesRef, setConnections, setContextMenu, setNodes]);
 
     const createConnectedNode = useCallback(async (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Script | CanvasNodeType.BatchTable | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.Drawing | CanvasNodeType.Config | CanvasNodeType.MediaConversion, pending: PendingConnectionCreate, workflowProvider?: "runninghub") => {
         const nodeType = type;
@@ -292,7 +291,7 @@ export function useCanvasConnectionController({
             ? workflowProvider || (workflowProviderPluginEnabled(runtimeStatuses, "runninghub") ? "runninghub" : undefined)
             : undefined;
         if (selectedWorkflowProvider && !workflowProviderPluginEnabled(runtimeStatuses, selectedWorkflowProvider)) {
-            message.error("RunningHub 工作流插件未启用");
+            toast.error("RunningHub 工作流插件未启用");
             closeConnectionCreateMenu();
             setConnecting(null);
             return;
@@ -339,7 +338,7 @@ export function useCanvasConnectionController({
         if (nodeType === CanvasNodeType.Config && selectedWorkflowProvider) newNode.title = "RunningHub 工作流";
         if (storyboardRow) newNode.title = `镜头 ${storyboardRow.shotNumber} · 视频`;
         if (batchSourceNodeIds.length && nodeType === CanvasNodeType.Drawing) {
-            message.error("批量连接暂不支持创建绘图，请先连接到普通节点");
+            toast.error("批量连接暂不支持创建绘图，请先连接到普通节点");
             closeConnectionCreateMenu();
             setConnecting(null);
             return;
@@ -350,7 +349,7 @@ export function useCanvasConnectionController({
         if (batchPlan) {
             if (!batchPlan.connections.length) {
                 const detail = batchPlan.skipped.slice(0, 3).map((item) => item.reason).join("；");
-                message.warning(detail ? `没有可建立的连接：${detail}` : "没有可建立的连接");
+                toast.warning(detail ? `没有可建立的连接：${detail}` : "没有可建立的连接");
                 closeConnectionCreateMenu();
                 setConnecting(null);
                 return;
@@ -368,22 +367,22 @@ export function useCanvasConnectionController({
             const skippedCount = batchPlan.skipped.length;
             const duplicateCount = batchPlan.duplicates.length;
             const suffix = skippedCount || duplicateCount ? `，跳过 ${skippedCount + duplicateCount} 个` : "";
-            if (skippedCount) message.warning(`已创建并连接 ${batchPlan.connections.length} 个源节点${suffix}：${batchPlan.skipped[0].reason}`);
-            else message.success(`已创建节点并连接 ${batchPlan.connections.length} 个源节点${suffix}`);
+            if (skippedCount) toast.warning(`已创建并连接 ${batchPlan.connections.length} 个源节点${suffix}：${batchPlan.skipped[0].reason}`);
+            else toast.success(`已创建节点并连接 ${batchPlan.connections.length} 个源节点${suffix}`);
             closeConnectionCreateMenu();
             setConnecting(null);
             return;
         }
         const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
         if (!connection) {
-            message.warning("当前节点不能建立这条连线");
+            toast.warning("当前节点不能建立这条连线");
             closeConnectionCreateMenu();
             setConnecting(null);
             return;
         }
         const policyError = canvasConnectionError(config, [...nodesRef.current, newNode], connectionsRef.current, connection);
         if (policyError) {
-            message.warning(policyError);
+            toast.warning(policyError);
             closeConnectionCreateMenu();
             setConnecting(null);
             return;
@@ -392,7 +391,7 @@ export function useCanvasConnectionController({
             const drawingSourceNode = nodesRef.current.find((node) => node.id === pending.connection.nodeId);
             const sourceUrl = drawingSourceNode?.type === CanvasNodeType.Image ? drawingSourceNode.metadata?.content : "";
             if (pending.connection.handleType !== "source" || !drawingSourceNode || !sourceUrl || !newNode.metadata?.drawingId) {
-                message.error("只有已有图片内容的输出连线可以创建绘图");
+                toast.error("只有已有图片内容的输出连线可以创建绘图");
                 closeConnectionCreateMenu();
                 setConnecting(null);
                 return;
@@ -416,7 +415,7 @@ export function useCanvasConnectionController({
                     drawingPageCount: saved.pageCount,
                 };
             } catch (error) {
-                message.error(error instanceof Error ? `创建绘图失败：${error.message}` : "创建绘图失败");
+                toast.error(error instanceof Error ? `创建绘图失败：${error.message}` : "创建绘图失败");
                 return;
             }
         }
@@ -434,7 +433,7 @@ export function useCanvasConnectionController({
         setDialogNodeId(nodeType !== CanvasNodeType.Text && nodeType !== CanvasNodeType.BatchTable && nodeType !== CanvasNodeType.MediaConversion && canOpenCanvasNodePromptPanel(newNode) ? newNode.id : null);
         closeConnectionCreateMenu();
         setConnecting(null);
-    }, [closeConnectionCreateMenu, config, connectionsRef, defaultDrawingEngine, message, nodesRef, onConnectedNodeCreated, projectId, runtimeStatuses, setConnecting, setConnections, setDialogNodeId, setDrawingNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+    }, [closeConnectionCreateMenu, config, connectionsRef, defaultDrawingEngine, nodesRef, onConnectedNodeCreated, projectId, runtimeStatuses, setConnecting, setConnections, setDialogNodeId, setDrawingNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const getConnectionCreateDisabledReason = useCallback((type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Script | CanvasNodeType.BatchTable | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.Drawing | CanvasNodeType.Config | CanvasNodeType.MediaConversion, pending: PendingConnectionCreate, workflowProvider?: "runninghub") => {
         const nodeType = type;
@@ -472,7 +471,7 @@ export function useCanvasConnectionController({
                 const scrollTop = scriptScrollTopById[node.id] || 0;
                 const targetHandleId = node.type === CanvasNodeType.Script ? storyboardHandleAtY(node, world.y, scrollTop) : node.type === CanvasNodeType.BatchTable ? batchReferenceHandleAtY(node, world.y, handleRadius) : undefined;
                 if ((node.type === CanvasNodeType.Script || node.type === CanvasNodeType.BatchTable) && !targetHandleId) return;
-                // Ordinary nodes expose one centered input/output port. Only
+                // Ordinary nodes expose one input/output port. Only
                 // storyboard rows have a meaningful vertical target position.
                 const targetAnchorRatio = undefined;
                 const anchor = getConnectionTargetAnchor(node, current, targetHandleId, scrollTop);
@@ -543,7 +542,7 @@ export function useCanvasConnectionController({
             return Boolean(node && !batchSourceRestriction(node));
         });
         if (!eligible.length) {
-            message.warning("当前选区没有可作为连接源的节点");
+            toast.warning("当前选区没有可作为连接源的节点");
             return;
         }
         event.preventDefault();
@@ -553,7 +552,7 @@ export function useCanvasConnectionController({
         setSelectedConnectionId(null);
         const mouseWorld = screenToCanvas(event.clientX, event.clientY);
         previewBatchConnection(eligible, null, undefined, undefined, mouseWorld);
-    }, [message, nodesRef, previewBatchConnection, screenToCanvas, setSelectedConnectionId]);
+    }, [nodesRef, previewBatchConnection, screenToCanvas, setSelectedConnectionId]);
 
     const beginBatchConnectionMode = useCallback((sourceNodeIds: string[]) => {
         const eligible = sourceNodeIds.filter((id) => {
@@ -562,12 +561,12 @@ export function useCanvasConnectionController({
         });
         const source = eligible.map((id) => nodesRef.current.find((node) => node.id === id)).find((node): node is CanvasNodeData => Boolean(node));
         if (!source) {
-            message.warning("当前选区没有可作为连接源的节点");
+            toast.warning("当前选区没有可作为连接源的节点");
             return;
         }
         previewBatchConnection(eligible, null, undefined, undefined, { x: source.position.x + source.width, y: source.position.y + source.height / 2 });
         setSelectedConnectionId(null);
-    }, [message, nodesRef, previewBatchConnection, setSelectedConnectionId]);
+    }, [nodesRef, previewBatchConnection, setSelectedConnectionId]);
 
     const finishBatchConnection = useCallback((clientX: number, clientY: number) => {
         const batch = batchConnectionPreviewRef.current;
@@ -586,7 +585,7 @@ export function useCanvasConnectionController({
         const request = buildBatchConnectionCreateRequest(batch.sourceNodeIds, nodesRef.current, position);
         if (!request) {
             clearBatchConnection();
-            message.warning("当前选区没有可作为连接源的节点");
+            toast.warning("当前选区没有可作为连接源的节点");
             return false;
         }
         const pending: PendingConnectionCreate = request;
@@ -595,14 +594,14 @@ export function useCanvasConnectionController({
         setMouseWorld(position);
         clearBatchConnection();
         return true;
-    }, [clearBatchConnection, message, nodesRef, screenToCanvas]);
+    }, [clearBatchConnection, nodesRef, screenToCanvas]);
 
     const handleBatchConnectionTargetClick = useCallback((event: ReactPointerEvent | ReactMouseEvent) => {
         if (!batchConnectionPreviewRef.current) return false;
         const completed = finishBatchConnection(event.clientX, event.clientY);
-        if (!completed) message.warning("请点击目标节点的输入端");
+        if (!completed) toast.warning("请点击目标节点的输入端");
         return true;
-    }, [finishBatchConnection, message]);
+    }, [finishBatchConnection]);
 
     const finishConnection = useCallback((clientX: number, clientY: number) => {
         updateConnectionReplaceHover(null);

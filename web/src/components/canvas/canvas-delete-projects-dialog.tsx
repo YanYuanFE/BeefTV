@@ -1,13 +1,15 @@
-import { App, Button, Modal } from "antd";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 import { deleteWorkspaceCanvasProjects } from "@/services/workspace-project-repository";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
+import { toast } from "sonner";
 
 export function CanvasDeleteProjectsDialog() {
-    const { message } = App.useApp();
     const ids = useCanvasUiStore((state) => state.deleteProjectIds);
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
     const removeSelectedIds = useCanvasUiStore((state) => state.removeSelectedProjectIds);
@@ -23,28 +25,27 @@ export function CanvasDeleteProjectsDialog() {
             removeSelectedIds(ids);
             setDeleteIds([]);
         } catch (error) {
-            message.error(error instanceof Error ? `删除画布失败：${error.message}` : "删除画布失败，请稍后重试");
+            toast.error(error instanceof Error ? `删除画布失败：${error.message}` : "删除画布失败，请稍后重试");
         } finally {
             setDeleting(false);
         }
     };
 
     return (
-        <Modal
+        <AppModal
             title={`删除${deletionLabel}？`}
             open={ids.length > 0}
-            centered
             onCancel={() => setDeleteIds([])}
             footer={
                 <>
-                    <Button onClick={() => setDeleteIds([])}>取消</Button>
-                    <Button danger type="primary" loading={deleting} onClick={() => void confirm()}>
+                    <Button variant="outline" onClick={() => setDeleteIds([])}>取消</Button>
+                    <Button variant="destructive" loading={deleting} onClick={() => void confirm()}>
                         删除
                     </Button>
                 </>
             }
         >
             <p className="text-sm text-stone-500">将删除 {ids.length} 个{deletionLabel}，里面的节点和连线也会一起移除。</p>
-        </Modal>
+        </AppModal>
     );
 }

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 import copyToClipboard from "copy-to-clipboard";
 import { nanoid } from "nanoid";
 
@@ -17,6 +16,7 @@ import type { CanvasDrawingEngine } from "@/lib/canvas/canvas-drawing-engine";
 import { useEffectiveConfig } from "@/stores/use-config-store";
 import { workflowProviderPluginEnabled } from "@/lib/plugins/builtin/workflows";
 import { usePluginStore } from "@/stores/use-plugin-store";
+import { toast } from "sonner";
 
 type CanvasClipboard = {
     nodes: CanvasNodeData[];
@@ -60,7 +60,6 @@ export function useCanvasNodeOperations({
     setDialogNodeId,
     onNodesDeleted,
 }: UseCanvasNodeOperationsOptions) {
-    const { message } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
     const runtimeStatuses = usePluginStore((state) => state.runtimeStatuses);
     const clipboardRef = useRef<CanvasClipboard | null>(null);
@@ -106,7 +105,7 @@ export function useCanvasNodeOperations({
         if (!projectId || !sourceDrawingId || !targetDrawingId) return;
         void cloneCanvasDrawing(projectId, sourceDrawingId, targetDrawingId).then((saved) => {
             if (!saved) {
-                if (source.metadata?.drawingShapeCount) message.warning("原绘图内容未在本机找到，已创建空白副本");
+                if (source.metadata?.drawingShapeCount) toast.warning("原绘图内容未在本机找到，已创建空白副本");
                 return;
             }
             // 克隆落盘后提升修订号，确保已经挂载的新卡片重新读取派生预览。
@@ -121,8 +120,8 @@ export function useCanvasNodeOperations({
                     drawingPageCount: saved.pageCount,
                 },
             } : node));
-        }).catch(() => message.error(failureMessage));
-    }, [commitNodes, message, nodesRef, projectId]);
+        }).catch(() => toast.error(failureMessage));
+    }, [commitNodes, nodesRef, projectId]);
 
     const selectNodes = useCallback((ids: Set<string>) => {
         selectedNodeIdsRef.current = ids;
@@ -133,14 +132,14 @@ export function useCanvasNodeOperations({
     const createNode = useCallback((type: CanvasNodeTypeId, position?: Position, workflowProvider?: "runninghub") => {
         const disabledReason = getCanvasNodeCreationDisabledReason(type);
         if (disabledReason) {
-            message.info(disabledReason);
+            toast.info(disabledReason);
             return;
         }
         const selectedWorkflowProvider = type === CanvasNodeType.Config
             ? workflowProvider || (workflowProviderPluginEnabled(runtimeStatuses, "runninghub") ? "runninghub" : undefined)
             : undefined;
         if (selectedWorkflowProvider && !workflowProviderPluginEnabled(runtimeStatuses, selectedWorkflowProvider)) {
-            message.error("RunningHub 工作流插件未启用");
+            toast.error("RunningHub 工作流插件未启用");
             return;
         }
         const workflowTitle = type === CanvasNodeType.Config && selectedWorkflowProvider === "runninghub" ? "RunningHub 工作流" : undefined;
@@ -171,7 +170,7 @@ export function useCanvasNodeOperations({
         selectNodes(new Set([node.id]));
         if (type === CanvasNodeType.Script) setDialogNodeId(null);
         if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Script && type !== CanvasNodeType.BatchTable && type !== CanvasNodeType.Frame && type !== CanvasNodeType.Drawing && type !== CanvasNodeType.MediaConversion) setDialogNodeId(node.id);
-    }, [commitNodes, defaultDrawingEngine, effectiveConfig.runningHub.enabled, effectiveConfig.runningHub.workflows.length, getCanvasCenter, message, nodesRef, runtimeStatuses, selectNodes, setDialogNodeId, viewportScale]);
+    }, [commitNodes, defaultDrawingEngine, effectiveConfig.runningHub.enabled, effectiveConfig.runningHub.workflows.length, getCanvasCenter, nodesRef, runtimeStatuses, selectNodes, setDialogNodeId, viewportScale]);
 
     const createFolder = useCallback((position?: Position, linked?: { id: string; projectId: string; title: string; style: CanvasFolderStyle; theme: CanvasFolderTheme; createdAt: string }) => {
         const folder = createCanvasNode(CanvasNodeType.Frame, position || getCanvasCenter(), {
@@ -193,16 +192,16 @@ export function useCanvasNodeOperations({
         folder.height = FOLDER_COLLAPSED_HEIGHT;
         commitNodes([...nodesRef.current, folder]);
         selectNodes(new Set([folder.id]));
-        message.success(linked ? "素材文件夹已放到画布，打开可浏览其中内容" : "文件夹已创建，可拖入任意非容器节点");
-    }, [commitNodes, getCanvasCenter, message, nodesRef, selectNodes]);
+        toast.success(linked ? "素材文件夹已放到画布，打开可浏览其中内容" : "文件夹已创建，可拖入任意非容器节点");
+    }, [commitNodes, getCanvasCenter, nodesRef, selectNodes]);
 
     const arrangeSelectedNodes = useCallback((mode: "row" | "column" | "grid" | "flow") => {
         const selected = nodesRef.current.filter((node) => selectedNodeIdsRef.current.has(node.id) && !node.metadata?.locked && !isFrameNode(node));
         if (selected.length < 2) return;
         const positions = mode === "flow" ? layoutCanvasFlow(selected, connectionsRef.current) : layoutCanvasNodes(selected, mode);
         commitNodes(nodesRef.current.map((node) => positions.has(node.id) ? { ...node, position: positions.get(node.id)! } : node));
-        message.success(mode === "flow" ? "已按连线整理" : "已整理选中节点");
-    }, [commitNodes, connectionsRef, message, nodesRef, selectedNodeIdsRef]);
+        toast.success(mode === "flow" ? "已按连线整理" : "已整理选中节点");
+    }, [commitNodes, connectionsRef, nodesRef, selectedNodeIdsRef]);
 
     const autoArrangeCanvasNodes = useCallback(() => {
         const currentNodes = nodesRef.current;
@@ -214,42 +213,42 @@ export function useCanvasNodeOperations({
             return !node.parentId;
         });
         if (candidates.length < 2) {
-            message.info(hasSelection ? "请至少选择两个可整理节点" : "画布中至少需要两个可整理节点");
+            toast.info(hasSelection ? "请至少选择两个可整理节点" : "画布中至少需要两个可整理节点");
             return;
         }
 
         const positions = layoutCanvasAuto(candidates, connectionsRef.current);
         commitNodes(currentNodes.map((node) => positions.has(node.id) ? { ...node, position: positions.get(node.id)! } : node));
-        message.success(hasSelection ? "已按媒体分类整理选中节点" : "已按媒体分类整理画布");
-    }, [commitNodes, connectionsRef, message, nodesRef, selectedNodeIdsRef]);
+        toast.success(hasSelection ? "已按媒体分类整理选中节点" : "已按媒体分类整理画布");
+    }, [commitNodes, connectionsRef, nodesRef, selectedNodeIdsRef]);
 
     const spreadSelectedNodes = useCallback(() => {
         const currentNodes = nodesRef.current;
         const selected = currentNodes.filter((node) => selectedNodeIdsRef.current.has(node.id) && !node.metadata?.locked && !isFrameNode(node) && !isHiddenBatchChild(node, currentNodes));
         if (selected.length < 2) {
-            message.info("请至少选择两个可整理节点");
+            toast.info("请至少选择两个可整理节点");
             return;
         }
         const positions = spreadCanvasNodes(selected);
         if (!positions.size) return;
         commitNodes(currentNodes.map((node) => positions.has(node.id) ? { ...node, position: positions.get(node.id)! } : node));
-        message.success("已按相对布局加大间距");
-    }, [commitNodes, message, nodesRef, selectedNodeIdsRef]);
+        toast.success("已按相对布局加大间距");
+    }, [commitNodes, nodesRef, selectedNodeIdsRef]);
 
     const alignSelectedNodes = useCallback((mode: CanvasAlignmentMode) => {
         const selected = nodesRef.current.filter((node) => selectedNodeIdsRef.current.has(node.id) && !node.metadata?.locked && !isFrameNode(node));
         if (selected.length < 2 || ((mode === "distributeX" || mode === "distributeY") && selected.length < 3)) return;
         const positions = alignCanvasNodes(selected, mode);
         commitNodes(nodesRef.current.map((node) => positions.has(node.id) ? { ...node, position: positions.get(node.id)! } : node));
-        message.success(mode === "distributeX" || mode === "distributeY" ? "已等距分布选中节点" : "已对齐选中节点");
-    }, [commitNodes, message, nodesRef, selectedNodeIdsRef]);
+        toast.success(mode === "distributeX" || mode === "distributeY" ? "已等距分布选中节点" : "已对齐选中节点");
+    }, [commitNodes, nodesRef, selectedNodeIdsRef]);
 
     const createStoryboardGroup = useCallback(() => {
         const images = nodesRef.current
             .filter((node) => selectedNodeIdsRef.current.has(node.id) && !node.metadata?.locked && node.type === CanvasNodeType.Image && Boolean(node.metadata?.content))
             .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x);
         if (images.length < 2) {
-            message.warning("请至少选择两张已有图片");
+            toast.warning("请至少选择两张已有图片");
             return;
         }
         const gap = 24;
@@ -292,15 +291,15 @@ export function useCanvasNodeOperations({
         ];
         commitNodes(nextNodes);
         selectNodes(new Set([frame.id]));
-        message.success(`已创建 ${images.length} 镜分镜组`);
-    }, [commitNodes, message, nodesRef, selectNodes, selectedNodeIdsRef]);
+        toast.success(`已创建 ${images.length} 镜分镜组`);
+    }, [commitNodes, nodesRef, selectNodes, selectedNodeIdsRef]);
 
     const createReferenceGroup = useCallback(() => {
         const media = nodesRef.current
             .filter((node) => selectedNodeIdsRef.current.has(node.id) && !node.metadata?.locked && (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video) && Boolean(node.metadata?.content))
             .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x);
         if (media.length < 2) {
-            message.warning("请至少选择两个已有图片或视频节点");
+            toast.warning("请至少选择两个已有图片或视频节点");
             return;
         }
         const gap = 20;
@@ -343,16 +342,16 @@ export function useCanvasNodeOperations({
             frame,
         ]);
         selectNodes(new Set([frame.id]));
-        message.success(`已创建 ${media.length} 项引用组，折叠后可作为路由节点`);
-    }, [commitNodes, message, nodesRef, selectNodes, selectedNodeIdsRef]);
+        toast.success(`已创建 ${media.length} 项引用组，折叠后可作为路由节点`);
+    }, [commitNodes, nodesRef, selectNodes, selectedNodeIdsRef]);
 
     const toggleNodeLocked = useCallback((nodeId: string) => {
         const target = nodesRef.current.find((node) => node.id === nodeId);
         if (!target) return;
         const locked = !target.metadata?.locked;
         commitNodes(nodesRef.current.map((node) => node.id === nodeId ? { ...node, metadata: { ...node.metadata, locked } } : node));
-        message.success(locked ? "节点已锁定位置和尺寸" : "节点已解锁");
-    }, [commitNodes, message, nodesRef]);
+        toast.success(locked ? "节点已锁定位置和尺寸" : "节点已解锁");
+    }, [commitNodes, nodesRef]);
 
     const deleteNodes = useCallback((ids: Set<string>) => {
         if (!ids.size) return;
@@ -438,8 +437,8 @@ export function useCanvasNodeOperations({
         if (!target) return;
         const rootId = target.metadata?.versionOfNodeId || target.id;
         commitNodes(nodesRef.current.map((node) => (node.metadata?.versionOfNodeId || node.id) === rootId ? { ...node, metadata: { ...node.metadata, versionPrimary: node.id === nodeId } } : node));
-        message.success(`已将 ${target.metadata?.versionLabel || target.title} 设为主版本`);
-    }, [commitNodes, message, nodesRef]);
+        toast.success(`已将 ${target.metadata?.versionLabel || target.title} 设为主版本`);
+    }, [commitNodes, nodesRef]);
 
     const copyNodesToClipboard = useCallback((targetIds: Set<string>) => {
         if (!targetIds.size) return;

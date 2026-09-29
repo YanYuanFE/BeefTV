@@ -1,10 +1,14 @@
-import { App, Button, Input, Modal, Tag } from "antd";
 import { CircleAlert, ExternalLink, Import, LoaderCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { buildLibTVImagePreviewUrl, buildLibTVVideoPreviewUrl, buildLibTVVideoSourceUrl, formatLibTVBatchTime, parseLibTVProjectUUID } from "@/lib/canvas/libtv-import";
 import { importLibTVCanvas, type LibTVImportResult } from "@/services/api/libtv";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 type Props = {
     open: boolean;
@@ -46,7 +50,6 @@ function buildCanvasNodes(result: LibTVImportResult, viewport: ViewportTransform
 }
 
 export function LibTVImportDialog({ open, projectId, viewport, viewportSize, onClose, onApply }: Props) {
-    const { message } = App.useApp();
     const [value, setValue] = useState("");
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<LibTVImportResult | null>(null);
@@ -70,14 +73,14 @@ export function LibTVImportDialog({ open, projectId, viewport, viewportSize, onC
 
     const load = async () => {
         if (!uuid) {
-            message.error("请填写 LibTV 画布 UUID 或链接");
+            toast.error("请填写 LibTV 画布 UUID 或链接");
             return;
         }
         setLoading(true);
         try {
             setResult(await importLibTVCanvas(projectId, uuid));
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取 LibTV 画布失败");
+            toast.error(error instanceof Error ? error.message : "读取 LibTV 画布失败");
         } finally {
             setLoading(false);
         }
@@ -90,33 +93,34 @@ export function LibTVImportDialog({ open, projectId, viewport, viewportSize, onC
             await onApply(buildCanvasNodes(result, viewport, viewportSize), result.connections);
             reset();
             onClose();
-            message.success(`已导入 ${result.importedNodeCount} 个节点和 ${result.importedConnectionCount} 条连接`);
+            toast.success(`已导入 ${result.importedNodeCount} 个节点和 ${result.importedConnectionCount} 条连接`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存导入结果失败");
+            toast.error(error instanceof Error ? error.message : "保存导入结果失败");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Modal
-            className="workspace-modal"
+        <AppModal
+            className="workspace-modal rounded-[var(--modal-radius)] border-0 bg-popover shadow-[var(--elevation-overlay)]"
             open={open}
             onCancel={close}
             title="导入 LibTV 画布"
             width={620}
             footer={
                 result ? (
-                    [
-                        <Button key="close" onClick={close}>
+                    <>
+                        <Button variant="outline" onClick={close}>
                             关闭
-                        </Button>,
-                        <Button key="apply" type="primary" icon={<Import className="size-4" />} loading={loading} onClick={() => void apply()}>
+                        </Button>
+                        <Button loading={loading} onClick={() => void apply()}>
+                            {loading ? null : <Import className="size-4" />}
                             确认导入
-                        </Button>,
-                    ]
+                        </Button>
+                    </>
                 ) : (
-                    <Button type="primary" loading={loading} onClick={() => void load()}>
+                    <Button loading={loading} onClick={() => void load()}>
                         读取画布
                     </Button>
                 )
@@ -125,13 +129,16 @@ export function LibTVImportDialog({ open, projectId, viewport, viewportSize, onC
             <div className="space-y-4">
                 <div>
                     <label className="mb-2 block text-sm font-medium">LibTV 画布 UUID 或链接</label>
+                    <div className="relative">
                     <Input
+                        className="pr-8"
                         value={value}
                         onChange={(event) => changeValue(event.target.value)}
                         placeholder="粘贴 32 位 UUID、画布链接或分享链接"
                         disabled={loading}
-                        suffix={uuid && value !== uuid ? <ExternalLink className="size-4 text-foreground/35" /> : null}
                     />
+                    {uuid && value !== uuid ? <ExternalLink className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-foreground/35" /> : null}
+                    </div>
                 </div>
                 {loading && !result ? (
                     <div className="flex items-center gap-2 text-sm text-foreground/55">
@@ -147,7 +154,7 @@ export function LibTVImportDialog({ open, projectId, viewport, viewportSize, onC
                                     <div className="text-sm font-semibold">{result.projectName || "LibTV 画布"}</div>
                                     <div className="mt-1 text-sm text-foreground/60">可导入 {result.importedNodeCount} 个节点 · {result.importedConnectionCount} 条连线</div>
                                 </div>
-                                <Tag color="blue">批次：{formatLibTVBatchTime(result.batchCreatedAt)}</Tag>
+                                <Badge variant="outline">批次：{formatLibTVBatchTime(result.batchCreatedAt)}</Badge>
                             </div>
                             <div className="mt-3 text-xs leading-5 text-foreground/50">节点会保留相对位置，并整体放到当前可视区域中心。</div>
                         </div>
@@ -166,11 +173,11 @@ export function LibTVImportDialog({ open, projectId, viewport, viewportSize, onC
                             </div>
                         ) : null}
                         <div className="flex flex-wrap gap-2">
-                            <Tag>等待确认导入</Tag>
+                            <Badge variant="secondary">等待确认导入</Badge>
                         </div>
                     </div>
                 ) : null}
             </div>
-        </Modal>
+        </AppModal>
     );
 }

@@ -1,4 +1,4 @@
-import { ChevronRight, Home, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sun, Moon } from "lucide-react";
+import { ChevronRight, Home, LogOut, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sun, Moon } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
@@ -10,6 +10,8 @@ import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { cn } from "@/lib/utils";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
+import { readAccountLabel, signOut } from "@/services/account-session";
+import { useConfigStore } from "@/stores/use-config-store";
 import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -255,6 +257,10 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
     const [searchParams] = useSearchParams();
     const features = useUserStore((state) => state.features);
     const { groups, footer } = useMemo(() => buildNav(features), [features]);
+    const navigate = useNavigate();
+    // Re-read on channel changes so the label follows sign-in and sign-out.
+    const accountKey = useConfigStore((state) => state.config.channels.find((channel) => channel.id === "account")?.apiKey || "");
+    const accountLabel = accountKey ? readAccountLabel() : "";
 
     const rawSlug = pathname.split("/").filter(Boolean)[0] || "home";
     // `/project` is the LibTV-compatible alias for the existing canvas library route.
@@ -306,6 +312,19 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
                     {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
                     {!collapsed && <span className="text-sm">{theme === "dark" ? "浅色模式" : "深色模式"}</span>}
                 </AnimatedThemeToggler>
+                <button
+                    type="button"
+                    title={accountLabel ? `退出登录（${accountLabel}）` : "退出登录"}
+                    aria-label="退出登录"
+                    onClick={() => {
+                        signOut();
+                        navigate("/login", { replace: true });
+                    }}
+                    className="flex min-h-9 items-center justify-center gap-2 rounded-lg text-foreground/65 hover:bg-foreground/5 hover:text-foreground focus-visible:outline focus-visible:outline-2"
+                >
+                    <LogOut className="size-4" />
+                    {!collapsed && <span className="truncate text-sm">退出登录{accountLabel ? ` · ${accountLabel}` : ""}</span>}
+                </button>
             </div>
         </div>
     );

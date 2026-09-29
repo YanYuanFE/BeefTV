@@ -102,7 +102,7 @@ describe("模式接线", () => {
 
     test("姿态模式提供全身与当前骨骼重置，不删除动画轨道", () => {
         const inspector = slice(workbench, "function ObjectInspector(", "function LightInspector(");
-        expect(inspector).toContain('onClick={() => applyPose("stand")}>重置姿态</Button>');
+        expect(inspector).toContain('onClick={() => applyPose("stand")} className="w-full">重置姿态</Button>');
         expect(inspector).toContain("delete boneOverrides[selectedBoneId]");
         expect(inspector).toContain(">重置当前骨骼</Button>");
         expect(inspector).not.toContain("boneTracks: []");
@@ -168,7 +168,7 @@ describe("模式接线", () => {
 
     test("draft/history/save 的生命周期 effect 一律不依赖 mode", () => {
         // 逐个锁住依赖数组：任一处混入 mode，切模式就会掉草稿或掉历史。
-        expect(workbench).toContain("}, [message, modal, open, scene, writeDraft]);");
+        expect(workbench).toContain("}, [open, scene, writeDraft]);");
         expect(workbench).toContain("}, [mirrorDraft, stagedTransaction]);");
         expect(workbench).toContain("}, [mirrorDraft]);");
         // 快捷键监听只随 open 装卸，不随 mode 反复重挂。

@@ -1,7 +1,6 @@
 import { ImageSizePicker } from "./image-size-picker";
 import { imageResolutionUsesQuality } from "@/lib/image-size-presets";
 import { type ReactNode } from "react";
-import { ConfigProvider } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
@@ -126,17 +125,9 @@ export function applyImageSizeSelection(onConfigChange: ImageSettingsPanelProps[
     if (quality) onConfigChange("quality", quality);
 }
 
-export function ImageSettingsTheme({ theme, children }: { theme: CanvasTheme; children: ReactNode }) {
-    return (
-        <ConfigProvider
-            theme={{
-                token: { colorBgContainer: theme.canvas.background, colorBgElevated: theme.canvas.background, colorBorder: theme.node.stroke, colorPrimary: theme.node.activeStroke, colorText: theme.node.text, colorTextLightSolid: theme.node.panel },
-                components: { Button: { defaultBg: theme.canvas.background, defaultBorderColor: theme.node.stroke, defaultColor: theme.node.text } },
-            }}
-        >
-            {children}
-        </ConfigProvider>
-    );
+/** Scope wrapper kept for callers; theming now comes from CSS tokens. */
+export function ImageSettingsTheme({ children }: { theme: CanvasTheme; children: ReactNode }) {
+    return <>{children}</>;
 }
 
 export function imageQualityLabel(value: string) {

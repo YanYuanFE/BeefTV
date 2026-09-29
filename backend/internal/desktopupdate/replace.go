@@ -177,7 +177,7 @@ func retryIO(op func() error) error {
 func relaunchTarget(req HelperRequest) error {
 	switch {
 	case strings.HasPrefix(req.Platform, "darwin"):
-		cmd := exec.Command(filepath.Join(req.TargetPath, "Contents", "MacOS", "BeefTV"))
+		cmd := exec.Command(filepath.Join(req.TargetPath, "Contents", "MacOS", "Framely"))
 		cmd.Dir = filepath.Dir(req.TargetPath)
 		if err := cmd.Start(); err != nil {
 			return err

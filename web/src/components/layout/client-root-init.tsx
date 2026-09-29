@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { App } from "antd";
 
 import { createModelChannel, useConfigStore } from "@/stores/use-config-store";
 import { navigateToSettings } from "@/lib/settings-navigation";
@@ -13,6 +12,7 @@ import { useUserStore } from "@/stores/use-user-store";
 import { appQueryClient } from "@/lib/query-client";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
 import { getActiveUserScope } from "@/lib/user-scope";
+import { toast } from "sonner";
 
 export function ClientRootInit({ children }: { children: ReactNode }) {
     const config = useConfigStore((state) => state.config);
@@ -22,7 +22,6 @@ export function ClientRootInit({ children }: { children: ReactNode }) {
     const assetsHydrated = useAssetStore((state) => state.hydrated);
     const canvasHydrated = useCanvasStore((state) => state.hydrated);
     const localMode = isLocalWorkspaceMode() || storageMode === "local" || user?.username === "local";
-    const { message } = App.useApp();
     const handledConfigParams = useRef(false);
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const setRuntimeStatuses = usePluginStore((state) => state.setRuntimeStatuses);
@@ -134,9 +133,9 @@ export function ClientRootInit({ children }: { children: ReactNode }) {
         );
         if (baseUrl) updateConfig("baseUrl", baseUrl);
         navigateToSettings({ section: "channels" });
-        if (ignoredApiKey) message.warning("出于安全考虑，链接中的 API Key 已忽略，请在配置中手动填写");
-        else message.success("已导入本地直连地址");
-    }, [config.channels, message, updateConfig]);
+        if (ignoredApiKey) toast.warning("出于安全考虑，链接中的 API Key 已忽略，请在配置中手动填写");
+        else toast.success("已导入本地直连地址");
+    }, [config.channels, updateConfig]);
 
     return <>{children}</>;
 }

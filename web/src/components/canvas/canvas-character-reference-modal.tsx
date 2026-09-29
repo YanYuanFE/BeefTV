@@ -20,7 +20,6 @@ export function CanvasCharacterReferenceModal({ node, open, onClose }: { node: C
             open={open}
             title={null}
             footer={null}
-            destroyOnHidden
             width="min(1180px, calc(100vw - 32px))"
             onCancel={onClose}
             flush

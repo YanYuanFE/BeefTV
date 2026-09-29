@@ -1,9 +1,11 @@
-import { App, Button, Popconfirm, Select } from "antd";
+import { Button } from "@/components/ui/button";
+import { ConfirmPopover } from "@/components/ui/confirm-popover";
+import { Select } from "@/components/ui/base/select";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { Link2, Unlink, X } from "lucide-react";
+import { Link2, Loader2, Unlink, X } from "lucide-react";
 
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
 import { PaginationBar } from "@/components/layout/workspace-page";
@@ -12,9 +14,9 @@ import { linkCanvasUnit, listProjectCanvases, unlinkCanvasProject, unlinkCanvasU
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 
 import { type ProjectDetailViewProps } from "./shared";
+import { toast } from "sonner";
 
 export default function ProjectCanvasesView({ detail, refreshProject }: ProjectDetailViewProps) {
-    const { message } = App.useApp();
     const [linkingCanvasId, setLinkingCanvasId] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(40);
@@ -30,13 +32,13 @@ export default function ProjectCanvasesView({ detail, refreshProject }: ProjectD
     }, [canvasesQuery.data, page, pageSize]);
     const linkMutation = useMutation({
         mutationFn: ({ canvasId, unitId }: { canvasId: string; unitId: string }) => linkCanvasUnit(detail.project.id, { canvasId, unitId, role: "storyboard" }),
-        onSuccess: () => { setLinkingCanvasId(""); refreshProject(); message.success("画布已关联章节"); },
-        onError: (error) => message.error(error instanceof Error ? error.message : "画布关联失败"),
+        onSuccess: () => { setLinkingCanvasId(""); refreshProject(); toast.success("画布已关联章节"); },
+        onError: (error) => toast.error(error instanceof Error ? error.message : "画布关联失败"),
     });
     const unlinkUnitMutation = useMutation({
         mutationFn: ({ canvasId, unitId }: { canvasId: string; unitId: string }) => unlinkCanvasUnit(detail.project.id, canvasId, unitId),
-        onSuccess: () => { refreshProject(); message.success("已解除章节关联"); },
-        onError: (error) => message.error(error instanceof Error ? error.message : "解除章节关联失败"),
+        onSuccess: () => { refreshProject(); toast.success("已解除章节关联"); },
+        onError: (error) => toast.error(error instanceof Error ? error.message : "解除章节关联失败"),
     });
     const unlinkProjectMutation = useMutation({
         mutationFn: (canvasId: string) => unlinkCanvasProject(detail.project.id, canvasId),
@@ -44,9 +46,9 @@ export default function ProjectCanvasesView({ detail, refreshProject }: ProjectD
             // 服务端解除后立即同步本地画布归属，避免后续自动保存把旧关系重新写回。
             useCanvasStore.getState().updateProject(canvasId, { projectId: undefined });
             refreshProject();
-            message.success("已解除项目关系，画布文档仍保留在创作画布中");
+            toast.success("已解除项目关系，画布文档仍保留在创作画布中");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "解除项目关系失败"),
+        onError: (error) => toast.error(error instanceof Error ? error.message : "解除项目关系失败"),
     });
     const canvasUnitLinks = canvasesQuery.data?.canvasUnitLinks || [];
     const linksByCanvas = useMemo(() => canvasUnitLinks.reduce<Record<string, typeof canvasUnitLinks>>((result, link) => { (result[link.canvasId] ||= []).push(link); return result; }, {}), [canvasUnitLinks]);
@@ -81,10 +83,13 @@ export default function ProjectCanvasesView({ detail, refreshProject }: ProjectD
                                             )) : <span className="py-0.5 text-[var(--fs-tiny)] text-foreground/38">尚未关联章节</span>}
                                         </div>
                                         <div className="mt-1.5 flex items-center gap-1.5">
-                                            <Select size="small" className="min-w-0 flex-1" placeholder={unlinkedUnits.length ? "关联更多章节" : "全部章节已关联"} disabled={!unlinkedUnits.length} options={unlinkedUnits.map((unit) => ({ label: `${String(unit.position + 1).padStart(2, "0")} · ${unit.title}`, value: unit.id }))} onChange={(unitId) => { setLinkingCanvasId(canvas.id); linkMutation.mutate({ canvasId: canvas.id, unitId }); }} loading={linkMutation.isPending && linkingCanvasId === canvas.id} suffixIcon={<Link2 className="size-3.5" />} />
-                                            <Popconfirm title="解除画布与项目的关系？" description="画布文档不会删除，之后仍可在“画布”中打开。" okText="解除关系" cancelText="取消" okButtonProps={{ danger: true, loading: unlinkProjectMutation.isPending }} onConfirm={() => unlinkProjectMutation.mutate(canvas.id)}>
-                                                <Tooltip title="解除项目关系"><Button size="small" type="text" danger icon={<Unlink className="size-3.5" />} aria-label="解除项目关系" /></Tooltip>
-                                            </Popconfirm>
+                                            {linkMutation.isPending && linkingCanvasId === canvas.id ? <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-label="正在关联章节" /> : <Link2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                                            <Select size="sm" className="min-w-0 flex-1" placeholder={unlinkedUnits.length ? "关联更多章节" : "全部章节已关联"} disabled={!unlinkedUnits.length} options={unlinkedUnits.map((unit) => ({ label: `${String(unit.position + 1).padStart(2, "0")} · ${unit.title}`, value: unit.id }))} onChange={(unitId) => { setLinkingCanvasId(canvas.id); linkMutation.mutate({ canvasId: canvas.id, unitId }); }} />
+                                            <Tooltip title="解除项目关系">
+                                                <ConfirmPopover title="解除画布与项目的关系？" description="画布文档不会删除，之后仍可在“画布”中打开。" okText="解除关系" cancelText="取消" danger onConfirm={() => unlinkProjectMutation.mutate(canvas.id)}>
+                                                    <Button size="icon-sm" variant="destructive" aria-label="解除项目关系"><Unlink className="size-3.5" /></Button>
+                                                </ConfirmPopover>
+                                            </Tooltip>
                                         </div>
                                     </div>
                                 }

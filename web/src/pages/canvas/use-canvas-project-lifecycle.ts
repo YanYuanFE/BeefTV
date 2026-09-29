@@ -1,6 +1,5 @@
 import { mergeCanvasRefreshPatch } from "@/lib/canvas/canvas-patch-merge";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { App } from "antd";
 import { useNavigate } from "react-router";
 
 import { canvasAppearanceBaseTheme, canvasAppearanceForTheme, DEFAULT_CANVAS_BACKGROUND_MODE, normalizeCanvasAppearance, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
@@ -23,6 +22,7 @@ import { useUserStore } from "@/stores/use-user-store";
 import { isLocalWorkspaceMode } from "@/services/workspace-mode";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
 import type { CanvasHistorySnapshot } from "./use-canvas-history";
+import { toast } from "sonner";
 
 function isExpectedLocalOnlySyncError(error: unknown) {
     const message = error instanceof Error ? error.message : String(error || "");
@@ -90,7 +90,6 @@ export function useCanvasProjectLifecycle({
     cleanupAssetImages,
     cleanupCanvasFiles,
 }: UseCanvasProjectLifecycleOptions) {
-    const { message } = App.useApp();
     const navigate = useNavigate();
     const hydrated = useCanvasStore((state) => state.hydrated);
     const sessionHydrated = useUserStore((state) => state.hydrated);
@@ -202,7 +201,7 @@ export function useCanvasProjectLifecycle({
                     });
                 })
                 .catch(() => {
-                    if (!cancelled) message.warning("部分助手会话素材恢复失败，已使用项目记录继续打开");
+                    if (!cancelled) toast.warning("部分助手会话素材恢复失败，已使用项目记录继续打开");
                 });
         };
         void load()
@@ -227,13 +226,13 @@ export function useCanvasProjectLifecycle({
                 }
                 const detail = error instanceof Error ? error.message : (localMode ? "读取本地画布失败，请重试" : "读取画布失败，请重试");
                 if (useSyncProgressStore.getState().syncingProjects[projectId]?.phase !== "conflict") useSyncProgressStore.getState().setProjectProgress(projectId, { phase: "error", message: localMode ? detail : (error instanceof Error ? error.message : "读取云端版本失败") });
-                if (keepEditor) message.error(detail);
+                if (keepEditor) toast.error(detail);
                 else setLoadError(detail);
             });
         return () => {
             cancelled = true;
         };
-    }, [hydrated, sessionHydrated, loadAttempt, message, navigate, openProject, projectId, resetHistory, setActiveChatId, setBackgroundMode, setCanvasAppearance, setChatSessions, setConnections, setNodes, setShowImageInfo, setViewport]);
+    }, [hydrated, sessionHydrated, loadAttempt, navigate, openProject, projectId, resetHistory, setActiveChatId, setBackgroundMode, setCanvasAppearance, setChatSessions, setConnections, setNodes, setShowImageInfo, setViewport]);
 
     useEffect(() => {
         if (!projectLoaded) return;
@@ -310,15 +309,15 @@ export function useCanvasProjectLifecycle({
         if (localMode) {
             void createWorkspaceCanvasProject("未命名画布", domainProjectId, undefined, workspaceProjectId)
                 .then(({ id }) => navigate(`/canvas/${id}`))
-                .catch((error) => message.error(error instanceof Error ? `新建画布失败：${error.message}` : "新建画布失败，请稍后重试"));
+                .catch((error) => toast.error(error instanceof Error ? `新建画布失败：${error.message}` : "新建画布失败，请稍后重试"));
             return;
         }
         void createWorkspaceCanvasProject("未命名画布", domainProjectId, undefined, workspaceProjectId).then(({ id, syncError }) => {
             // 本地/访客模式下没有远端同步会话，这是预期状态，不应在画布中央弹出错误 toast。
-            if (syncError && !isExpectedLocalOnlySyncError(syncError)) message.warning(syncError instanceof Error ? `画布已在本地创建，云端同步失败：${syncError.message}` : "画布已在本地创建，云端同步失败");
+            if (syncError && !isExpectedLocalOnlySyncError(syncError)) toast.warning(syncError instanceof Error ? `画布已在本地创建，云端同步失败：${syncError.message}` : "画布已在本地创建，云端同步失败");
             navigate(`/canvas/${id}`);
-        }).catch((error) => message.error(error instanceof Error ? `新建画布失败：${error.message}` : "新建画布失败，请稍后重试"));
-    }, [currentProject, localMode, message, navigate]);
+        }).catch((error) => toast.error(error instanceof Error ? `新建画布失败：${error.message}` : "新建画布失败，请稍后重试"));
+    }, [currentProject, localMode, navigate]);
 
     const deleteCurrentProject = useCallback(async () => {
         const siblingCanvases = listCanvasWorkspaceProjectCanvases(useCanvasStore.getState().projects, projectId);
@@ -330,16 +329,16 @@ export function useCanvasProjectLifecycle({
             drawingIds = drawingIds.filter((id) => !preserved.has(id));
             await deleteWorkspaceCanvasProjects([projectId]);
         } catch (error) {
-            message.error(error instanceof Error ? `删除画布失败：${error.message}` : "删除画布失败，请稍后重试");
+            toast.error(error instanceof Error ? `删除画布失败：${error.message}` : "删除画布失败，请稍后重试");
             return;
         }
         if (drawingIds.length) {
             void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId)))
-                .catch(() => message.warning("项目已删除，但部分本地绘图缓存清理失败"));
+                .catch(() => toast.warning("项目已删除，但部分本地绘图缓存清理失败"));
         }
         cleanupAssetImages();
         navigate(nextCanvas ? `/canvas/${nextCanvas.id}` : "/canvas");
-    }, [cleanupAssetImages, localMode, message, navigate, nodesRef, projectId]);
+    }, [cleanupAssetImages, localMode, navigate, nodesRef, projectId]);
 
     const renameCurrentProject = useCallback((title: string) => {
         if (!currentProject) return;
@@ -390,36 +389,36 @@ export function useCanvasProjectLifecycle({
         try {
             await persistLocalEdits();
         } catch {
-            message.error("画布保存失败，请稍后重试");
+            toast.error("画布保存失败，请稍后重试");
             return false;
         }
         if (!hasRemoteUserDataSyncSession()) {
-            message.success("画布已保存到本地");
+            toast.success("画布已保存到本地");
             return true;
         }
         try {
             await saveRemoteUserDataNow(projectId);
-            message.success("画布已保存到云端");
+            toast.success("画布已保存到云端");
         } catch (error) {
             const detail = error instanceof Error ? error.message : "未知错误";
-            if (!isExpectedLocalOnlySyncError(error)) message.warning(`本地画布布局已保存，云端同步失败：${detail}`);
+            if (!isExpectedLocalOnlySyncError(error)) toast.warning(`本地画布布局已保存，云端同步失败：${detail}`);
             // Imports can retain their durable local result; sharing requires cloud success.
             return options.requireRemote === false;
         }
         return true;
-    }, [message, persistLocalEdits, projectId]);
+    }, [persistLocalEdits, projectId]);
 
     const forceSaveCanvasProject = useCallback(async (): Promise<boolean> => {
-        try { await persistLocalEdits(); } catch { message.error("本地保存失败，请重试"); return false; }
+        try { await persistLocalEdits(); } catch { toast.error("本地保存失败，请重试"); return false; }
         try {
             const result = await forceOverwriteRemoteCanvasSync();
-            message.success(result.reboundNodes > 0 ? `已保存，并修复 ${result.reboundNodes} 处媒体与素材的绑定` : "素材关联已核对，画布已保存");
+            toast.success(result.reboundNodes > 0 ? `已保存，并修复 ${result.reboundNodes} 处媒体与素材的绑定` : "素材关联已核对，画布已保存");
         } catch (error) {
-            message.error(`修复并保存失败：${error instanceof Error ? error.message : "未知错误"}`);
+            toast.error(`修复并保存失败：${error instanceof Error ? error.message : "未知错误"}`);
             return false;
         }
         return true;
-    }, [message, persistLocalEdits]);
+    }, [persistLocalEdits]);
 
     const clearCanvasFiles = useCallback(() => {
         cleanupCanvasFiles({ projectId, nodes: [], chatSessions: [] });

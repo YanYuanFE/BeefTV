@@ -33,13 +33,13 @@ describe("public release boundary", () => {
         const destinationParent = temporaryDirectory("beeftv-public-destination-");
         const destination = join(destinationParent, "snapshot");
 
-        fixtureFile(source, "README.md", "# BeefTV\n");
+        fixtureFile(source, "README.md", "# Framely\n");
         fixtureFile(source, "LICENSE", "MIT\n");
         fixtureFile(source, "NOTICE", "Third-party notices\n");
         fixtureFile(source, "backend/go.mod", "module example.invalid/beeftv/backend\n");
         fixtureFile(source, "web/package.json", '{"name":"beeftv"}\n');
         fixtureFile(source, "web/src/main.tsx", "export {};\n");
-        fixtureFile(source, "web/scripts/beeftv-local-network-audit.mjs", "export {};\n");
+        fixtureFile(source, "web/scripts/framely-local-network-audit.mjs", "export {};\n");
         fixtureFile(source, "web/scripts/private-audit.mjs", "export {};\n");
         fixtureFile(source, ".git/config");
         fixtureFile(source, ".worktrees/private/HEAD");
@@ -53,7 +53,7 @@ describe("public release boundary", () => {
         fixtureFile(source, "backend/desktop");
         fixtureFile(source, "backend/cmd/desktop/frontend/dist/.gitkeep", "");
         fixtureFile(source, "backend/cmd/desktop/frontend/dist/index.html", "generated");
-        fixtureFile(source, "backend/cmd/desktop/build/bin/BeefTV.app/Contents/MacOS/BeefTV");
+        fixtureFile(source, "backend/cmd/desktop/build/bin/Framely.app/Contents/MacOS/Framely");
         fixtureFile(source, "debug.log");
         fixtureFile(source, "release.dmg");
         fixtureFile(source, "plugin-packages/example.beeftv-plugin");
@@ -62,7 +62,7 @@ describe("public release boundary", () => {
 
         expect(result.status).toBe(0);
         expect(existsSync(join(destination, "web/src/main.tsx"))).toBe(true);
-        expect(existsSync(join(destination, "web/scripts/beeftv-local-network-audit.mjs"))).toBe(true);
+        expect(existsSync(join(destination, "web/scripts/framely-local-network-audit.mjs"))).toBe(true);
         expect(existsSync(join(destination, "web/scripts/private-audit.mjs"))).toBe(false);
         expect(existsSync(join(destination, ".git"))).toBe(false);
         expect(existsSync(join(destination, ".worktrees"))).toBe(false);
@@ -87,7 +87,7 @@ describe("public release boundary", () => {
         const destinationParent = temporaryDirectory("beeftv-public-audit-destination-");
         const destination = join(destinationParent, "snapshot");
 
-        fixtureFile(source, "README.md", "# BeefTV\n");
+        fixtureFile(source, "README.md", "# Framely\n");
         fixtureFile(source, "LICENSE", "MIT\n");
         fixtureFile(source, "NOTICE", "Third-party notices\n");
         fixtureFile(source, "backend/go.mod", "module example.invalid/beeftv/backend\n");
@@ -106,7 +106,7 @@ describe("public release boundary", () => {
     test("export refuses to merge into an existing destination", () => {
         const source = temporaryDirectory("beeftv-public-existing-source-");
         const destination = temporaryDirectory("beeftv-public-existing-destination-");
-        fixtureFile(source, "README.md", "# BeefTV\n");
+        fixtureFile(source, "README.md", "# Framely\n");
 
         const result = spawnSync("sh", [exportScript, source, destination], { encoding: "utf8" });
 

@@ -1,8 +1,9 @@
 import { memo, useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { Input, Modal } from "antd";
-import { AudioLines, BookOpenText, Clock3, FileText, Image, Pencil, Search, Video } from "lucide-react";
+import { AudioLines, BookOpenText, Clock3, FileText, Image, Pencil, Search, Video, X } from "lucide-react";
 
 import { WorkspaceState } from "@/components/layout/workspace-state";
+import { Input } from "@/components/ui/input";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { canvasNodeMaterialSummary, canvasNodeSearchContext, canvasNodeSearchTimes, searchCanvasNodes } from "@/lib/canvas/canvas-node-search";
 import { canvasNodeVideoPreviewUrl } from "@/lib/canvas/canvas-media-preview";
 import { getNodeListLabel } from "@/lib/canvas/node-registry";
@@ -38,7 +39,7 @@ export function CanvasNodeSearchModal({ open, nodes, onClose, onFocus }: { open:
     };
 
     return (
-        <Modal
+        <AppModal
             title="搜索画布节点"
             open={open}
             footer={null}
@@ -46,20 +47,26 @@ export function CanvasNodeSearchModal({ open, nodes, onClose, onFocus }: { open:
             onCancel={onClose}
             afterClose={() => { setQuery(""); setActiveIndex(0); }}
             styles={{ body: { paddingTop: 8 } }}
-            centered
         >
-            <Input
-                autoFocus
-                allowClear
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={handleInputKeyDown}
-                prefix={<Search className="size-4 opacity-50" />}
-                placeholder="搜索节点、章节、镜头、模型或标签…"
-                aria-label="搜索画布节点"
-                aria-controls={RESULT_LIST_ID}
-                aria-activedescendant={results[activeIndex] ? `canvas-node-search-result-${results[activeIndex].id}` : undefined}
-            />
+            <div className="relative">
+                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 opacity-50" />
+                <Input
+                    autoFocus
+                    className="px-8"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder="搜索节点、章节、镜头、模型或标签…"
+                    aria-label="搜索画布节点"
+                    aria-controls={RESULT_LIST_ID}
+                    aria-activedescendant={results[activeIndex] ? `canvas-node-search-result-${results[activeIndex].id}` : undefined}
+                />
+                {query ? (
+                    <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setQuery("")}>
+                        <X className="size-3.5" />
+                    </button>
+                ) : null}
+            </div>
             <div className="mt-2 flex min-h-7 items-center justify-between gap-3 border-b pb-2 text-[11px] tracking-[0.015em] text-foreground/45">
                 <span className="tabular-nums">{query.trim() ? `找到 ${results.length} 个节点` : `最近编辑 · ${results.length} 个节点`}</span>
                 <span className="hidden sm:inline">↑↓ 选择 · Enter 定位 · Esc 关闭</span>
@@ -75,7 +82,7 @@ export function CanvasNodeSearchModal({ open, nodes, onClose, onFocus }: { open:
                     />
                 )) : <WorkspaceState icon="canvas" compact title="没有匹配节点" description="换一个节点、章节、镜头、模型或标签继续搜索。" />}
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

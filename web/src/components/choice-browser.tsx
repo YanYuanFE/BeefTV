@@ -1,5 +1,6 @@
-import { Input } from "antd";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
+
+import { Input } from "@/components/ui/input";
 import { useId, useState, type ReactNode } from "react";
 import "./choice-browser.css";
 
@@ -47,7 +48,15 @@ export function ChoiceBrowser({
 
     return (
         <div className="choice-browser">
-            <Input id={id} {...aria} allowClear aria-label={`搜索${label}`} disabled={unavailable} prefix={<Search className="size-3.5" aria-hidden="true" />} placeholder={placeholder} value={query} onChange={(event) => setQuery(event.target.value)} />
+            <div className="relative flex items-center">
+                <Search className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground" aria-hidden="true" />
+                <Input id={id} {...aria} aria-label={`搜索${label}`} className="pl-8 pr-8" disabled={unavailable} placeholder={placeholder} value={query} onChange={(event) => setQuery(event.target.value)} />
+                {query && !unavailable ? (
+                    <button type="button" aria-label="清除搜索" className="absolute right-2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => setQuery("")}>
+                        <X className="size-3.5" />
+                    </button>
+                ) : null}
+            </div>
             {loading || error || !options.length ? (
                 <div className="choice-browser-state" role={error ? "alert" : "status"}>
                     {loading ? "正在读取可选项…" : error || "暂无可用选项"}

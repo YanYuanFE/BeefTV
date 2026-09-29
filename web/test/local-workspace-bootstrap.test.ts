@@ -22,7 +22,9 @@ test("local workspace bootstrap is the product startup contract", () => {
     expect(hydrator).toContain("applySession: applyUserSession");
     expect(hydrator).toContain("restoreModelConfig: hydrateLocalModelConfig");
     expect(workspaceApi).toContain('"/workspace/bootstrap"');
-    expect(router).not.toContain('path: "/login"');
+    expect(router).toContain('path: "/login"');
+    expect(router).toContain("isSignedIn(state.config)");
+    expect(hydrator).toContain("hydrated && configRestored ? children");
     expect(router).not.toContain('path: "/register"');
     expect(router).not.toContain("AuthScene");
     expect(router).toContain('path: "/tasks"');

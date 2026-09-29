@@ -58,7 +58,7 @@ func WriteZip(path string, files map[string][]byte, executable map[string]bool) 
 }
 
 func WriteDarwinLayout(root, marker string) error {
-	exe := filepath.Join(root, appBundleName, "Contents", "MacOS", "BeefTV")
+	exe := filepath.Join(root, appBundleName, "Contents", "MacOS", "Framely")
 	plist := filepath.Join(root, appBundleName, "Contents", "Info.plist")
 	plugin := filepath.Join(root, appBundleName, "Contents", "Resources", pluginDirName, "official.beeftv-plugin")
 	if err := os.MkdirAll(filepath.Dir(exe), 0o755); err != nil {
@@ -91,17 +91,17 @@ func WriteWindowsLayout(root, marker string) error {
 
 func DarwinZipFiles(marker string) (map[string][]byte, map[string]bool) {
 	files := map[string][]byte{
-		"BeefTV.app/Contents/MacOS/BeefTV":                                     []byte("#!/bin/sh\necho " + marker + "\n"),
-		"BeefTV.app/Contents/Info.plist":                                       []byte("<plist></plist>"),
-		"BeefTV.app/Contents/Resources/plugin-packages/official.beeftv-plugin": []byte("official-" + marker),
+		"Framely.app/Contents/MacOS/Framely":                                     []byte("#!/bin/sh\necho " + marker + "\n"),
+		"Framely.app/Contents/Info.plist":                                       []byte("<plist></plist>"),
+		"Framely.app/Contents/Resources/plugin-packages/official.beeftv-plugin": []byte("official-" + marker),
 	}
-	execFiles := map[string]bool{"BeefTV.app/Contents/MacOS/BeefTV": true}
+	execFiles := map[string]bool{"Framely.app/Contents/MacOS/Framely": true}
 	return files, execFiles
 }
 
 func WindowsZipFiles(marker string) (map[string][]byte, map[string]bool) {
 	files := map[string][]byte{
-		"BeefTV.exe":                             []byte("MZ-" + marker),
+		"Framely.exe":                             []byte("MZ-" + marker),
 		"plugin-packages/official.beeftv-plugin": []byte("official-" + marker),
 	}
 	return files, map[string]bool{}

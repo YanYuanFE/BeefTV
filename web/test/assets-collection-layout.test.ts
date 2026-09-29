@@ -24,7 +24,7 @@ describe("asset upload entry points", () => {
         expect(page).toContain("<AssetsEmptyState onImport={() => setBatchUploadOpen(true)} />");
         expect(modal).toContain('accept="image/*,video/*"');
         expect(modal).toContain("uploadMediaFile");
-        expect(modal).toContain('message.warning(\"请选择图片或视频文件\")');
+        expect(modal).toContain('toast.warning(\"请选择图片或视频文件\")');
         expect(modal).not.toContain('title="批量上传图片"');
     });
 
@@ -112,7 +112,7 @@ describe("project card actions", () => {
         expect(styles).toContain(".recycle-bin-card.is-selected { border-color: rgba(255,255,255,.58);");
         expect(styles).toContain("appearance: none;");
         expect(styles).toContain(".recycle-bin-checkbox input:checked, .recycle-bin-select-all input:checked");
-        expect(styles).toContain(".recycle-bin-footer .ant-btn { height: 36px; min-width: 104px;");
+        expect(styles).toContain(".recycle-bin-footer [data-slot=button] { height: 36px; min-width: 104px;");
         expect(styles).not.toContain(".recycle-bin-checkbox input, .recycle-bin-select-all input { width: 16px; height: 16px; accent-color: var(--user-accent);");
         expect(styles).not.toContain(".recycle-bin-card.is-selected { border-color: var(--user-accent)");
         expect(styles).not.toContain(".libtv-recycle-modal-wrap");
@@ -124,9 +124,8 @@ describe("project card actions", () => {
         expect(styles).toContain(".libtv-folder-card-body { display: flex; flex-direction: column; align-items: flex-start;");
         expect(styles).toContain("gap: 2px; padding: 10px 12px;");
         expect(styles).toContain("libtv-folder-card-body { min-height: 58px; padding: 8px 40px 8px 8px;");
-        const globalStyles = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
-        expect(globalStyles).toContain("min-height: 230.8px");
-        expect(globalStyles).toContain("height: 34.8px !important");
+        expect(canvasCard).toContain("min-h-[230.8px]");
+        expect(canvasCard).toContain("[&_[role=menuitem]]:h-[34.8px]");
         expect(page).toContain('label: "打开"');
     });
 });

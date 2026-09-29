@@ -1,9 +1,9 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Input } from "antd";
-import { BookOpenText, ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { BookOpenText, ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
+import { Input } from "@/components/ui/input";
 import { AppModal } from "@/components/ui/product/app-modal/app-modal";
 import type { ProjectUnit } from "@/services/api/projects";
 
@@ -66,7 +66,11 @@ export function WorkflowChapterNavigator({ projectId, units, unitId, stage }: Pr
                         <div className="workflow-chapter-modal-current"><span>当前</span><strong>第 {currentIndex + 1} 章</strong></div>
                     </header>
                     <div className="workflow-chapter-modal-search">
-                        <Input autoFocus allowClear size="large" prefix={<Search className="size-4" />} value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="输入章节序号或标题" />
+                        <div className="relative flex min-w-[280px] max-w-[720px] flex-[1_1_720px] items-center">
+                            <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
+                            <Input autoFocus className="h-10 pr-9 pl-9" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="输入章节序号或标题" />
+                            {query ? <button type="button" aria-label="清空搜索" className="absolute right-2.5 grid size-5 place-items-center rounded text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onClick={() => { setQuery(""); setPage(1); }}><X className="size-3.5" /></button> : null}
+                        </div>
                         <span>{deferredQuery ? `找到 ${filteredUnits.length.toLocaleString("zh-CN")} 章` : `共 ${orderedUnits.length.toLocaleString("zh-CN")} 章`}</span>
                     </div>
                     <div className="workflow-chapter-list thin-scrollbar">

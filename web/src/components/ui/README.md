@@ -24,7 +24,7 @@
 1. 样式只消费三层 token（`var(--*)` 或经 `@theme` 映射的工具类，如 `bg-surface`、`text-caption`、`text-status-success`）；**禁止裸 `text-[Npx]`/`rounded-[Npx]`/十六进制色值**。字号/行高用注册排版工具类或 token 引用。
 2. 明暗自适应由 CSS 变量完成，不读皮肤 ID；持久切换 `aria-pressed` + `data-active`，保留 `:focus-visible`，尊重 `prefers-reduced-motion`。
 3. 图标以 lucide 组件引用传入（`icon={Move}`），尺寸/颜色由宿主组件决定，禁止调用方传 icon className 改尺寸。
-4. 组件头注释注明：用途、消费 token 组、对标/接管对象（AntD 组件或参考系统组件）、明暗差异要点。
+4. 组件头注释注明：用途、消费 token 组、对标/接管对象（shadcn 原语或参考系统组件）、明暗差异要点。
 
 ## 进库门槛
 
@@ -37,11 +37,11 @@
 - `base/buttons/` — IconButton / ToolButton（IconButton 含 ghost/default/outline/solid/danger 变体；ButtonGroup 规划中）
 - `base/segmented-control/` — SegmentedControl（分段单选，thumb 滑动，泛型 + block/size）
 - `base/checkbox/` — Checkbox + CheckboxGroup（原生 input + 自绘 glyph，checked/indeterminate/bare）
-- `base/select/` — Select（RAC 单选壳，value/options/allowClear；多选/搜索 ComboBox 待建）
-- `base/tooltip/` — Tooltip（RAC 浮层，AntD 8 向 placement 映射，title 空不渲染）
+- `base/select/` — Select（Radix 单选，value/options/allowClear；多选与标签输入用 `ui/tags-input`）
+- `base/tooltip/` — Tooltip（Radix 浮层，8 向 placement 映射，title 空不渲染）
 - `base/switch/` — Switch（button role=switch + data-state，checkedChildren 文本轨、loading、Form.Item 注入）
 - `product/empty-state/` — EmptyState（空态占位）
 - `product/callout/` — Callout
-- `product/app-modal/` — AppModal（产品弹窗壳，`flush` 去掉 AntD 默认内边距）
+- `product/app-modal/` — AppModal（Radix Dialog 产品弹窗，`flush` 去掉内容区内边距）
 - `product/app-drawer/` — AppDrawer（产品侧栏壳）
 - `base/buttons/` — IconButton / ToolButton / ButtonGroup（规划中，P0）

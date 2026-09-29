@@ -6,7 +6,7 @@ const taskApi = readFileSync(new URL("../src/services/api/task-center.ts", impor
 const taskSync = readFileSync(new URL("../src/lib/canvas/canvas-generation-task-sync.ts", import.meta.url), "utf8");
 const fileStorage = readFileSync(new URL("../src/services/file-storage.ts", import.meta.url), "utf8");
 const imageStorage = readFileSync(new URL("../src/services/image-storage.ts", import.meta.url), "utf8");
-const channelSettings = readFileSync(new URL("../src/pages/settings/channel-settings-pane.tsx", import.meta.url), "utf8");
+const accountSession = readFileSync(new URL("../src/services/account-session.ts", import.meta.url), "utf8");
 
 test("local generation pipeline keeps config, task lifecycle, and result storage scoped to the workspace", () => {
     expect(configStore).toContain("scopedLocalStorage");
@@ -20,8 +20,6 @@ test("local generation pipeline keeps config, task lifecycle, and result storage
     expect(fileStorage).toContain("await saveLocalMedia(storageKey, blob, previewUrl)");
     expect(imageStorage).toContain("pendingRemoteUpload");
     expect(imageStorage).toContain("await store.setItem(storageKey, blob)");
-    expect(channelSettings).toContain("fetchChannelModels(channel, !localMode)");
-    expect(channelSettings).toContain("mergeManagedBeefAPICatalog");
-    expect(channelSettings).toContain("getLocalModelConfig");
-    expect(channelSettings).toContain("shouldRefreshBeefAPICatalog");
+    expect(accountSession).toContain("fetchChannelModels(channel, !workspaceCapabilities().local)");
+    expect(accountSession).toContain("configWithChannels(current, [channel])");
 });

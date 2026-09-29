@@ -1,9 +1,11 @@
-import { ArrowLeft, ChevronDown, ChevronUp, Download, FileAudio, FileBox, FileImage, FileVideo, FolderOpen, FolderPlus, RefreshCw, Search, Settings2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Download, FileAudio, FileBox, FileImage, FileVideo, FolderOpen, FolderPlus, Loader2, RefreshCw, Search, Settings2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { App, Button, Drawer, Input, Spin, Tag, Tree, Typography } from "antd";
 import { IconButton } from "@/components/ui/base/buttons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppDrawer } from "@/components/ui/product/app-drawer";
 import { EmptyState } from "@/components/ui/product/empty-state";
-import type { DataNode } from "antd/es/tree";
 import { useNavigate } from "react-router";
 
 import "@/lib/plugins/builtin";
@@ -14,11 +16,11 @@ import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
+import { toast } from "sonner";
 import "./eagle.css";
 
 export default function EagleLibraryPage() {
     const navigate = useNavigate();
-    const { message } = App.useApp();
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     const installations = usePluginStore((state) => state.installations);
     const hydrated = usePluginStore((state) => state.hydrated);
@@ -44,7 +46,7 @@ export default function EagleLibraryPage() {
     const [previewItem, setPreviewItem] = useState<ExternalAssetItem | null>(null);
     const [foldersExpanded, setFoldersExpanded] = useState(true);
 
-    const treeData = useMemo<DataNode[]>(() => renderFolderNodes(folders), [folders]);
+    const treeData = useMemo<EagleFolderNode[]>(() => renderFolderNodes(folders), [folders]);
     const folderPath = useMemo(() => externalFolderPath(folders, selectedFolder), [folders, selectedFolder]);
     const currentFolder = folders.find((folder) => folder.id === selectedFolder);
     const visibleItems = useMemo(() => items.slice((page - 1) * pageSize, page * pageSize), [items, page, pageSize]);
@@ -99,7 +101,7 @@ export default function EagleLibraryPage() {
         try {
             await provider.createFolder(name, selectedFolder || undefined);
             setFolderName("");
-            message.success("已在" + (currentFolder?.name || "Eagle 素材库") + "中新建文件夹");
+            toast.success("已在" + (currentFolder?.name || "Eagle 素材库") + "中新建文件夹");
             await load();
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "新建 Eagle 文件夹失败");
@@ -121,11 +123,11 @@ export default function EagleLibraryPage() {
                 await provider.uploadFile(file, selectedFolder || undefined);
                 uploaded += 1;
             }
-            message.success("已写入 Eagle " + uploaded + " 个文件");
+            toast.success("已写入 Eagle " + uploaded + " 个文件");
             await load();
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "写入 Eagle 失败");
-            if (uploaded) message.warning("已写入 " + uploaded + " 个文件，剩余文件未完成");
+            if (uploaded) toast.warning("已写入 " + uploaded + " 个文件，剩余文件未完成");
         } finally {
             setProgress("");
             setWorking(false);
@@ -138,13 +140,13 @@ export default function EagleLibraryPage() {
                 <PageHeader
                     title="Eagle 素材库"
                     description={`把 Eagle 作为${brandName}的外部素材来源，直接浏览和管理 Eagle 原始文件。`}
-                    actions={<Button icon={<ArrowLeft className="size-3.5" />} onClick={() => navigate("/assets")}>返回{brandName}素材库</Button>}
+                    actions={<Button variant="outline" onClick={() => navigate("/assets")}><ArrowLeft className="size-3.5" />返回{brandName}素材库</Button>}
                 />
                 <section className="mt-4 library-card-surface flex min-h-72 flex-col items-center justify-center rounded-[var(--r-xl)] px-6 py-10 text-center">
                     <span className="grid size-14 place-items-center rounded-[var(--r-lg)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-accent)]"><FolderOpen className="size-7" aria-hidden="true" /></span>
                     <h2 className="mt-4 text-base font-semibold">先启用 Eagle 素材来源</h2>
                     <p className="mt-2 max-w-md text-sm leading-6 text-foreground/55">启用后，这里会直接显示 Eagle 原本的文件夹和文件，不会把素材复制成{brandName}本地素材。</p>
-                    <Button type="primary" className="mt-5" icon={<Settings2 className="size-4" />} onClick={() => navigate("/plugins")}>去插件中心启用</Button>
+                    <Button className="mt-5" onClick={() => navigate("/plugins")}><Settings2 className="size-4" />去插件中心启用</Button>
                 </section>
             </WorkspacePage>
         );
@@ -161,9 +163,9 @@ export default function EagleLibraryPage() {
                         actions={(
                             <div className="assets-header-actions">
                                 <div className="assets-header-action-buttons">
-                                    <Button className="library-primary-action" type="primary" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} disabled={working}>写入素材</Button>
-                                    <Button icon={<ArrowLeft className="size-3.5" />} onClick={() => navigate("/assets")}>{brandName}素材库</Button>
-                                    <Button icon={<Settings2 className="size-3.5" />} onClick={() => navigate("/plugins")}>插件设置</Button>
+                                    <Button className="library-primary-action" onClick={() => fileInputRef.current?.click()} disabled={working}><Upload className="size-3.5" />写入素材</Button>
+                                    <Button variant="outline" onClick={() => navigate("/assets")}><ArrowLeft className="size-3.5" />{brandName}素材库</Button>
+                                    <Button variant="outline" onClick={() => navigate("/plugins")}><Settings2 className="size-3.5" />插件设置</Button>
                                 </div>
                             </div>
                         )}
@@ -172,13 +174,28 @@ export default function EagleLibraryPage() {
                         className="library-toolbar"
                         active={Boolean(keyword)}
                         onReset={() => { setKeyword(""); setPage(1); void load(selectedFolder, ""); }}
-                        trailing={<Button icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void load()}>刷新</Button>}
+                        trailing={<Button variant="outline" loading={loading} onClick={() => void load()}>{loading ? null : <RefreshCw className="size-3.5" />}刷新</Button>}
                     >
-                        <Input allowClear className="w-full sm:w-80" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索 Eagle 素材标题、标签或文件夹" onChange={(event) => { setPage(1); setKeyword(event.target.value); }} onPressEnter={() => void load()} />
+                        <div className="relative w-full sm:w-80">
+                            <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-foreground/40" />
+                            <Input
+                                className="pr-8 pl-8"
+                                aria-label="搜索 Eagle 素材"
+                                value={keyword}
+                                placeholder="搜索 Eagle 素材标题、标签或文件夹"
+                                onChange={(event) => { setPage(1); setKeyword(event.target.value); }}
+                                onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void load(); }}
+                            />
+                            {keyword ? (
+                                <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground" onClick={() => { setPage(1); setKeyword(""); }}>
+                                    <X className="size-3.5" />
+                                </button>
+                            ) : null}
+                        </div>
                     </ListToolbar>
                 </div>
 
-                {error ? <div className="mt-3 flex items-start justify-between gap-3 rounded-[var(--r-lg)] bg-danger/[.08] px-4 py-3 text-sm text-danger" role="alert"><span>{error}</span><Button size="small" icon={<RefreshCw className="size-3.5" />} onClick={() => void load()}>重试</Button></div> : null}
+                {error ? <div className="mt-3 flex items-start justify-between gap-3 rounded-[var(--r-lg)] bg-danger/[.08] px-4 py-3 text-sm text-danger" role="alert"><span>{error}</span><Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="size-3.5" />重试</Button></div> : null}
 
                 <div className="canvas-library-frame assets-library-frame eagle-library-frame mt-4">
                     <div className="grid min-h-0 gap-4 lg:grid-cols-[176px_minmax(0,1fr)]">
@@ -198,8 +215,8 @@ export default function EagleLibraryPage() {
                                     <span className="sr-only">{foldersExpanded ? "收起文件夹" : "展开文件夹"}</span>
                                 </button>
                             </div>
-                            {foldersExpanded ? (treeData.length ? <div id="eagle-folder-tree"><Tree className="eagle-folder-tree" blockNode selectable selectedKeys={selectedFolder ? [selectedFolder] : []} treeData={treeData} onSelect={(keys) => handleFolderSelect(String(keys[0] || "root"))} /></div> : <div className="eagle-folder-empty">Eagle 中还没有文件夹</div>) : null}
-                            <Button className="eagle-folder-create" icon={<FolderPlus className="size-3.5" />} onClick={() => setFolderName((value) => value ? "" : "新文件夹")}>新建文件夹</Button>
+                            {foldersExpanded ? (treeData.length ? <div id="eagle-folder-tree"><EagleFolderTree nodes={treeData} selectedFolder={selectedFolder} onSelect={handleFolderSelect} /></div> : <div className="eagle-folder-empty">Eagle 中还没有文件夹</div>) : null}
+                            <Button variant="outline" className="eagle-folder-create" onClick={() => setFolderName((value) => value ? "" : "新文件夹")}><FolderPlus className="size-3.5" />新建文件夹</Button>
                         </aside>
 
                         <section className="min-w-0">
@@ -217,18 +234,18 @@ export default function EagleLibraryPage() {
                                     <p className="mt-1 text-xs text-foreground/48">{currentFolder ? `当前文件夹由 Eagle 管理，${brandName}只负责展示和调用。` : "当前展示 Eagle 素材库中的全部文件。"}</p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <Button icon={<FolderPlus className="size-3.5" />} onClick={() => setFolderName((value) => value ? "" : "新文件夹")}>新建文件夹</Button>
-                                    <Button icon={<Download className="size-3.5" />} onClick={() => { const firstFile = visibleItems.find((item) => item.fileUrl); if (firstFile?.fileUrl) window.open(firstFile.fileUrl, "_blank", "noopener,noreferrer"); }}>下载当前文件</Button>
+                                    <Button variant="outline" onClick={() => setFolderName((value) => value ? "" : "新文件夹")}><FolderPlus className="size-3.5" />新建文件夹</Button>
+                                    <Button variant="outline" onClick={() => { const firstFile = visibleItems.find((item) => item.fileUrl); if (firstFile?.fileUrl) window.open(firstFile.fileUrl, "_blank", "noopener,noreferrer"); }}><Download className="size-3.5" />下载当前文件</Button>
                                 </div>
                             </div>
 
                             {folderName ? <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[var(--r-lg)] bg-surface-secondary p-3">
-                                <Input autoFocus value={folderName} onChange={(event) => setFolderName(event.target.value)} onPressEnter={() => void handleCreateFolder()} placeholder="输入文件夹名称" className="min-w-48 flex-1" aria-label="新文件夹名称" />
-                                <Button type="primary" loading={creatingFolder} onClick={() => void handleCreateFolder()}>创建</Button>
-                                <Button onClick={() => setFolderName("")}>取消</Button>
+                                <Input autoFocus value={folderName} onChange={(event) => setFolderName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void handleCreateFolder(); }} placeholder="输入文件夹名称" className="min-w-48 flex-1" aria-label="新文件夹名称" />
+                                <Button loading={creatingFolder} onClick={() => void handleCreateFolder()}>创建</Button>
+                                <Button variant="outline" onClick={() => setFolderName("")}>取消</Button>
                             </div> : null}
 
-                            {loading ? <div className="library-loading-grid grid min-h-64 place-items-center"><Spin tip="读取 Eagle 文件…"/></div> : items.length ? (
+                            {loading ? <div className="library-loading-grid grid min-h-64 place-items-center"><div className="flex flex-col items-center gap-2 text-sm text-muted-foreground" role="status"><Loader2 className="size-6 animate-spin" aria-hidden="true" />读取 Eagle 文件…</div></div> : items.length ? (
                                 <>
                                     <CollectionGrid className="library-grid assets-library-grid eagle-assets-grid">
                                         {visibleItems.map((item) => <EagleItemCard key={item.id} item={item} selected={previewItem?.id === item.id} onOpen={() => setPreviewItem(item)} />)}
@@ -276,7 +293,7 @@ function EagleItemCard({ item, selected, onOpen }: { item: ExternalAssetItem; se
 }
 
 function EagleAssetDrawer({ item, onClose, totalBytes }: { item: ExternalAssetItem | null; onClose: () => void; totalBytes: number }) {
-    return <Drawer className="library-drawer" title="素材档案" open={Boolean(item)} size="large" onClose={onClose}>
+    return <AppDrawer className={libraryDrawerClassName} title="素材档案" open={Boolean(item)} size="large" onClose={onClose}>
         {item ? <div className="space-y-4">
             <div className="asset-archive-header">
                 <span className="asset-archive-header-icon"><AssetKindIcon kind={item.kind} size="size-5" /></span>
@@ -295,11 +312,11 @@ function EagleAssetDrawer({ item, onClose, totalBytes }: { item: ExternalAssetIt
                 <EagleFact label="所在文件夹" value={item.folderPath?.join(" / ") || "Eagle 根目录"} />
                 <EagleFact label="素材库总大小" value={formatBytes(totalBytes)} />
             </div>
-            {item.tags?.length ? <div><Typography.Text strong className="text-xs">标签</Typography.Text><div className="mt-2 flex flex-wrap gap-1.5">{item.tags.map((tag) => <Tag key={tag} className="m-0">{tag}</Tag>)}</div></div> : null}
-            {item.description ? <div><Typography.Text strong className="text-xs">备注</Typography.Text><p className="mt-2 text-sm leading-6 text-foreground/65">{item.description}</p></div> : null}
+            {item.tags?.length ? <div><span className="text-xs font-semibold">标签</span><div className="mt-2 flex flex-wrap gap-1.5">{item.tags.map((tag) => <Badge key={tag} variant="outline" className="rounded-sm">{tag}</Badge>)}</div></div> : null}
+            {item.description ? <div><span className="text-xs font-semibold">备注</span><p className="mt-2 text-sm leading-6 text-foreground/65">{item.description}</p></div> : null}
             {item.fileUrl ? <a href={item.fileUrl} download={item.title} target="_blank" rel="noreferrer" className="eagle-drawer-download inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium"><Download className="size-4" aria-hidden="true" />下载 Eagle 原文件</a> : null}
         </div> : null}
-    </Drawer>;
+    </AppDrawer>;
 }
 
 function EagleFact({ label, value }: { label: string; value: string }) {
@@ -333,13 +350,50 @@ function formatDimensions(item: ExternalAssetItem) {
     return item.mimeType || assetKindLabel(item.kind);
 }
 
-function renderFolderNodes(folders: ExternalAssetFolder[], parentId = ""): DataNode[] {
+type EagleFolderNode = { key: string; name: string; children: EagleFolderNode[] };
+
+function renderFolderNodes(folders: ExternalAssetFolder[], parentId = ""): EagleFolderNode[] {
     return folders.filter((folder) => (folder.parentId || "") === parentId).map((folder) => ({
         key: folder.id,
-        title: <span className="eagle-folder-tree-title" title={folder.name}>{folder.name}</span>,
+        name: folder.name,
         children: renderFolderNodes(folders, folder.id),
     }));
 }
+
+/** Folder tree: chevrons expand, titles select; clicking the selected folder returns to the root. */
+function EagleFolderTree({ nodes, selectedFolder, onSelect }: { nodes: EagleFolderNode[]; selectedFolder: string; onSelect: (folderId: string) => void }) {
+    const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+    const toggle = (key: string) => setExpanded((current) => {
+        const next = new Set(current);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+    });
+    const renderNodes = (items: EagleFolderNode[], depth: number) => items.map((node) => {
+        const hasChildren = node.children.length > 0;
+        const open = hasChildren && expanded.has(node.key);
+        const selected = node.key === selectedFolder;
+        return (
+            <li key={node.key} role="treeitem" aria-expanded={hasChildren ? open : undefined} aria-selected={selected}>
+                <div className="eagle-folder-tree-node" style={{ paddingLeft: depth * 12 }}>
+                    {hasChildren ? (
+                        <button type="button" className="eagle-folder-tree-switcher" aria-label={open ? `收起${node.name}` : `展开${node.name}`} onClick={() => toggle(node.key)}>
+                            <ChevronRight aria-hidden="true" className={`size-3 transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`} />
+                        </button>
+                    ) : <span className="eagle-folder-tree-switcher is-noop" aria-hidden="true" />}
+                    <button type="button" className={`eagle-folder-tree-item${selected ? " is-selected" : ""}`} onClick={() => onSelect(selected ? "root" : node.key)}>
+                        <span className="eagle-folder-tree-title" title={node.name}>{node.name}</span>
+                    </button>
+                </div>
+                {open ? <ul role="group">{renderNodes(node.children, depth + 1)}</ul> : null}
+            </li>
+        );
+    });
+    return <ul role="tree" aria-label="Eagle 文件夹" className="eagle-folder-tree">{renderNodes(nodes, 0)}</ul>;
+}
+
+// Ports the shared library drawer shell (header/body spacing, title weight) onto AppDrawer.
+const libraryDrawerClassName = "library-drawer border-0 bg-popover shadow-[var(--elevation-panel)] [&>[data-slot=app-drawer-body]]:px-7 [&>[data-slot=app-drawer-body]]:pt-[22px] [&>[data-slot=app-drawer-body]]:pb-[30px] [&>[data-slot=app-drawer-header]]:min-h-[70px] [&>[data-slot=app-drawer-header]]:border-foreground/[.08] [&>[data-slot=app-drawer-header]]:px-7 [&>[data-slot=app-drawer-header]]:pt-[22px] [&>[data-slot=app-drawer-header]]:pb-[15px] [&>[data-slot=app-drawer-header]>h2]:text-[length:var(--fs-heading-lg)] [&>[data-slot=app-drawer-header]>h2]:font-[620] max-[680px]:[&>[data-slot=app-drawer-body]]:p-[18px] max-[680px]:[&>[data-slot=app-drawer-header]]:px-[18px] max-[680px]:[&>[data-slot=app-drawer-header]]:pt-[18px] max-[680px]:[&>[data-slot=app-drawer-header]]:pb-[13px]";
 
 function externalFolderPath(folders: ExternalAssetFolder[], folderId: string) {
     const byId = new Map(folders.map((folder) => [folder.id, folder]));

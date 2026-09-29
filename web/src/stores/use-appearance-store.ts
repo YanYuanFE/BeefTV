@@ -5,22 +5,22 @@ import { applySkinTheme, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition } from "@
 
 export const DEFAULT_PUBLIC_APPEARANCE: PublicAppearance = {
     schemaVersion: 7,
-    brandName: "BeefTV",
-    brandSlug: "beeftv",
+    brandName: "Framely",
+    brandSlug: "framely",
     authHeroTitle: "让一个故事，\n从文字走向银幕。",
     authHeroDescription: "",
-    logoUrl: "/beef-logo.png",
-    darkLogoUrl: "/beef-logo.png",
+    logoUrl: "/framely-logo-light.svg",
+    darkLogoUrl: "/framely-logo-dark.svg",
     logoFrameEnabled: false,
     authVideoUrl: "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4",
     authVideoPosterUrl: "https://i0.hdslb.com/bfs/aitool/aniforge/image/02933f26-5f1b-49ff-a811-b7f95ee5e5b8_m1hc-u0-sau.jpg",
     authVideoAutoplay: true,
     skinId: "classic",
     activeSkin: DEFAULT_CLASSIC_SKIN,
-    seoTitle: "BeefTV",
-    seoDescription: "BeefTV，本地优先的开源 AI 视频创作工作台。",
+    seoTitle: "Framely",
+    seoDescription: "Framely，面向 AI 影视与短剧创作的工作台。",
     seoKeywords: "",
-    footerCopyright: `© ${new Date().getFullYear()} BeefTV. Open source video studio.`,
+    footerCopyright: `© ${new Date().getFullYear()} Framely. All rights reserved.`,
     icpFilingEnabled: false,
     icpFilingNumber: "",
     logoConfigured: false,
@@ -124,7 +124,8 @@ export function applyAppearanceMetadata(appearance: PublicAppearance, targetDocu
         favicon.rel = "icon";
         targetDocument.head.appendChild(favicon);
     }
-    favicon.href = appearanceLogoURL(appearance, "dark");
+    // The default brand ships a dedicated app icon; configured brands reuse their logo.
+    favicon.href = appearance.logoConfigured ? appearanceLogoURL(appearance, "dark") : "/framely-app-icon.svg";
 
     const location = targetDocument.defaultView?.location;
     if (location && (location.protocol === "http:" || location.protocol === "https:")) {
@@ -157,7 +158,7 @@ export function appearanceLogoURL(appearance: PublicAppearance, theme: "light" |
 }
 
 export function brandStudioLabel(appearance: PublicAppearance) {
-    if (appearance.brandName === DEFAULT_PUBLIC_APPEARANCE.brandName && appearance.brandSlug === DEFAULT_PUBLIC_APPEARANCE.brandSlug) return "BEEF CREATIVE STUDIO";
+    if (appearance.brandName === DEFAULT_PUBLIC_APPEARANCE.brandName && appearance.brandSlug === DEFAULT_PUBLIC_APPEARANCE.brandSlug) return "FRAMELY CREATIVE STUDIO";
     return appearance.brandSlug.replace(/-+/g, " ").toLocaleUpperCase();
 }
 

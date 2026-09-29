@@ -1,6 +1,5 @@
 import { isCanvasNodeGenerating } from "@/lib/canvas/canvas-node-task-state";
 import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
-import { App } from "antd";
 
 import { buildNodeGenerationContext, hydrateNodeGenerationContext } from "@/components/canvas/canvas-node-generation";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
@@ -26,6 +25,8 @@ import { executeImageGeneration } from "./canvas-image-generation-executor";
 import { executeAudioGeneration, executeVideoGeneration } from "./canvas-media-generation-executors";
 import { executeTextGeneration } from "./canvas-text-generation-executor";
 import { canvasGenerationFailureMetadata, canvasGenerationRetryBlocked } from "./canvas-generation-failure";
+import { toast } from "sonner";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 
 type UseCanvasGenerationExecutorOptions = {
     projectId: string;
@@ -78,24 +79,22 @@ export function useCanvasGenerationExecutor({
     bindGenerationTask,
     applyGenerationTaskResult,
 }: UseCanvasGenerationExecutorOptions) {
-    const { message, modal } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const submissionLocksRef = useRef(new Map<string, Promise<unknown>>());
     const confirmDuplicateSubmission = useCallback(
         () =>
             new Promise<boolean>((resolve) => {
-                modal.confirm({
+                confirmDialog({
                     title: "再次生成相同内容？",
                     content: "当前节点已使用相同提示词、模型、参数和参考素材提交过任务。再次生成会新建任务，并可能再次消耗积分。",
                     okText: "仍然生成",
                     cancelText: "取消",
-                    centered: true,
                     onOk: () => resolve(true),
                     onCancel: () => resolve(false),
                 });
             }),
-        [modal],
+        [],
     );
 
     return useCallback(
@@ -106,11 +105,11 @@ export function useCanvasGenerationExecutor({
                 async () => {
                     const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
                     if (isCanvasNodeGenerating(sourceNode)) {
-                        message.info("该节点的生成任务仍在进行中，请等待完成后再生成");
+                        toast.info("该节点的生成任务仍在进行中，请等待完成后再生成");
                         return;
                     }
                     if (sourceNode?.type === CanvasNodeType.Video && sourceNode.metadata?.videoEditOperation === "concat") {
-                        message.info("合并成片节点不直接重新生成，请重新选择源视频合并");
+                        toast.info("合并成片节点不直接重新生成，请重新选择源视频合并");
                         return;
                     }
                     let generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
@@ -174,7 +173,7 @@ export function useCanvasGenerationExecutor({
                         if (hydratedCompatibilityError) throw new Error(`当前模型无法支持这组输入和参数：${hydratedCompatibilityError}`);
                     } catch (error) {
                         const errorDetails = generationErrorMessage(error);
-                        message.error(errorDetails);
+                        toast.error(errorDetails);
                         return;
                     }
 
@@ -182,7 +181,7 @@ export function useCanvasGenerationExecutor({
                     try {
                         skillExecution = await skillRuntime.prepare({ profile: "canvas", prompt: rawGenerationContext.prompt, skills: addedSkills });
                     } catch (error) {
-                        message.error(error instanceof Error ? error.message : "技能上下文加载失败");
+                        toast.error(error instanceof Error ? error.message : "技能上下文加载失败");
                         return;
                     }
                     let effectivePrompt = skillExecution.prompt.trim();
@@ -196,28 +195,28 @@ export function useCanvasGenerationExecutor({
                             }
                         } catch (error) {
                             const errorDetails = generationErrorMessage(error);
-                            message.error(errorDetails);
+                            toast.error(errorDetails);
                             return;
                         }
                     }
                     const promptLengthError = mode === "video" ? modelPromptLengthError(generationConfig, generationConfig.model, mode, effectivePrompt) : "";
                     if (promptLengthError) {
-                        message.error(promptLengthError);
+                        toast.error(promptLengthError);
                         return;
                     }
                     const generationContext = { ...rawGenerationContext, prompt: effectivePrompt };
                     if ((options?.retryContext || sourceNode?.metadata?.failedInputFingerprint || sourceNode?.metadata?.failedPromptFingerprint) && canvasGenerationRetryBlocked(sourceNode?.metadata, { ...generationContext, mode })) {
-                        message.warning(sourceNode?.metadata?.errorDetails || "请先查看失败原因并调整输入，再重新生成");
+                        toast.warning(sourceNode?.metadata?.errorDetails || "请先查看失败原因并调整输入，再重新生成");
                         return;
                     }
                     if (mode === "audio" && generationContext.characterReferences.length) {
                         if (generationContext.characterReferences.length !== 1) {
-                            message.error("角色配音一次只能引用一个角色卡");
+                            toast.error("角色配音一次只能引用一个角色卡");
                             return;
                         }
                         const voice = generationContext.resolvedCharacterVoices[0];
                         if (!voice) {
-                            message.error("角色尚未绑定可用声音，无法创建角色配音任务");
+                            toast.error("角色尚未绑定可用声音，无法创建角色配音任务");
                             return;
                         }
                         generationConfig = { ...generationConfig, audioVoice: voice.voiceKey, audioInstructions: [voice.instructions, generationConfig.audioInstructions].filter(Boolean).join("；") };
@@ -258,7 +257,7 @@ export function useCanvasGenerationExecutor({
                     }) : undefined;
                     if (ratioWarning) {
                         const accepted = await new Promise<boolean>((resolve) => {
-                            modal.confirm({ ...ratioWarning, centered: true, onOk: () => resolve(true), onCancel: () => resolve(false), afterClose: () => resolve(false) });
+                            confirmDialog({ ...ratioWarning, onOk: () => resolve(true), onCancel: () => resolve(false), afterClose: () => resolve(false) });
                         });
                         if (!accepted || options?.controller?.signal.aborted) return;
                     }
@@ -346,7 +345,7 @@ export function useCanvasGenerationExecutor({
                             options?.onTaskUpdate?.(task);
                         },
                         applyGenerationTaskResult,
-                        showError: (content: string) => message.error(content),
+                        showError: (content: string) => toast.error(content),
                         registerPendingNodeIds: (nodeIds: string[]) => {
                             pendingNodeIds = nodeIds;
                         },
@@ -379,7 +378,7 @@ export function useCanvasGenerationExecutor({
                             );
                             return;
                         }
-                        message.error(failure.errorDetails);
+                        toast.error(failure.errorDetails);
                         setNodes((current) =>
                             current.map((node) => {
                                 if (node.id !== nodeId && !pendingNodeIds.includes(node.id)) return node;
@@ -395,7 +394,7 @@ export function useCanvasGenerationExecutor({
                         setRunningNodeId(null);
                     }
                 },
-                () => message.info({ key: `canvas-generation-submission-${nodeId}`, content: "该节点已有生成请求正在提交或执行，请勿重复点击" }),
+                () => toast.info("该节点已有生成请求正在提交或执行，请勿重复点击", { id: `canvas-generation-submission-${nodeId}` }),
             ),
         [
             addedSkills,
@@ -406,8 +405,6 @@ export function useCanvasGenerationExecutor({
             effectiveConfig,
             finishGenerationRequest,
             isAiConfigReady,
-            message,
-            modal,
             nodesRef,
             connectionsRef,
             projectId,

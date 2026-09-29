@@ -68,7 +68,6 @@ export function WorkspaceSidebarUpdate({ collapsed }: { collapsed: boolean }) {
             <AppModal
                 rootClassName="app-spatial-modal app-workspace-update-modal"
                 open={detailsOpen}
-                centered
                 width={520}
                 title={latest ? `有新版本 ${latest}` : "软件更新"}
                 footer={
@@ -100,10 +99,9 @@ export function WorkspaceSidebarUpdate({ collapsed }: { collapsed: boolean }) {
             <AppModal
                 rootClassName="app-spatial-modal app-workspace-update-modal"
                 open={confirmOpen}
-                centered
                 width={440}
                 title="安装更新并重新打开"
-                mask={{ closable: !busy }}
+                maskClosable={!busy}
                 keyboard={!busy}
                 closable={!busy}
                 footer={

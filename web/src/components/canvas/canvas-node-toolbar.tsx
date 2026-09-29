@@ -1,7 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { App, Button, Dropdown, Input, Modal, Tag, Tooltip } from "antd";
-import type { MenuProps } from "antd";
-import { Camera, ChevronDown, ChevronRight, Images, Maximize2, Plus, Settings2, SlidersHorizontal, UserRound } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from "react";
+import { Camera, ChevronDown, ChevronRight, Images, Maximize2, Plus, Settings2, SlidersHorizontal, UserRound, X } from "lucide-react";
+
+import { Tooltip } from "@/components/ui/base/tooltip";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { ASSET_CATEGORY_OPTIONS } from "@/lib/asset-category";
@@ -18,6 +22,7 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata, type CanvasWorkspaceMode, type ViewportTransform } from "@/types/canvas";
 import { buildImageToolbarTools } from "./canvas-image-toolbar-tools";
 import { CanvasGridSplitPicker } from "./canvas-grid-split-picker";
+import { toast } from "sonner";
 
 type CanvasNodeToolbarProps = {
     node: CanvasNodeData | null;
@@ -128,7 +133,6 @@ export function CanvasNodeToolbar({
     const [containerWidth, setContainerWidth] = useState(1000);
     const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
     const toolbarRef = useRef<HTMLDivElement>(null);
-    const { message } = App.useApp();
     const copyText = useCopyText();
     const themeName = useActiveTheme();
     const theme = canvasThemes[themeName];
@@ -223,7 +227,7 @@ export function CanvasNodeToolbar({
     const copyImagePrompt = (target: CanvasNodeData) => {
         const prompt = target.metadata?.prompt?.trim();
         if (!prompt) {
-            message.warning("暂无可复制的提示词");
+            toast.warning("暂无可复制的提示词");
             return;
         }
         copyText(prompt, "提示词已复制");
@@ -466,6 +470,14 @@ function compareToolbarTools(left: ToolbarTool, right: ToolbarTool) {
     return left.order - right.order;
 }
 
+const DOCK_MENU_PLACEMENT: Record<"top" | "topRight" | "bottom" | "bottomLeft" | "bottomRight", { side: "top" | "bottom"; align: "start" | "center" | "end" }> = {
+    top: { side: "top", align: "center" },
+    topRight: { side: "top", align: "end" },
+    bottom: { side: "bottom", align: "center" },
+    bottomLeft: { side: "bottom", align: "start" },
+    bottomRight: { side: "bottom", align: "end" },
+};
+
 function NodeDockMenuButton({
     menuId,
     label,
@@ -500,14 +512,31 @@ function NodeDockMenuButton({
     }, [open]);
     const keepSplitMenuOpenRef = useRef(false);
     const splitEntry = split ? tools.find((tool) => tool.id === "split") : undefined;
-    const renderItem = (tool: ToolbarTool): NonNullable<MenuProps["items"]>[number] => {
+    const { side, align } = DOCK_MENU_PLACEMENT[placement];
+    const renderItem = (tool: ToolbarTool) => {
         const isSplit = Boolean(splitEntry && split && tool.id === "split");
-        return {
-            key: tool.id,
-            // 菜单只保留功能名称；图标和辅助说明留在工具定义中，供其他上下文使用。
-            icon: undefined,
-            className: isSplit ? `canvas-grid-split-menu-item${splitPanelOpen ? " is-open" : ""}` : undefined,
-            label: (
+        return (
+            <button
+                key={tool.id}
+                type="button"
+                role="menuitem"
+                disabled={tool.disabled}
+                aria-disabled={tool.disabled || undefined}
+                aria-expanded={isSplit ? splitPanelOpen : undefined}
+                className={`flex min-h-8 w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm outline-none transition-colors hover:bg-[var(--workspace-overlay-hover)] focus-visible:bg-[var(--workspace-overlay-hover)] disabled:pointer-events-none disabled:opacity-40 motion-reduce:transition-none ${tool.danger ? "text-destructive" : ""} ${isSplit ? `canvas-grid-split-menu-item${splitPanelOpen ? " is-open" : ""}` : ""}`}
+                onClick={(event) => {
+                    if (isSplit) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        keepSplitMenuOpenRef.current = false;
+                        setSplitPanelOpen((current) => !current);
+                        return;
+                    }
+                    onOpenChange(menuId, false);
+                    tool.onClick();
+                }}
+            >
+                {/* 菜单只保留功能名称；图标和辅助说明留在工具定义中，供其他上下文使用。 */}
                 <div
                     className={isSplit ? "canvas-grid-split-menu-label" : undefined}
                     onMouseDown={
@@ -523,29 +552,22 @@ function NodeDockMenuButton({
                     </div>
                     {isSplit ? <ChevronRight className="canvas-grid-split-chevron" strokeWidth={2} /> : null}
                 </div>
-            ),
-            disabled: tool.disabled,
-            danger: tool.danger,
-            onClick: (info) => {
-                if (isSplit) {
-                    info.domEvent.preventDefault();
-                    info.domEvent.stopPropagation();
-                    keepSplitMenuOpenRef.current = true;
-                    setSplitPanelOpen((current) => !current);
-                    return;
-                }
-                onOpenChange(menuId, false);
-                tool.onClick();
-            },
-        };
+            </button>
+        );
     };
-    const items: MenuProps["items"] = tools.map(renderItem);
+    // Arrow-key roving focus across enabled menu items.
+    const handleMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+        const menuItems = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("[role='menuitem']:not(:disabled)"));
+        if (!menuItems.length) return;
+        event.preventDefault();
+        const index = menuItems.indexOf(document.activeElement as HTMLButtonElement);
+        const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? menuItems.length - 1 : event.key === "ArrowDown" ? (index + 1) % menuItems.length : (index - 1 + menuItems.length) % menuItems.length;
+        menuItems[nextIndex]?.focus();
+    };
     return (
-        <Dropdown
+        <Popover
             open={open}
-            trigger={["click"]}
-            placement={placement}
-            autoAdjustOverflow={false}
             onOpenChange={(nextOpen) => {
                 if (!nextOpen && (keepSplitMenuOpenRef.current || document.querySelector(".canvas-node-toolbar-menu-split:hover, .canvas-grid-split-picker:hover"))) {
                     keepSplitMenuOpenRef.current = false;
@@ -554,9 +576,44 @@ function NodeDockMenuButton({
                 onOpenChange(menuId, nextOpen);
                 if (!nextOpen) setSplitPanelOpen(false);
             }}
-            menu={{ items }}
-            autoFocus
-            popupRender={(menu) => (
+        >
+            <PopoverTrigger asChild>
+                <button
+                    ref={triggerRef}
+                    type="button"
+                    className={`aceternity-dock-command is-labeled pointer-events-auto inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[var(--dock-item-radius)] px-2.5 outline-none ${open ? "is-active" : ""}`}
+                    aria-label={label}
+                    aria-expanded={open}
+                    aria-haspopup="menu"
+                    title={label}
+                    onKeyDown={(event) => {
+                        if (event.key === "ArrowDown" && open) {
+                            event.preventDefault();
+                            document.querySelector<HTMLElement>("[data-slot='popover-content'] .canvas-node-toolbar-menu [role='menuitem']:not([aria-disabled='true'])")?.focus();
+                        }
+                        if (event.key === "Escape" && open) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onOpenChange(menuId, false);
+                        }
+                    }}
+                >
+                    {icon ? <span className="grid size-3.5 shrink-0 place-items-center">{icon}</span> : null}
+                    {!iconOnly ? (
+                        <>
+                            <span className="inline-flex h-4 items-center whitespace-nowrap text-[var(--fs-label)] font-medium leading-none">{label}</span>
+                            <ChevronDown className="size-3 shrink-0 opacity-55" />
+                        </>
+                    ) : null}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent
+                side={side}
+                align={align}
+                avoidCollisions={false}
+                className="w-auto min-w-[var(--radix-popover-trigger-width)] gap-0 overflow-visible bg-transparent p-0 shadow-none ring-0"
+                onOpenAutoFocus={(event) => event.preventDefault()}
+            >
                 <div
                     className={`canvas-node-toolbar-menu${splitEntry && split ? " canvas-node-toolbar-menu-split" : ""}`}
                     data-canvas-no-zoom
@@ -574,7 +631,11 @@ function NodeDockMenuButton({
                     }}
                     onKeyDown={(event) => event.stopPropagation()}
                 >
-                    <div className="canvas-node-toolbar-menu-stack">{menu}</div>
+                    <div className="canvas-node-toolbar-menu-stack">
+                        <div role="menu" aria-label={label} className="flex flex-col gap-0.5 p-1" onKeyDown={handleMenuKeyDown}>
+                            {tools.map(renderItem)}
+                        </div>
+                    </div>
                     {splitPanelOpen && split ? (
                         <CanvasGridSplitPicker
                             onPick={(params) => {
@@ -585,37 +646,8 @@ function NodeDockMenuButton({
                         />
                     ) : null}
                 </div>
-            )}
-        >
-            <button
-                ref={triggerRef}
-                type="button"
-                className={`aceternity-dock-command is-labeled pointer-events-auto inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[var(--dock-item-radius)] px-2.5 outline-none ${open ? "is-active" : ""}`}
-                aria-label={label}
-                aria-expanded={open}
-                aria-haspopup="menu"
-                title={label}
-                onKeyDown={(event) => {
-                    if (event.key === "ArrowDown" && open) {
-                        event.preventDefault();
-                        document.querySelector<HTMLElement>(".ant-dropdown:not(.ant-dropdown-hidden) .canvas-node-toolbar-menu [role='menuitem']:not([aria-disabled='true'])")?.focus();
-                    }
-                    if (event.key === "Escape" && open) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onOpenChange(menuId, false);
-                    }
-                }}
-            >
-                {icon ? <span className="grid size-3.5 shrink-0 place-items-center">{icon}</span> : null}
-                {!iconOnly ? (
-                    <>
-                        <span className="inline-flex h-4 items-center whitespace-nowrap text-[var(--fs-label)] font-medium leading-none">{label}</span>
-                        <ChevronDown className="size-3 shrink-0 opacity-55" />
-                    </>
-                ) : null}
-            </button>
-        </Dropdown>
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -701,7 +733,7 @@ export function CanvasNodeInfoModal({
     );
 
     return (
-        <Modal className="workspace-modal canvas-node-info-modal" title={title} open={open && Boolean(node)} centered footer={null} onCancel={onClose} width="min(920px, calc(100vw - 32px))" styles={{ body: { paddingTop: 4 } }}>
+        <AppModal className="workspace-modal canvas-node-info-modal [&_[data-slot=app-modal-title]]:pr-0 [&_[data-slot=app-modal-title]]:leading-none [&>button[aria-label=关闭]]:top-[21px]" title={title} open={open && Boolean(node)} footer={null} onCancel={onClose} width="min(920px, calc(100vw - 32px))" styles={{ body: { paddingTop: 4 } }}>
             {node ? (
                 <div className="canvas-node-inspector" style={{ color: theme.node.text }}>
                     <div className="thin-scrollbar canvas-node-inspector-scroll">
@@ -788,8 +820,17 @@ export function CanvasNodeInfoModal({
                                     <div className="canvas-node-inspector-notice">分享画布为只读，标签无法编辑。</div>
                                 ) : (
                                     <div className="canvas-node-inspector-tag-editor">
-                                        <Input value={assetTagInput} placeholder="例如：角色: 张三" onChange={(event) => setAssetTagInput(event.target.value)} onPressEnter={addAssetTag} />
-                                        <Button type="primary" icon={<Plus className="size-4" />} disabled={!assetTagInput.trim()} onClick={addAssetTag}>
+                                        <Input
+                                            value={assetTagInput}
+                                            placeholder="例如：角色: 张三"
+                                            aria-label="资产标签"
+                                            onChange={(event) => setAssetTagInput(event.target.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" && !event.nativeEvent.isComposing) addAssetTag();
+                                            }}
+                                        />
+                                        <Button disabled={!assetTagInput.trim()} onClick={addAssetTag}>
+                                            <Plus className="size-4" />
                                             加入
                                         </Button>
                                     </div>
@@ -797,9 +838,14 @@ export function CanvasNodeInfoModal({
                                 <div className="canvas-node-inspector-tags">
                                     {assetTags.length ? (
                                         assetTags.map((tag) => (
-                                            <Tag key={tag} closable={!readOnly} onClose={() => (readOnly ? onUnauthorized?.() : removeAssetTag(tag))} className="!m-0 !rounded-lg !px-2 !py-1 !text-sm">
+                                            <span key={tag} className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted px-2 py-1 text-sm">
                                                 {tag}
-                                            </Tag>
+                                                {!readOnly ? (
+                                                    <button type="button" aria-label={`删除标签 ${tag}`} className="grid size-4 place-items-center rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" onClick={() => (readOnly ? onUnauthorized?.() : removeAssetTag(tag))}>
+                                                        <X className="size-3" />
+                                                    </button>
+                                                ) : null}
+                                            </span>
                                         ))
                                     ) : (
                                         <span className="canvas-node-inspector-empty-label">{readOnly ? "暂无标签" : "还没有标签，输入后点击“加入”或按 Enter。"}</span>
@@ -822,7 +868,7 @@ export function CanvasNodeInfoModal({
                     </div>
                 </div>
             ) : null}
-        </Modal>
+        </AppModal>
     );
 }
 

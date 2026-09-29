@@ -10,20 +10,6 @@ import (
 
 const managedBeefAPIRef = beefapi.CredentialRef
 
-func (s *Service) SetBeefAPI(connection *beefapi.Service) {
-	if s == nil {
-		return
-	}
-	s.beefAPI = connection
-}
-
-func (s *Service) BeefAPI() *beefapi.Service {
-	if s == nil {
-		return nil
-	}
-	return s.beefAPI
-}
-
 func (s *Service) resolveManagedBeefAPISecrets(input map[string]any) (map[string]any, error) {
 	if input == nil {
 		return input, nil
@@ -73,15 +59,6 @@ func (s *Service) resolveManagedBeefAPISecrets(input map[string]any) (map[string
 }
 
 func (s *Service) lookupBeefAPICredential() (apiKey, baseURL, accountID, tokenID string, err error) {
-	if s.beefAPI != nil {
-		if s.beefAPI.HasManagedCredential() {
-			cred, resolveErr := s.beefAPI.Resolve()
-			if resolveErr != nil {
-				return "", "", "", "", BadAuthRequest(resolveErr.Error())
-			}
-			return cred.APIKey, cred.BaseURL, cred.AccountID, cred.TokenID, nil
-		}
-	}
 	body, readErr := s.ReadLocalModelConfig()
 	if readErr != nil || len(body) == 0 {
 		return "", "", "", "", nil
@@ -143,11 +120,6 @@ func (s *Service) ResolveCustomRelayAPIKey(targetURL, incoming string) (string, 
 }
 
 func (s *Service) resolveCustomRelayKey(targetURL, incoming string) (string, error) {
-	// An unrelated custom channel must remain usable even if the managed
-	// connection is revoked. Resolve its secret only for the bound origin.
-	if s.beefAPI != nil && s.beefAPI.HasManagedCredential() && !sameCredentialOrigin(targetURL, s.beefAPI.Origin()) {
-		return incoming, nil
-	}
 	apiKey, baseURL, _, _, err := s.lookupBeefAPICredential()
 	if err != nil {
 		return "", err
@@ -168,17 +140,4 @@ func sameCredentialOrigin(targetURL, baseURL string) bool {
 		return false
 	}
 	return strings.EqualFold(target.Scheme, base.Scheme) && strings.EqualFold(target.Host, base.Host)
-}
-
-func (s *Service) noteBeefAPIProviderError(message string) {
-	if s == nil || s.beefAPI == nil {
-		return
-	}
-	normalized := strings.ToLower(message)
-	if strings.Contains(normalized, "unauthorized") || strings.Contains(message, "连接已失效") {
-		s.beefAPI.MarkRevoked()
-	}
-	if strings.Contains(message, "额度不足") || strings.Contains(normalized, "insufficient") || strings.Contains(message, "余额不足") {
-		s.beefAPI.MarkZeroBalance()
-	}
 }

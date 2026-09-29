@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { Button, InputNumber, Modal } from "antd";
 import { Grid2x2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { NumberInput } from "@/components/ui/number-input";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 import { readImageMeta } from "@/lib/image-utils";
 import type { ImageSplitParams } from "@/lib/canvas/canvas-image-data";
@@ -32,7 +35,7 @@ export function CanvasNodeSplitDialog({ dataUrl, open, onClose, onConfirm }: { d
     };
 
     return (
-        <Modal title={null} open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} width={780} centered destroyOnHidden>
+        <AppModal title={null} open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} width={780}>
             <div className="space-y-5">
                 <div>
                     <h2 className="text-xl font-semibold">宫格切分</h2>
@@ -64,13 +67,14 @@ export function CanvasNodeSplitDialog({ dataUrl, open, onClose, onConfirm }: { d
                                 <span className="font-semibold">{pieceSize ? `${pieceSize.width} x ${pieceSize.height}` : "未知"}</span>
                             </div>
                         </div>
-                        <Button type="primary" size="large" className="w-full" icon={<Grid2x2 className="size-4" />} onClick={() => onConfirm(params)}>
+                        <Button size="lg" className="w-full" onClick={() => onConfirm(params)}>
+                            <Grid2x2 className="size-4" />
                             生成子节点
                         </Button>
                     </div>
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 
@@ -78,7 +82,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
     return (
         <label className="block space-y-2">
             <span className="font-medium opacity-75">{label}</span>
-            <InputNumber className="w-full" min={1} max={maxGridSize} precision={0} value={value} onChange={onChange} />
+            <NumberInput className="w-full" min={1} max={maxGridSize} precision={0} value={value} onChange={onChange} />
         </label>
     );
 }

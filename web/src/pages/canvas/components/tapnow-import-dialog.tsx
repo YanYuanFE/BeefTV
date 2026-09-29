@@ -1,10 +1,14 @@
-import { App, Button, Input, Modal, Tag } from "antd";
 import { CircleAlert, ExternalLink, Import, LoaderCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { formatTapNowBatchTime, parseTapNowShareID } from "@/lib/canvas/tapnow-import";
 import { importTapNowCanvas, type TapNowImportResult } from "@/services/api/tapnow";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppModal } from "@/components/ui/product/app-modal";
 
 type Props = {
     open: boolean;
@@ -50,7 +54,6 @@ function buildCanvasNodes(result: TapNowImportResult, viewport: ViewportTransfor
 }
 
 export function TapNowImportDialog({ open, projectId, viewport, viewportSize, onClose, onApply }: Props) {
-    const { message } = App.useApp();
     const [value, setValue] = useState("");
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<TapNowImportResult | null>(null);
@@ -74,14 +77,14 @@ export function TapNowImportDialog({ open, projectId, viewport, viewportSize, on
 
     const load = async () => {
         if (!shareID) {
-            message.error("请填写有效的 TapNow 画布分享链接或分享 ID");
+            toast.error("请填写有效的 TapNow 画布分享链接或分享 ID");
             return;
         }
         setLoading(true);
         try {
             setResult(await importTapNowCanvas(projectId, shareID));
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取 TapNow 画布失败");
+            toast.error(error instanceof Error ? error.message : "读取 TapNow 画布失败");
         } finally {
             setLoading(false);
         }
@@ -94,9 +97,9 @@ export function TapNowImportDialog({ open, projectId, viewport, viewportSize, on
             await onApply(buildCanvasNodes(result, viewport, viewportSize), result.connections);
             reset();
             onClose();
-            message.success(`已导入 ${result.importedNodeCount} 个节点和 ${result.importedConnectionCount} 条连接`);
+            toast.success(`已导入 ${result.importedNodeCount} 个节点和 ${result.importedConnectionCount} 条连接`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存导入结果失败");
+            toast.error(error instanceof Error ? error.message : "保存导入结果失败");
         } finally {
             setLoading(false);
         }
@@ -105,24 +108,25 @@ export function TapNowImportDialog({ open, projectId, viewport, viewportSize, on
     const hasWarnings = result ? Boolean(result.skippedNodes.length || result.skippedConnections.length || result.multiResultNodeCount || result.reusedFailedNodeCount || result.placeholderNodeCount || result.warnings.length) : false;
 
     return (
-        <Modal
-            className="workspace-modal"
+        <AppModal
+            className="workspace-modal rounded-[var(--modal-radius)] border-0 bg-popover shadow-[var(--elevation-overlay)]"
             open={open}
             onCancel={close}
             title="导入 TapNow 画布"
             width={620}
             footer={
                 result ? (
-                    [
-                        <Button key="close" onClick={close}>
+                    <>
+                        <Button variant="outline" onClick={close}>
                             关闭
-                        </Button>,
-                        <Button key="apply" type="primary" icon={<Import className="size-4" />} loading={loading} onClick={() => void apply()}>
+                        </Button>
+                        <Button loading={loading} onClick={() => void apply()}>
+                            {loading ? null : <Import className="size-4" />}
                             确认导入
-                        </Button>,
-                    ]
+                        </Button>
+                    </>
                 ) : (
-                    <Button type="primary" loading={loading} onClick={() => void load()}>
+                    <Button loading={loading} onClick={() => void load()}>
                         读取画布
                     </Button>
                 )
@@ -131,13 +135,16 @@ export function TapNowImportDialog({ open, projectId, viewport, viewportSize, on
             <div className="space-y-4">
                 <div>
                     <label className="mb-2 block text-sm font-medium">TapNow 画布分享链接或分享 ID</label>
+                    <div className="relative">
                     <Input
+                        className="pr-8"
                         value={value}
                         onChange={(event) => changeValue(event.target.value)}
                         placeholder="粘贴 https://app.tapnow.media/tapflow/view/…"
                         disabled={loading}
-                        suffix={shareID && value !== shareID ? <ExternalLink className="size-4 text-foreground/35" /> : null}
                     />
+                    {shareID && value !== shareID ? <ExternalLink className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-foreground/35" /> : null}
+                    </div>
                 </div>
                 {loading && !result ? (
                     <div className="flex items-center gap-2 text-sm text-foreground/55">
@@ -155,7 +162,7 @@ export function TapNowImportDialog({ open, projectId, viewport, viewportSize, on
                                         可导入 {result.importedNodeCount} 个节点 · {result.importedConnectionCount} 条连线
                                     </div>
                                 </div>
-                                <Tag color="blue">批次：{formatTapNowBatchTime(result.batchCreatedAt)}</Tag>
+                                <Badge variant="outline">批次：{formatTapNowBatchTime(result.batchCreatedAt)}</Badge>
                             </div>
                             <div className="mt-3 text-xs leading-5 text-foreground/50">支持图片、视频、音频和文本节点；节点会保留相对位置，并整体放到当前可视区域中心。</div>
                         </div>
@@ -175,11 +182,11 @@ export function TapNowImportDialog({ open, projectId, viewport, viewportSize, on
                             </div>
                         ) : null}
                         <div className="flex flex-wrap gap-2">
-                            <Tag>等待确认导入</Tag>
+                            <Badge variant="secondary">等待确认导入</Badge>
                         </div>
                     </div>
                 ) : null}
             </div>
-        </Modal>
+        </AppModal>
     );
 }

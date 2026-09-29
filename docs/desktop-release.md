@@ -1,23 +1,23 @@
-# BeefTV 桌面发布
+# Framely 桌面发布
 
 生产桌面包使用仓库根目录的 `VERSION` 作为唯一版本源。发布脚本会把版本号、当前 Git 提交和 UTC 构建时间同时注入前端与 Go 后端，并生成不依赖 Vite 开发服务器的 Wails 应用包。
 
 带自动更新的生产包还要注入更新源地址和 Ed25519 公钥。密钥、草稿发布、签名清单和回滚语义见下方「桌面自动更新」。`v1.5.2` 及以前的安装包不含更新器，不能靠补发清单给已经装好的二进制补上自动更新。
 
-本地合同检查仍由 `scripts/verify-beeftv-local-release.sh` 负责。macOS 发布脚本会先跑该门禁；Windows 发布脚本只做本机打包，不重复整套门禁。
+本地合同检查仍由 `scripts/verify-framely-local-release.sh` 负责。macOS 发布脚本会先跑该门禁；Windows 发布脚本只做本机打包，不重复整套门禁。
 
 前端未压缩产物的默认体积上限为 105 MiB，可通过 `BEEFTV_WEB_BUDGET_MIB` 调整。包含 FFmpeg、MediaPipe 和预设资源的主线基线约为 99.24 MiB；自动更新增量约 25 KiB。此上限不是 zip 下载大小。
 
 ## macOS
 
 ```bash
-./scripts/build-beeftv-release.sh
+./scripts/build-framely-release.sh
 ```
 
 如果系统没有全局 Go，可通过 `BEEFTV_GO_DIR` 指定本地工具链目录：
 
 ```bash
-BEEFTV_GO_DIR=/tmp/beeftv-go.rpIfVN/go ./scripts/build-beeftv-release.sh
+BEEFTV_GO_DIR=/tmp/beeftv-go.rpIfVN/go ./scripts/build-framely-release.sh
 ```
 
 生产自动更新包需要额外环境变量：
@@ -33,14 +33,14 @@ BEEFTV_GO_DIR=/tmp/beeftv-go.rpIfVN/go ./scripts/build-beeftv-release.sh
 产物：
 
 ```text
-backend/cmd/desktop/build/bin/BeefTV.app
-backend/cmd/desktop/build/bin/BeefTV.app/Contents/Resources/plugin-packages/*.beeftv-plugin
+backend/cmd/desktop/build/bin/Framely.app
+backend/cmd/desktop/build/bin/Framely.app/Contents/Resources/plugin-packages/*.beeftv-plugin
 ```
 
 验收重点：
 
-- `backend/cmd/desktop/build/bin/BeefTV.app` 存在；
-- Wails 将 `frontend/dist` 编译进应用二进制；应用包内应存在 `Contents/MacOS/BeefTV`，并由构建日志确认完成 `Compiling frontend` 与 `Packaging application`；
+- `backend/cmd/desktop/build/bin/Framely.app` 存在；
+- Wails 将 `frontend/dist` 编译进应用二进制；应用包内应存在 `Contents/MacOS/Framely`，并由构建日志确认完成 `Compiling frontend` 与 `Packaging application`；
 - macOS `Info.plist` 的 `CFBundleShortVersionString` 和 `CFBundleVersion` 与根目录 `VERSION`（去掉 `v` 前缀）一致；
 - `/api/health/live` 与 `/api/system/version` 返回的版本信息来自同一份发布元数据；
 - 发布启动不需要 `127.0.0.1:3000` 的 Vite 开发服务器。
@@ -50,17 +50,17 @@ backend/cmd/desktop/build/bin/BeefTV.app/Contents/Resources/plugin-packages/*.be
 在仓库根目录执行：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-beeftv-windows-release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-framely-windows-release.ps1
 ```
 
 产物：
 
 ```text
-backend\cmd\desktop\build\bin\BeefTV.exe
+backend\cmd\desktop\build\bin\Framely.exe
 backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 ```
 
-官方插件必须和 `BeefTV.exe` 放在同一目录下的 `plugin-packages\`。从开始菜单、快捷方式或资源管理器启动时，工作目录不一定是仓库或 exe 所在目录；应用按可执行文件位置查找官方插件，不依赖当前工作目录。
+官方插件必须和 `Framely.exe` 放在同一目录下的 `plugin-packages\`。从开始菜单、快捷方式或资源管理器启动时，工作目录不一定是仓库或 exe 所在目录；应用按可执行文件位置查找官方插件，不依赖当前工作目录。
 
 ### 本机前提
 
@@ -84,18 +84,18 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 
 构建使用与 macOS 相同的 Wails 模块 `github.com/wailsapp/wails/v2/cmd/wails@v2.16.0`，并显式传入 `-platform windows/amd64`、`-webview2 download`。Wails 把生产二进制写到 `build/bin`。缺少 WebView2 时，下载策略会提示安装官方 bootstrapper。
 
-本脚本不生成 NSIS 安装包。Wails 的 `-nsis` 需要另装 NSIS，且默认安装脚本是否包含 `plugin-packages\` 未经本仓库验证。当前支持的发布形态是：把 `BeefTV.exe` 和旁边的 `plugin-packages\` 一起分发。
+本脚本不生成 NSIS 安装包。Wails 的 `-nsis` 需要另装 NSIS，且默认安装脚本是否包含 `plugin-packages\` 未经本仓库验证。当前支持的发布形态是：把 `Framely.exe` 和旁边的 `plugin-packages\` 一起分发。
 
 在非 Windows 主机交叉编译出来的 exe，不能当作 Windows 验收通过。
 
 ## 启动目录与数据目录
 
-桌面进程默认数据目录来自 Go 的 `os.UserConfigDir()`，再拼 `BeefTV`：
+桌面进程默认数据目录来自 Go 的 `os.UserConfigDir()`，再拼 `Framely`：
 
 | 系统 | 默认数据目录 |
 | --- | --- |
-| Windows | `%AppData%\BeefTV`（Roaming） |
-| macOS | `~/Library/Application Support/BeefTV` |
+| Windows | `%AppData%\Framely`（Roaming） |
+| macOS | `~/Library/Application Support/Framely` |
 
 其中包含 SQLite、本地资源和迁移备份。隔离调试时设置 `CANVAS_DESKTOP_DATA_DIR`。`CANVAS_BACKEND_DATA_DIR` 只作用于 `cmd/server`，不会改桌面数据目录。
 
@@ -103,7 +103,7 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 
 需要知道的限制：
 
-- 未签名的 `BeefTV.exe` 可能被 SmartScreen 拦截；本脚本不签名。
+- 未签名的 `Framely.exe` 可能被 SmartScreen 拦截；本脚本不签名。
 - 构建机没有 C 编译器时，脚本会失败。常见 MSYS2/MinGW 路径若存在但不在 PATH，脚本会指出路径，不会自动加入 PATH。
 - 数据库连接串目前把数据目录与 `/open_ai_canvas.db` 直接拼接。Windows 一般接受正斜杠；数据目录名里如果出现 `?` 或 `#`，可能被当成 DSN 参数。
 
@@ -125,12 +125,12 @@ backend\cmd\desktop\build\bin\plugin-packages\*.beeftv-plugin
 
 | 系统 | 被替换 | 不会进更新包、也不会被替换 |
 | --- | --- | --- |
-| macOS | `BeefTV.app` | `~/Library/Application Support/BeefTV` |
-| Windows | `BeefTV.exe` 和旁边的 `plugin-packages\*.beeftv-plugin` | `%AppData%\BeefTV` |
+| macOS | `Framely.app` | `~/Library/Application Support/Framely` |
+| Windows | `Framely.exe` 和旁边的 `plugin-packages\*.beeftv-plugin` | `%AppData%\Framely` |
 
 应用包身份和可执行文件路径保持不变，所以前端 IndexedDB 会继续可用。官方插件随应用包更新；用户自己装的插件如果放在数据目录里，会留下来。
 
-程序与数据必须使用独立目录。尤其不要把 Windows zip 解压到 `%AppData%\BeefTV`，也不要将 `CANVAS_DESKTOP_DATA_DIR` 指向 exe 所在目录。更新器会在退出前拒绝这类目录重叠。
+程序与数据必须使用独立目录。尤其不要把 Windows zip 解压到 `%AppData%\Framely`，也不要将 `CANVAS_DESKTOP_DATA_DIR` 指向 exe 所在目录。更新器会在退出前拒绝这类目录重叠。
 
 更新包禁止带上 `.env`、SQLite 数据库和 `.settings-key`。打包工具遇到用户数据目录会直接拒绝。
 
@@ -171,12 +171,12 @@ GitHub 仓库配置：
 
 ```bash
 export BEEFTV_UPDATER_PUBLIC_KEY="$(tr -d '[:space:]' < /path/to/beeftv-updater.public)"
-./scripts/build-beeftv-release.sh
+./scripts/build-framely-release.sh
 ```
 
 脚本会把下面两个链接期变量写进二进制：
 
-- `infinite-canvas/backend/internal/desktopupdate.FeedURL` = `https://updates.beefapi.com/beeftv/desktop-update.json`
+- `infinite-canvas/backend/internal/desktopupdate.FeedURL` = `https://updates.beefapi.com/framely/desktop-update.json`
 - `infinite-canvas/backend/internal/desktopupdate.PublicKey` = 公钥 Base64
 
 两个都为空时，应用里的更新器保持关闭，但仍显示当前版本。
@@ -192,21 +192,21 @@ export BEEFTV_UPDATER_PUBLIC_KEY="$(tr -d '[:space:]' < /path/to/beeftv-updater.
 正式文件名固定为：
 
 ```text
-BeefTV-vX.Y.Z-darwin-arm64.zip
-BeefTV-vX.Y.Z-darwin-amd64.zip
-BeefTV-vX.Y.Z-windows-amd64.zip
+Framely-vX.Y.Z-darwin-arm64.zip
+Framely-vX.Y.Z-darwin-amd64.zip
+Framely-vX.Y.Z-windows-amd64.zip
 desktop-update.json
 ```
 
 zip 里的布局：
 
-- macOS：`BeefTV.app/...`，保留可执行权限；内部安全符号链接会被解成普通文件，不会写成 zip 符号链接项。
-- Windows：根目录的 `BeefTV.exe` 和 `plugin-packages/*.beeftv-plugin`。
+- macOS：`Framely.app/...`，保留可执行权限；内部安全符号链接会被解成普通文件，不会写成 zip 符号链接项。
+- Windows：根目录的 `Framely.exe` 和 `plugin-packages/*.beeftv-plugin`。
 
 从 v1.5.7 起，更新清单和安装包托管在 Cloudflare R2：
 
 ```text
-https://updates.beefapi.com/beeftv/desktop-update.json
+https://updates.beefapi.com/framely/desktop-update.json
 ```
 
 流水线先建 draft，三个平台构建任务把包保存为 Actions 产物。收齐后生成签名清单，先将版本包和版本清单写入 R2 不可变路径并从公开域名读回校验。之后发布 GitHub Release，最后原子替换 CF 的最新清单。失败或缺包不会激活 CF 更新源。GitHub 同时保留同一份签名清单，供旧客户端迁移。
@@ -215,7 +215,7 @@ v1.5.6 及以前的更新器仍内置 GitHub 清单地址。如果旧客户端�
 
 ### Cloudflare 发布配置
 
-使用专用 R2 bucket `beeftv-releases`，自定义域名 `updates.beefapi.com`，TLS 最低 1.2。只放公开发行文件，不混放用户素材。正式文件路径为 `beeftv/vX.Y.Z/<文件名>`，最新清单为 `beeftv/desktop-update.json`。版本对象长期缓存且不可变，最新清单使用禁止缓存的响应头。
+使用专用 R2 bucket `beeftv-releases`，自定义域名 `updates.beefapi.com`，TLS 最低 1.2。只放公开发行文件，不混放用户素材。正式文件路径为 `framely/vX.Y.Z/<文件名>`，最新清单为 `framely/desktop-update.json`。版本对象长期缓存且不可变，最新清单使用禁止缓存的响应头。
 
 仓库 Actions 需要以下配置：
 
@@ -247,8 +247,8 @@ Apple 公证不在这条工作流里。macOS 作业沿用现有脚本的 ad hoc 
 cd backend
 go run ./cmd/update-release package \
   --platform darwin-arm64 \
-  --input cmd/desktop/build/bin/BeefTV.app \
-  --output /tmp/BeefTV-vX.Y.Z-darwin-arm64.zip
+  --input cmd/desktop/build/bin/Framely.app \
+  --output /tmp/Framely-vX.Y.Z-darwin-arm64.zip
 go run ./cmd/update-release sign \
   --version vX.Y.Z \
   --commit "$(git rev-parse HEAD)" \
@@ -256,9 +256,9 @@ go run ./cmd/update-release sign \
   --private-key /path/to/beeftv-updater.private \
   --expect-public-key "$(tr -d '[:space:]' < /path/to/beeftv-updater.public)" \
   --require-platforms darwin-arm64,darwin-amd64,windows-amd64 \
-  --asset darwin-arm64=/tmp/BeefTV-vX.Y.Z-darwin-arm64.zip \
-  --asset darwin-amd64=/tmp/BeefTV-vX.Y.Z-darwin-amd64.zip \
-  --asset windows-amd64=/tmp/BeefTV-vX.Y.Z-windows-amd64.zip \
+  --asset darwin-arm64=/tmp/Framely-vX.Y.Z-darwin-arm64.zip \
+  --asset darwin-amd64=/tmp/Framely-vX.Y.Z-darwin-amd64.zip \
+  --asset windows-amd64=/tmp/Framely-vX.Y.Z-windows-amd64.zip \
   --output /tmp/desktop-update.json
 ```
 

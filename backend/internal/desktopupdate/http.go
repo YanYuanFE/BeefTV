@@ -56,7 +56,7 @@ func (e *Engine) getBytes(ctx context.Context, rawURL string, maxBytes int64, ti
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "BeefTV-Desktop-Updater/"+e.currentVersion)
+	req.Header.Set("User-Agent", "Framely-Desktop-Updater/"+e.currentVersion)
 	resp, err := e.client.Do(req)
 	if err != nil {
 		return nil, mapNetError(err)
@@ -88,7 +88,7 @@ func (e *Engine) downloadArchive(ctx context.Context, artifact PlatformArtifact,
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "BeefTV-Desktop-Updater/"+e.currentVersion)
+	req.Header.Set("User-Agent", "Framely-Desktop-Updater/"+e.currentVersion)
 	resp, err := e.client.Do(req)
 	if err != nil {
 		return mapNetError(err)

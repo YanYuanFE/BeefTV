@@ -52,12 +52,12 @@ function bytesToBase64(bytes: Uint8Array) {
     return btoa(binary);
 }
 
-export function reportOwnedMediaSave(message: { success: (text: string) => void; error: (text: string) => void }, result: Promise<OwnedMediaSaveResult>) {
+export function reportOwnedMediaSave(notify: { success: (text: string) => void; error: (text: string) => void }, result: Promise<OwnedMediaSaveResult>) {
     return result
         .then((status) => {
-            if (status === "saved" && isWailsNativeShell()) message.success("已保存到所选位置");
+            if (status === "saved" && isWailsNativeShell()) notify.success("已保存到所选位置");
         })
         .catch((error) => {
-            message.error(error instanceof Error && error.message.trim() ? error.message : "保存没有完成，请再试一次");
+            notify.error(error instanceof Error && error.message.trim() ? error.message : "保存没有完成，请再试一次");
         });
 }

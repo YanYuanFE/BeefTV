@@ -1,7 +1,9 @@
-import { Button, Select } from "antd";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { IconButton } from "@/components/ui/base/buttons";
 import { EmptyState } from "@/components/ui/product/empty-state";
-import { Maximize, Power, PowerOff, ZoomIn, ZoomOut } from "lucide-react";
+import { Check, ChevronDown, Maximize, Power, PowerOff, Search, ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { WorkflowFieldMappingEditor } from "@/components/workflow-field-mapping-editor";
@@ -153,20 +155,20 @@ export function WorkflowGraphEditor({ workflowJson, workflowGraph, fields, onCha
                     </span>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                    <Button size="small" type="text" icon={<PowerOff className="size-3.5" />} danger disabled={disabled || enabledControllableCount === 0} onClick={() => updateAllFields(false)}>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" disabled={disabled || enabledControllableCount === 0} onClick={() => updateAllFields(false)}>
+                        <PowerOff className="size-3.5" />
                         关闭全部开关
                     </Button>
-                    <Button size="small" type="text" icon={<Power className="size-3.5" />} disabled={disabled || enabledControllableCount === controllableFields.length} onClick={() => updateAllFields(true)}>
+                    <Button size="sm" variant="ghost" disabled={disabled || enabledControllableCount === controllableFields.length} onClick={() => updateAllFields(true)}>
+                        <Power className="size-3.5" />
                         开启全部开关
                     </Button>
                 </div>
                 <label className="workflow-graph-node-select">
                     <span>正在设置的节点</span>
-                    <Select
-                        showSearch
+                    <SearchableSelect
                         value={selectedNodeId || undefined}
                         placeholder="选择节点"
-                        optionFilterProp="label"
                         options={[{ label: `全部已开启字段 · ${enabledFields.length}`, value: allEnabledFieldsNodeId }, ...graph.nodes.map((node) => ({ label: `${node.title} · #${node.id}`, value: node.id }))]}
                         onChange={setSelectedNodeId}
                     />
@@ -407,4 +409,51 @@ function nodeCategory(classType: string) {
     if (value.includes("image") || value.includes("vae")) return "image";
     if (value.includes("video")) return "video";
     return "default";
+}
+
+/** Single select with a label filter (replaces AntD Select showSearch for long node lists). */
+function SearchableSelect({ value, placeholder, options, onChange }: { value?: string; placeholder: string; options: Array<{ label: string; value: string }>; onChange: (value: string) => void }) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const selected = options.find((option) => option.value === value);
+    const normalizedQuery = query.trim().toLowerCase();
+    const visible = options.filter((option) => option.label.toLowerCase().includes(normalizedQuery));
+    return (
+        <Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setQuery(""); }}>
+            <PopoverTrigger asChild>
+                <button type="button" role="combobox" aria-expanded={open} className="flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30">
+                    <span className={selected ? "min-w-0 truncate text-foreground" : "min-w-0 truncate text-muted-foreground"}>{selected?.label ?? placeholder}</span>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-56 gap-1 p-1">
+                <div className="relative flex items-center">
+                    <Search className="pointer-events-none absolute left-2.5 size-3.5 text-muted-foreground" aria-hidden="true" />
+                    <Input autoFocus aria-label="搜索节点" className="pl-8" value={query} onChange={(event) => setQuery(event.target.value)} />
+                </div>
+                <div role="listbox" className="max-h-64 overflow-y-auto">
+                    {visible.length ? (
+                        visible.map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                role="option"
+                                aria-selected={option.value === value}
+                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none"
+                                onClick={() => {
+                                    onChange(option.value);
+                                    setOpen(false);
+                                }}
+                            >
+                                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                                {option.value === value ? <Check className="size-3.5 shrink-0" aria-hidden="true" /> : null}
+                            </button>
+                        ))
+                    ) : (
+                        <div className="px-2 py-3 text-center text-xs text-muted-foreground">无匹配节点</div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
 }

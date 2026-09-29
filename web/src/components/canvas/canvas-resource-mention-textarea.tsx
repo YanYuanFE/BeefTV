@@ -1030,7 +1030,7 @@ type MentionAnchorRect = Pick<DOMRect, "left" | "right" | "top" | "bottom" | "wi
 
 function mentionMenuPosition(anchor: HTMLElement, cursorOffset: number, preferredWidth: number) {
     const caret = mentionCaretRect(anchor, cursorOffset);
-    const boundary = anchor.closest(".ant-modal-container")?.getBoundingClientRect() || { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+    const boundary = anchor.closest("[data-slot=app-modal]")?.getBoundingClientRect() || { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
     const inset = 8;
     const gap = 8;
     const availableWidth = Math.max(0, boundary.right - boundary.left - inset * 2);
