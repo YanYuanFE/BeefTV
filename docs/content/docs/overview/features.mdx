@@ -93,6 +93,16 @@ description: 当前项目已实现的核心工作台能力与使用入口
 - `web/src/components/canvas/canvas-grid-split-picker.tsx`、`web/src/lib/canvas/canvas-grid-split.ts`：宫格预设、自定义点选与切分子节点布局。
 - `web/src/lib/canvas/canvas-selection.ts`、`web/src/lib/canvas/canvas-live-viewport.ts`：多选虚线框随拖动预览平移。
 
+## 图片本地抠图
+
+图片工具菜单「拆分与标记」里的「抠图」在节点上直接进入点选模式：点击要保留的主体，可继续点选补充区域，未选中部分会被压暗预览；确认后生成透明背景 PNG 的新图片节点，并与原图连线。识别在浏览器本地完成（MediaPipe 交互式分割），图片不上传、不调用模型渠道、不消耗积分。只支持加选，不支持排除点；精简版不包含该模型，不提供此功能。
+
+### 相关实现
+
+- `web/src/components/canvas/canvas-node-cutout-dialog.tsx`：节点内点选、预览与导出透明 PNG。
+- `web/src/lib/canvas/canvas-segmentation.ts`、`web/src/lib/canvas/canvas-segmenter.worker.ts`：在 Worker 中运行交互式分割。
+- `web/src/lib/canvas/canvas-cutout-mask.ts`：按前景置信度写入透明通道。
+
 ## 系统渠道排序与前台别名
 
 后台系统渠道及渠道模型列表通过“设置排序”打开完整列表，支持拖动、上移和下移，点击“保存排序”统一生效；取消不会修改线上顺序。渠道行的“更多”菜单支持复制渠道，复制会生成独立的渠道、模型和价格档，并保留原连接配置与凭证。界面不显示内部排序数字，排序不受筛选及分页影响；并发修改会提示重新加载，避免覆盖其他管理员的调整。系统渠道模式下，用户端模型选择器沿用同一渠道及模型顺序。模型排序独立保存，不改变价格、能力版本或启用状态。

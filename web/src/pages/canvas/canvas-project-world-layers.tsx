@@ -85,6 +85,9 @@ type CanvasProjectWorldLayersProps = {
     imageCropNodeId?: string | null;
     onCancelImageCrop?: () => void;
     onConfirmImageCrop?: (node: CanvasNodeData, crop: CanvasImageCropRect) => void | Promise<void>;
+    cutoutNodeId?: string | null;
+    onCancelCutout?: () => void;
+    onConfirmCutout?: (node: CanvasNodeData, dataUrl: string) => void | Promise<void>;
     annotationNodeId?: string | null;
     onCancelAnnotation?: () => void;
     onConfirmAnnotation?: (node: CanvasNodeData, dataUrl: string) => void | Promise<void>;
@@ -179,6 +182,9 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         imageCropActive={props.imageCropNodeId === node.id}
                         onCancelImageCrop={props.onCancelImageCrop}
                         onConfirmImageCrop={props.onConfirmImageCrop}
+                        cutoutActive={props.cutoutNodeId === node.id}
+                        onCancelCutout={props.onCancelCutout}
+                        onConfirmCutout={props.onConfirmCutout}
                         annotationActive={props.annotationNodeId === node.id}
                         onCancelAnnotation={props.onCancelAnnotation}
                         onConfirmAnnotation={props.onConfirmAnnotation}

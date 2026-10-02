@@ -1175,6 +1175,8 @@ function InfiniteCanvasPage() {
         openPortraitTextureEditor,
         cropImageNode,
         cropNodeId,
+        cutoutNodeId,
+        saveCutoutImageNode,
         cropVideoNode,
         depthCaptureNode,
         retryDepthCaptureNode,
@@ -1214,6 +1216,7 @@ function InfiniteCanvasPage() {
         setEmotionNodeId,
         setAnnotationNodeId,
         setCropNodeId,
+        setCutoutNodeId,
         setVideoCropNodeId,
         setMaskEditNodeId,
         setUpscaleNodeId,
@@ -1262,6 +1265,7 @@ function InfiniteCanvasPage() {
             setFrameDialogNodeId(clearDeletedId);
             setInlineTrimNodeId(clearDeletedId);
             setCropNodeId(clearDeletedId);
+            setCutoutNodeId(clearDeletedId);
             setMaskEditNodeId(clearDeletedId);
             setAnnotationNodeId(clearDeletedId);
             setUpscaleNodeId(clearDeletedId);
@@ -1299,6 +1303,7 @@ function InfiniteCanvasPage() {
             setAnnotationNodeId,
             setArtCritiqueNodeId,
             setCropNodeId,
+            setCutoutNodeId,
             setEmotionNodeId,
             setFrameDialogNodeId,
             setLightingNodeId,
@@ -2057,6 +2062,7 @@ function InfiniteCanvasPage() {
         setInfoNodeId(null);
         setSubtitleNodeId(null);
         setCropNodeId(null);
+        setCutoutNodeId(null);
         setMaskEditNodeId(null);
         setAnnotationNodeId(null);
         setAngleNodeId(null);
@@ -3071,6 +3077,9 @@ function InfiniteCanvasPage() {
                                                 imageCropNodeId={cropNodeId}
                                                 onCancelImageCrop={() => setCropNodeId(null)}
                                                 onConfirmImageCrop={(node, crop) => cropImageNode(node, crop)}
+                                                cutoutNodeId={cutoutNodeId}
+                                                onCancelCutout={() => setCutoutNodeId(null)}
+                                                onConfirmCutout={saveCutoutImageNode}
                                                 annotationNodeId={annotationNodeId}
                                                 onCancelAnnotation={() => setAnnotationNodeId(null)}
                                                 onConfirmAnnotation={async (node, dataUrl) => { await saveAnnotatedImageNode(node, dataUrl); setAnnotationNodeId(null); }}
@@ -3309,6 +3318,10 @@ function InfiniteCanvasPage() {
                             }}
                             onPortraitTexture={openPortraitTextureEditor}
                             onCrop={(node) => node.type === CanvasNodeType.Video ? openVideoCrop(node) : setCropNodeId(node.id)}
+                            onCutout={(node) => {
+                                setDialogNodeId(null);
+                                setCutoutNodeId(node.id);
+                            }}
                             onSplit={(node, params) => void splitImageNode(node, params)}
                             onUpscale={(node) => setUpscaleNodeId(node.id)}
                             onSuperResolve={(node) => setSuperResolveNodeId(node.id)}

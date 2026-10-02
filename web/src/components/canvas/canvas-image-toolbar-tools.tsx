@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, FileText, Globe2, Grid2x2, Lock, LockOpen, Maximize2, PencilLine, Crop, SlidersHorizontal, Smile, Sun, Upload, Scaling } from "lucide-react";
+import { Brush, Camera, Copy, FileText, Globe2, Grid2x2, Lock, LockOpen, Maximize2, PencilLine, Crop, Scissors, SlidersHorizontal, Smile, Sun, Upload, Scaling } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
 import type { NodeToolbarGroup } from "@/lib/canvas/tool-registry";
 
-type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "annotation" | "maskEdit" | "emotion" | "portraitTexture" | "crop" | "split" | "upscale" | "superResolve" | "angle" | "lighting" | "panorama" | "view";
+type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "annotation" | "maskEdit" | "emotion" | "portraitTexture" | "crop" | "cutout" | "split" | "upscale" | "superResolve" | "angle" | "lighting" | "panorama" | "view";
 
 type ImageToolHandlers = {
     onUpload: (node: CanvasNodeData) => void;
@@ -14,6 +14,7 @@ type ImageToolHandlers = {
     onEmotion: (node: CanvasNodeData) => void;
     onPortraitTexture: (node: CanvasNodeData) => void;
     onCrop: (node: CanvasNodeData) => void;
+    onCutout: (node: CanvasNodeData) => void;
     onUpscale: (node: CanvasNodeData) => void;
     onSuperResolve: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
@@ -122,6 +123,16 @@ const imageToolDefinitions: ImageToolDefinition[] = [
         group: "process",
         order: 10,
         run: (node, handlers) => handlers.onCrop(node),
+    },
+    {
+        id: "cutout",
+        label: "抠图",
+        section: "拆分与标记",
+        description: "点选主体，本地去除背景生成透明图",
+        icon: () => <Scissors className="size-3.5" />,
+        group: "process",
+        order: 40,
+        run: (node, handlers) => handlers.onCutout(node),
     },
     {
         id: "split",

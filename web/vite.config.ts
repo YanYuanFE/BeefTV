@@ -25,6 +25,7 @@ function pruneOptionalMediaPlugin() {
                 rmSync(resolve(dist, directory), { recursive: true, force: true });
             }
             rmSync(resolve(dist, "canvas/models/blaze-face-full-range-sparse.tflite"), { force: true });
+            rmSync(resolve(dist, "canvas/models/magic_touch.tflite"), { force: true });
             const staticDir = resolve(dist, "static");
             for (const file of readdirSync(staticDir)) {
                 if (file.startsWith("ffmpeg-core-")) rmSync(resolve(staticDir, file), { force: true });

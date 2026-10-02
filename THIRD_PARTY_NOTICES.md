@@ -49,7 +49,7 @@ and cgo bindings distributed under their package license.
 
 | Repository paths | Origin and terms |
 | --- | --- |
-| `web/public/mediapipe/wasm/*`, `web/public/canvas/models/blaze-face-full-range-sparse.tflite` | MediaPipe Tasks Vision distribution, Apache-2.0 |
+| `web/public/mediapipe/wasm/*`, `web/public/canvas/models/blaze-face-full-range-sparse.tflite`, `web/public/canvas/models/magic_touch.tflite` | MediaPipe Tasks Vision distribution and MediaPipe interactive segmenter model, Apache-2.0 |
 | `web/public/three/basis/*` | Basis Universal transcoder distributed with three.js; Apache-2.0 |
 | `web/public/canvas/models/facecap.glb` | three.js example face-cap model; distributed with the MIT-licensed three.js examples |
 | `web/public/canvas/models/director-repro-triangle.gltf` | Framely hand-authored offline test fixture; MIT |

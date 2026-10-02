@@ -41,6 +41,7 @@ for path in \
   web/public/mediapipe/wasm \
   web/public/three/basis \
   web/public/canvas/models/blaze-face-full-range-sparse.tflite \
+  web/public/canvas/models/magic_touch.tflite \
   web/public/canvas/models/facecap.glb \
   web/public/welcome/credits.html
 do

@@ -123,6 +123,7 @@ export function useCanvasMediaTools({
     const extractingVideoFramesNodeIdRef = useRef<string | null>(null);
     const mergeVideoRunningRef = useRef(false);
     const [cropNodeId, setCropNodeId] = useState<string | null>(null);
+    const [cutoutNodeId, setCutoutNodeId] = useState<string | null>(null);
     const [videoCropNodeId, setVideoCropNodeId] = useState<string | null>(null);
     const [annotationNodeId, setAnnotationNodeId] = useState<string | null>(null);
     const [maskEditNodeId, setMaskEditNodeId] = useState<string | null>(null);
@@ -566,6 +567,20 @@ export function useCanvasMediaTools({
         await persistMediaNodes([child], [connection]);
         toast.success("标注图片已保存为新节点");
     }, [persistMediaNodes, setConnections, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
+
+    const saveCutoutImageNode = useCallback(async (node: CanvasNodeData, dataUrl: string) => {
+        const image = await uploadImage(dataUrl);
+        const size = fitNodeSize(image.width, image.height, node.width, node.height);
+        const childId = nanoid();
+        const child: CanvasNodeData = { id: childId, type: CanvasNodeType.Image, title: `${node.title || "图片"} · 抠图`, position: { x: node.position.x + node.width + 96, y: node.position.y }, width: size.width, height: size.height, metadata: mediaResultMetadata("derived", { ...imageMetadata(image), prompt: node.metadata?.prompt, generatedFromNodeId: node.id }) };
+        const connection = { id: nanoid(), fromNodeId: node.id, toNodeId: childId };
+        setNodes((current) => [...current, child]);
+        setConnections((current) => [...current, connection]);
+        setSelectedNodeIds(new Set([childId]));
+        setSelectedConnectionId(null);
+        setCutoutNodeId(null);
+        await persistMediaNodes([child], [connection]);
+    }, [persistMediaNodes, setConnections, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     const closeFrameDialog = useCallback(() => {
         if (extractingVideoFramesNodeIdRef.current) return;
@@ -1281,6 +1296,8 @@ export function useCanvasMediaTools({
         openPortraitTextureEditor,
         cropImageNode,
         cropNodeId,
+        cutoutNodeId,
+        saveCutoutImageNode,
         videoCropNodeId,
         cropVideoNode,
         depthCaptureNode,
@@ -1320,6 +1337,7 @@ export function useCanvasMediaTools({
         setEmotionNodeId,
         setAnnotationNodeId,
         setCropNodeId,
+        setCutoutNodeId,
         setVideoCropNodeId,
         setMaskEditNodeId,
         setUpscaleNodeId,

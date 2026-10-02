@@ -44,6 +44,7 @@ type CanvasNodeToolbarProps = {
     onEmotion: (node: CanvasNodeData) => void;
     onPortraitTexture: (node: CanvasNodeData) => void;
     onCrop: (node: CanvasNodeData) => void;
+    onCutout: (node: CanvasNodeData) => void;
     onSplit: (node: CanvasNodeData, params: ImageSplitParams) => void;
     onUpscale: (node: CanvasNodeData) => void;
     onSuperResolve: (node: CanvasNodeData) => void;
@@ -106,6 +107,7 @@ export function CanvasNodeToolbar({
     onEmotion,
     onPortraitTexture,
     onCrop,
+    onCutout,
     onSplit,
     onUpscale,
     onSuperResolve,
@@ -240,6 +242,7 @@ export function CanvasNodeToolbar({
         onEmotion,
         onPortraitTexture,
         onCrop,
+        onCutout,
         onUpscale,
         onSuperResolve,
         onAngle,

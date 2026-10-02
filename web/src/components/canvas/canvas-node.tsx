@@ -16,6 +16,7 @@ import { getNodeDefinition, getNodeMinSize, shouldKeepAspectRatio } from "@/lib/
 import { CanvasNodeContent } from "./canvas-node-content";
 import { CanvasVideoCropEditor, type CanvasVideoCropRect } from "./canvas-video-crop-dialog";
 import { CanvasImageCropEditor, type CanvasImageCropRect } from "./canvas-node-crop-dialog";
+import { CanvasImageCutoutEditor } from "./canvas-node-cutout-dialog";
 import { CanvasImageAnnotationEditor } from "./canvas-node-annotation-dialog";
 import { CanvasImageMaskEditor, type CanvasImageMaskEditPayload } from "./canvas-node-mask-edit-dialog";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -73,6 +74,9 @@ type CanvasNodeProps = {
     imageCropActive?: boolean;
     onCancelImageCrop?: () => void;
     onConfirmImageCrop?: (node: CanvasNodeData, crop: CanvasImageCropRect) => void | Promise<void>;
+    cutoutActive?: boolean;
+    onCancelCutout?: () => void;
+    onConfirmCutout?: (node: CanvasNodeData, dataUrl: string) => void | Promise<void>;
     annotationActive?: boolean;
     onCancelAnnotation?: () => void;
     onConfirmAnnotation?: (node: CanvasNodeData, dataUrl: string) => void | Promise<void>;
@@ -132,6 +136,9 @@ export const CanvasNode = React.memo(function CanvasNode({
     imageCropActive = false,
     onCancelImageCrop,
     onConfirmImageCrop,
+    cutoutActive = false,
+    onCancelCutout,
+    onConfirmCutout,
     annotationActive = false,
     onCancelAnnotation,
     onConfirmAnnotation,
@@ -468,6 +475,13 @@ export const CanvasNode = React.memo(function CanvasNode({
                             onConfirm={(crop) => onConfirmImageCrop?.(data, crop)}
                         />
                     ) : null}
+                    {cutoutActive && hasImageContent ? (
+                        <CanvasImageCutoutEditor
+                            image={{ url: data.metadata?.content || "", storageKey: data.metadata?.storageKey }}
+                            onCancel={() => onCancelCutout?.()}
+                            onConfirm={(dataUrl) => onConfirmCutout?.(data, dataUrl)}
+                        />
+                    ) : null}
                     {annotationActive && hasImageContent ? (
                         <CanvasImageAnnotationEditor
                             image={{ url: data.metadata?.content || "", storageKey: data.metadata?.storageKey }}
@@ -640,6 +654,9 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.imageCropActive === next.imageCropActive &&
         previous.onCancelImageCrop === next.onCancelImageCrop &&
         previous.onConfirmImageCrop === next.onConfirmImageCrop &&
+        previous.cutoutActive === next.cutoutActive &&
+        previous.onCancelCutout === next.onCancelCutout &&
+        previous.onConfirmCutout === next.onConfirmCutout &&
         previous.annotationActive === next.annotationActive &&
         previous.onCancelAnnotation === next.onCancelAnnotation &&
         previous.onConfirmAnnotation === next.onConfirmAnnotation &&
